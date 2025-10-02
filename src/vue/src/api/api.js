@@ -439,3 +439,16 @@ export const DeleteWorkRecord = (params) => {
 	}).then(res => res.data).catch(error => console.log(error));
 }
 //T4模板生成结束
+
+// 云台控制相关API
+export const PTZControl = (params) => {
+	console.log('PTZ控制:', params)
+	return axios({
+		method: 'Post',
+		url: BaseUrl + 'api/HK/ptz-control',
+		data: params
+	}).then(res => res.data).catch(error => {
+		console.error('PTZ控制失败:', error);
+		return { success: false, message: error.message || '控制失败' };
+	});
+}

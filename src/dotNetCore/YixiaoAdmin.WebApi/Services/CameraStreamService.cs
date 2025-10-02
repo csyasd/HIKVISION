@@ -277,8 +277,17 @@ namespace YixiaoAdmin.WebApi.Services
                 string password = _configuration.GetValue<string>("Hikvision:Device:Password") ?? "wzxc2025";
                 string rtspUrl = $"rtsp://{username}:{password}@{camera.IP}:554/Streaming/Channels/101";
 
-                // FFmpeg参数
-                var arguments = $"-rtsp_transport tcp -i \"{rtspUrl}\" -c:v libx264 -preset ultrafast -tune zerolatency -profile:v baseline -level 3.0 -pix_fmt yuv420p -hls_time 2 -hls_list_size 5 -hls_flags delete_segments+append_list -hls_segment_filename \"{Path.Combine(hlsFolder, hlsFileBase)}%03d.ts\" -f hls \"{hlsFile}\"";
+                // FFmpeg参数 - 优化为低延迟直播流
+                // 关键参数说明：
+                // -fflags nobuffer: 禁用输入缓冲，减少延迟
+                // -flags low_delay: 启用低延迟模式
+                // -g 30: GOP大小30帧（1秒），确保关键帧间隔
+                // -sc_threshold 0: 禁用场景切换检测，保持固定GOP
+                // -hls_time 1: 每个TS片段1秒（降低延迟）
+                // -hls_list_size 3: 播放列表保留3个片段（减少缓冲）
+                // -hls_flags delete_segments+append_list+omit_endlist: 删除旧片段+持续更新播放列表
+                // 添加 -b:v 1000k 限制码率，-an 禁用音频，进一步降低延迟
+                var arguments = $"-rtsp_transport tcp -fflags nobuffer -flags low_delay -i \"{rtspUrl}\" -c:v libx264 -b:v 1000k -preset ultrafast -tune zerolatency -profile:v baseline -level 3.0 -pix_fmt yuv420p -g 30 -sc_threshold 0 -hls_time 1 -hls_list_size 3 -hls_flags delete_segments+append_list+omit_endlist -an -hls_segment_filename \"{Path.Combine(hlsFolder, hlsFileBase)}%03d.ts\" -f hls \"{hlsFile}\"";
 
                 var startInfo = new ProcessStartInfo
                 {

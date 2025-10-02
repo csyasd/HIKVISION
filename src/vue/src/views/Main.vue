@@ -57,6 +57,37 @@
                         停止
                     </el-button>
                 </div>
+                
+                <!-- 云台控制 -->
+                <div class="ptz-panel">
+                    <div class="ptz-title">
+                        云台控制 
+                        <span class="ptz-speed-label">
+                            速度: <el-slider v-model="ptzSpeed" :min="1" :max="7" style="width: 60px; display: inline-block;"></el-slider>
+                        </span>
+                    </div>
+                    
+                    <!-- 方向控制 -->
+                    <div class="ptz-grid">
+                        <div></div>
+                        <button class="ptz-btn" @mousedown="ptz(camera, 21, 0)" @mouseup="ptz(camera, 21, 1)" title="上">↑</button>
+                        <div></div>
+                        <button class="ptz-btn" @mousedown="ptz(camera, 23, 0)" @mouseup="ptz(camera, 23, 1)" title="左">←</button>
+                        <div class="ptz-center">⊙</div>
+                        <button class="ptz-btn" @mousedown="ptz(camera, 24, 0)" @mouseup="ptz(camera, 24, 1)" title="右">→</button>
+                        <div></div>
+                        <button class="ptz-btn" @mousedown="ptz(camera, 22, 0)" @mouseup="ptz(camera, 22, 1)" title="下">↓</button>
+                        <div></div>
+                    </div>
+                    
+                    <!-- 其他控制 -->
+                    <div class="ptz-extra">
+                        <button class="ptz-small-btn" @mousedown="ptz(camera, 11, 0)" @mouseup="ptz(camera, 11, 1)">放大+</button>
+                        <button class="ptz-small-btn" @mousedown="ptz(camera, 12, 0)" @mouseup="ptz(camera, 12, 1)">缩小-</button>
+                        <button class="ptz-small-btn" @mousedown="ptz(camera, 13, 0)" @mouseup="ptz(camera, 13, 1)">近焦</button>
+                        <button class="ptz-small-btn" @mousedown="ptz(camera, 14, 0)" @mouseup="ptz(camera, 14, 1)">远焦</button>
+                    </div>
+                </div>
             </div>
         </div>
         
@@ -78,6 +109,8 @@
 </template>
 
 <script>
+import { PTZControl } from '../api/api'
+
 export default {
     data() {
         return {
@@ -87,16 +120,17 @@ export default {
             streamStatus: {},
             loading: false,
             statusText: '正在初始化...',
-            API_BASE: window.location.hostname === '127.0.0.1' ? 'http://127.0.0.1:5002' : 'http://localhost:5002'
+            API_BASE: window.location.hostname === '127.0.0.1' ? 'http://127.0.0.1:5002' : 'http://localhost:5002',
+            ptzSpeed: 4  // 云台速度 1-7
         }
     },
     mounted() {
-        this.loadVideoJS();
+        this.loadVideoJS();  // 使用Video.js
     },
     beforeDestroy() {
         // 清理所有播放器
         Object.values(this.players).forEach(player => {
-            if (player) {
+            if (player && player.dispose) {
                 player.dispose();
             }
         });
@@ -164,7 +198,7 @@ export default {
             });
         },
         
-        // 初始化单个摄像头播放器
+        // 初始化单个摄像头播放器（优化配置）
         initCameraPlayer(cameraId) {
             const playerId = `videoPlayer_${cameraId}`;
             
@@ -180,51 +214,46 @@ export default {
                     responsive: true,
                     controls: true,
                     autoplay: false,
-                    preload: 'auto'
+                    preload: 'none',  // 不预加载，减少初始延迟
+                    liveui: true,     // 启用直播UI
+                    html5: {
+                        vhs: {
+                            // 低延迟配置
+                            overrideNative: true,
+                            enableLowInitialPlaylist: true,
+                            smoothQualityChange: true,
+                            // 关键：最小缓冲
+                            goalBufferLength: 2,
+                            maxGoalBufferLength: 3,
+                            backBufferLength: 2
+                        }
+                    }
                 });
                 
-                // 播放器事件
                 player.ready(() => {
-                    this.log(`摄像头 ${cameraId} 播放器初始化完成`);
+                    this.log(`摄像头 ${cameraId} 播放器就绪（低延迟配置）`);
                 });
                 
-                player.on('loadstart', () => this.log(`摄像头 ${cameraId} 开始加载`));
-                player.on('loadedmetadata', () => this.log(`摄像头 ${cameraId} 元数据加载完成`));
-                player.on('canplay', () => this.log(`摄像头 ${cameraId} 可以播放`));
-                player.on('playing', () => {
-                    this.log(`摄像头 ${cameraId} 开始播放`);
-                    this.$set(this.cameraErrors, cameraId, false);
-                });
-                player.on('pause', () => this.log(`摄像头 ${cameraId} 暂停`));
-                player.on('ended', () => this.log(`摄像头 ${cameraId} 播放结束`));
                 player.on('error', () => {
                     const error = player.error();
-                    this.log(`摄像头 ${cameraId} 播放器错误: ${error?.message || '未知错误'}`);
+                    this.log(`播放器错误: ${error?.message || '未知错误'}`);
                     this.$set(this.cameraErrors, cameraId, true);
                 });
                 
                 this.players[cameraId] = player;
                 
             } catch (error) {
-                this.log(`初始化摄像头 ${cameraId} 播放器失败: ${error.message}`);
+                this.log(`初始化播放器失败: ${error.message}`);
             }
         },
         
         // 自动播放所有摄像头
         async autoPlayAll() {
-            this.log('开始自动播放所有摄像头...');
-            for (const camera of this.cameras) {
-                try {
-                    await this.playCameraStream(camera);
-                    // 每个摄像头播放间隔1秒
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                } catch (error) {
-                    this.log(`自动播放摄像头 ${camera.Name} 失败: ${error.message}`);
-                }
-            }
+            this.log('请手动点击播放按钮');
+            this.statusText = `已加载 ${this.cameras.length} 个摄像头，请点击"播放"按钮`;
         },
         
-        // 播放指定摄像头流
+        // 播放指定摄像头流（优化HLS）
         async playCameraStream(camera) {
             try {
                 this.log(`开始播放摄像头: ${camera.Name}(${camera.IP})`);
@@ -234,7 +263,6 @@ export default {
                     throw new Error('播放器未初始化');
                 }
                 
-                // 直接使用HLS地址，后台程序启动时已经开始录制
                 const hlsUrl = `${this.API_BASE}/hls/camera_${camera.Id}.m3u8`;
                 this.log(`摄像头 ${camera.Name} HLS地址: ${hlsUrl}`);
                 
@@ -243,11 +271,22 @@ export default {
                     type: 'application/x-mpegURL'
                 });
                 
+                // 监听元数据加载，跳到实时位置
+                player.one('loadedmetadata', () => {
+                    const duration = player.duration();
+                    if (duration && duration > 2 && duration !== Infinity) {
+                        // 跳到最后2秒（最新画面）
+                        player.currentTime(duration - 2);
+                        this.log(`跳转到实时位置（${duration.toFixed(1)}秒）`);
+                    }
+                });
+                
                 await player.play();
-                this.log(`摄像头 ${camera.Name} 播放开始`);
+                this.log(`摄像头 ${camera.Name} 播放开始（低延迟模式）`);
+                this.$set(this.cameraErrors, camera.Id, false);
                 
             } catch (error) {
-                this.log(`播放摄像头 ${camera.Name} 失败: ${error.message}`);
+                this.log(`播放失败: ${error.message}`);
                 this.$set(this.cameraErrors, camera.Id, true);
             }
         },
@@ -259,11 +298,12 @@ export default {
                 if (player) {
                     player.pause();
                     player.src('');
-                    this.log(`摄像头 ${cameraId} 已停止播放`);
+                    delete this.players[cameraId];
+                    this.log(`摄像头 ${cameraId} 已停止`);
                     this.$set(this.cameraErrors, cameraId, false);
                 }
             } catch (error) {
-                this.log(`停止摄像头 ${cameraId} 失败: ${error.message}`);
+                this.log(`停止失败: ${error.message}`);
             }
         },
         
@@ -344,6 +384,30 @@ export default {
             const logDiv = document.getElementById('log');
             if (logDiv) {
                 logDiv.innerHTML = '';
+            }
+        },
+
+        // 云台控制 - 简化版本
+        async ptz(camera, command, stop) {
+            try {
+                const result = await PTZControl({
+                    ip: camera.IP,
+                    port: 8000,
+                    username: 'admin',
+                    password: 'wzxc2025',
+                    channel: 1,
+                    command: command,
+                    stop: stop,
+                    speed: this.ptzSpeed
+                });
+                
+                if (result && result.success) {
+                    this.log(`云台控制: ${stop ? '停止' : '执行'} 命令${command}`);
+                } else {
+                    this.$message.error('云台控制失败');
+                }
+            } catch (error) {
+                console.error('PTZ错误:', error);
             }
         }
     }
@@ -522,6 +586,102 @@ export default {
 .log div {
     margin-bottom: 2px;
     line-height: 1.4;
+}
+
+/* 云台控制样式 */
+.ptz-panel {
+    margin-top: 15px;
+    padding: 12px;
+    background: #f5f7fa;
+    border-radius: 6px;
+}
+
+.ptz-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.ptz-speed-label {
+    font-size: 12px;
+    font-weight: normal;
+    color: #666;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.ptz-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 40px);
+    gap: 3px;
+    justify-content: center;
+    margin-bottom: 10px;
+}
+
+.ptz-btn {
+    width: 40px;
+    height: 40px;
+    border: 2px solid #ddd;
+    background: white;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 18px;
+    color: #333;
+    transition: all 0.2s;
+}
+
+.ptz-btn:hover {
+    background: #409eff;
+    color: white;
+    border-color: #409eff;
+}
+
+.ptz-btn:active {
+    transform: scale(0.95);
+}
+
+.ptz-center {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #e9ecef;
+    border-radius: 6px;
+    font-size: 20px;
+    color: #999;
+}
+
+.ptz-extra {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.ptz-small-btn {
+    padding: 5px 10px;
+    border: 1px solid #ddd;
+    background: white;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s;
+}
+
+.ptz-small-btn:hover {
+    background: #67c23a;
+    color: white;
+    border-color: #67c23a;
+}
+
+.ptz-small-btn:active {
+    transform: scale(0.95);
 }
 
 /* 响应式设计 */
