@@ -348,6 +348,101 @@ namespace YixiaoAdmin.WebApi.Services
             }
         }
 
+        /* WebRTC推流功能（暂未使用）
+        /// <summary>
+        /// 启动WebRTC推流（推送RTMP到SRS）
+        /// </summary>
+        private async Task<(bool success, string error)> StartWebRTCStream(Camera camera, CameraStreamInfo streamInfo)
+        {
+            try
+            {
+                if (!File.Exists(_ffmpegExecutablePath))
+                {
+                    return (false, $"FFmpeg不存在: {_ffmpegExecutablePath}");
+                }
+
+                // RTSP源地址
+                string username = _configuration.GetValue<string>("Hikvision:Device:UserName") ?? "admin";
+                string password = _configuration.GetValue<string>("Hikvision:Device:Password") ?? "wzxc2025";
+                string rtspUrl = $"rtsp://{username}:{password}@{camera.IP}:554/Streaming/Channels/101";
+
+                // RTMP推流地址（推送到SRS）
+                string srsHost = _configuration.GetValue<string>("SRS:Host") ?? "localhost";
+                int srsPort = _configuration.GetValue<int>("SRS:RtmpPort", 1935);
+                string rtmpUrl = $"rtmp://{srsHost}:{srsPort}/live/camera_{camera.Id}";
+                streamInfo.RtmpUrl = rtmpUrl;
+
+                // 日志文件
+                string webRoot = _environment.WebRootPath ?? Path.Combine(_environment.ContentRootPath ?? AppContext.BaseDirectory, "wwwroot");
+                string hlsFolder = Path.Combine(webRoot, "hls");
+                string webrtcLog = Path.Combine(hlsFolder, $"camera_{camera.Id}_webrtc.log");
+                streamInfo.WebRTCLogPath = $"/hls/camera_{camera.Id}_webrtc.log";
+
+                // FFmpeg推流参数（WebRTC超低延迟）
+                var arguments = $"-rtsp_transport tcp -fflags nobuffer -flags low_delay " +
+                               $"-probesize 32 -analyzeduration 0 " +
+                               $"-i \"{rtspUrl}\" " +
+                               $"-c:v libx264 -preset ultrafast -tune zerolatency " +
+                               $"-profile:v baseline -g 30 -sc_threshold 0 " +
+                               $"-bf 0 -max_delay 0 " +  // 无B帧，最小延迟
+                               $"-an " +  // 禁用音频
+                               $"-f flv \"{rtmpUrl}\"";
+
+                var process = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = _ffmpegExecutablePath,
+                        Arguments = arguments,
+                        UseShellExecute = false,
+                        RedirectStandardError = true,
+                        RedirectStandardOutput = true,
+                        CreateNoWindow = true,
+                        WorkingDirectory = hlsFolder
+                    },
+                    EnableRaisingEvents = true
+                };
+
+                // 日志记录
+                var logWriter = TextWriter.Synchronized(new StreamWriter(webrtcLog, false, Encoding.UTF8) { AutoFlush = true });
+
+                void SafeLog(string level, string msg)
+                {
+                    if (!string.IsNullOrEmpty(msg))
+                    {
+                        try { logWriter.WriteLine($"[{DateTime.Now:O}] [{level}] {msg}"); }
+                        catch { }
+                    }
+                }
+
+                process.OutputDataReceived += (_, e) => SafeLog("OUT", e?.Data);
+                process.ErrorDataReceived += (_, e) => SafeLog("ERR", e?.Data);
+                process.Exited += (_, __) =>
+                {
+                    SafeLog("EXIT", $"进程退出: {process.ExitCode}");
+                    logWriter.Dispose();
+                    if (_activeStreams.TryGetValue(camera.Id, out var info))
+                    {
+                        info.IsWebRTCActive = false;
+                    }
+                };
+
+                process.Start();
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
+
+                streamInfo.WebRTCProcess = process;
+
+                return (true, string.Empty);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"WebRTC推流失败: {camera.Name}");
+                return (false, ex.Message);
+            }
+        }
+        */
+
         private async Task MonitorStreams(CancellationToken cancellationToken)
         {
             var inactiveStreams = new List<string>();

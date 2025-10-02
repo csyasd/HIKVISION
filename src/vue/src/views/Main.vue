@@ -1,6 +1,6 @@
 <template>
     <div class="video-container">
-        <h2>海康摄像头视频流监控</h2>
+        <h2>摄像头实时直播监控 ⚡ 低延迟模式</h2>
         
         <div id="status" class="status">{{ statusText }}</div>
         
@@ -31,14 +31,17 @@
                     </div>
                 </div>
                 
+                <!-- 视频播放器（FLV直播模式） -->
                 <div class="video-wrapper">
                     <video
                         :id="`videoPlayer_${camera.Id}`"
-                        class="video-js vjs-default-skin"
-                        controls
-                        preload="auto"
-                        data-setup='{}'>
+                        class="video-player video-live"
+                        muted
+                        playsinline
+                        autoplay
+                        style="width: 100%; height: 400px; background: #000; object-fit: fill;">
                     </video>
+                    <div class="live-badge">直播</div>
                 </div>
                 
                 <div class="camera-controls">
@@ -115,7 +118,7 @@ export default {
     data() {
         return {
             cameras: [],
-            players: {},
+            players: {},  // FLV播放器实例
             cameraErrors: {},
             streamStatus: {},
             loading: false,
@@ -125,35 +128,16 @@ export default {
         }
     },
     mounted() {
-        this.loadVideoJS();  // 使用Video.js
+        // 加载摄像头列表
+        this.loadCameras();
     },
     beforeDestroy() {
         // 清理所有播放器
-        Object.values(this.players).forEach(player => {
-            if (player && player.dispose) {
-                player.dispose();
-            }
+        Object.keys(this.players).forEach(cameraId => {
+            this.stopCameraStream(cameraId);
         });
     },
     methods: {
-        // 动态加载Video.js
-        loadVideoJS() {
-            // 加载CSS
-            const link = document.createElement('link');
-            link.rel = 'stylesheet';
-            link.href = 'https://vjs.zencdn.net/8.5.2/video-js.css';
-            document.head.appendChild(link);
-            
-            // 加载JS
-            const script = document.createElement('script');
-            script.src = 'https://vjs.zencdn.net/8.5.2/video.min.js';
-            script.onload = () => {
-                this.log('Video.js加载完成');
-                this.loadCameras();
-            };
-            document.head.appendChild(script);
-        },
-        
         // 加载摄像头列表
         async loadCameras() {
             try {
@@ -193,58 +177,8 @@ export default {
         
         // 初始化所有播放器
         initAllPlayers() {
-            this.cameras.forEach(camera => {
-                this.initCameraPlayer(camera.Id);
-            });
-        },
-        
-        // 初始化单个摄像头播放器（优化配置）
-        initCameraPlayer(cameraId) {
-            const playerId = `videoPlayer_${cameraId}`;
-            
-            // 清理旧播放器
-            if (this.players[cameraId]) {
-                this.players[cameraId].dispose();
-                delete this.players[cameraId];
-            }
-            
-            try {
-                const player = window.videojs(playerId, {
-                    fluid: true,
-                    responsive: true,
-                    controls: true,
-                    autoplay: false,
-                    preload: 'none',  // 不预加载，减少初始延迟
-                    liveui: true,     // 启用直播UI
-                    html5: {
-                        vhs: {
-                            // 低延迟配置
-                            overrideNative: true,
-                            enableLowInitialPlaylist: true,
-                            smoothQualityChange: true,
-                            // 关键：最小缓冲
-                            goalBufferLength: 2,
-                            maxGoalBufferLength: 3,
-                            backBufferLength: 2
-                        }
-                    }
-                });
-                
-                player.ready(() => {
-                    this.log(`摄像头 ${cameraId} 播放器就绪（低延迟配置）`);
-                });
-                
-                player.on('error', () => {
-                    const error = player.error();
-                    this.log(`播放器错误: ${error?.message || '未知错误'}`);
-                    this.$set(this.cameraErrors, cameraId, true);
-                });
-                
-                this.players[cameraId] = player;
-                
-            } catch (error) {
-                this.log(`初始化播放器失败: ${error.message}`);
-            }
+            // FLV播放器按需创建，不需要预先初始化
+            this.log(`摄像头准备就绪（FLV模式）`);
         },
         
         // 自动播放所有摄像头
@@ -253,57 +187,205 @@ export default {
             this.statusText = `已加载 ${this.cameras.length} 个摄像头，请点击"播放"按钮`;
         },
         
-        // 播放指定摄像头流（优化HLS）
+        // 播放指定摄像头流（FLV方式 - 低延迟）
         async playCameraStream(camera) {
             try {
                 this.log(`开始播放摄像头: ${camera.Name}(${camera.IP})`);
                 
-                const player = this.players[camera.Id];
-                if (!player) {
-                    throw new Error('播放器未初始化');
+                // 检查flv.js是否加载
+                if (typeof flvjs === 'undefined') {
+                    this.$message.error('flv.js未加载');
+                    this.log('❌ flv.js未定义');
+                    return;
                 }
                 
-                const hlsUrl = `${this.API_BASE}/hls/camera_${camera.Id}.m3u8`;
-                this.log(`摄像头 ${camera.Name} HLS地址: ${hlsUrl}`);
+                const videoId = `videoPlayer_${camera.Id}`;
+                const videoElement = document.getElementById(videoId);
                 
-                player.src({
-                    src: hlsUrl,
-                    type: 'application/x-mpegURL'
+                if (!videoElement) {
+                    throw new Error('视频元素未找到');
+                }
+                
+                // 如果已有播放器，先停止
+                if (this.players[camera.Id]) {
+                    this.stopCameraStream(camera.Id);
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                }
+                
+                // 检查浏览器是否支持
+                if (!flvjs.isSupported()) {
+                    this.$message.error('当前浏览器不支持FLV播放');
+                    this.log('❌ 浏览器不支持flv.js');
+                    return;
+                }
+                
+                // 构造FLV流地址
+                const flvUrl = `${this.API_BASE}/api/HK/flv-stream/${camera.Id}`;
+                this.log(`FLV地址: ${flvUrl}`);
+                
+                // 创建flv.js播放器
+                const flvPlayer = flvjs.createPlayer({
+                    type: 'flv',
+                    url: flvUrl,
+                    isLive: true,
+                    hasAudio: false
+                }, {
+                    enableWorker: false,
+                    enableStashBuffer: false,
+                    stashInitialSize: 128,
+                    // 低延迟配置
+                    autoCleanupSourceBuffer: true,
+                    autoCleanupMaxBackwardDuration: 3,
+                    autoCleanupMinBackwardDuration: 2,
+                    liveBufferLatencyChasing: true,
+                    liveBufferLatencyChasingOnPaused: false,
+                    liveBufferLatencyMaxLatency: 1.5,
+                    liveBufferLatencyMinRemain: 0.3
                 });
                 
-                // 监听元数据加载，跳到实时位置
-                player.one('loadedmetadata', () => {
-                    const duration = player.duration();
-                    if (duration && duration > 2 && duration !== Infinity) {
-                        // 跳到最后2秒（最新画面）
-                        player.currentTime(duration - 2);
-                        this.log(`跳转到实时位置（${duration.toFixed(1)}秒）`);
-                    }
+                flvPlayer.attachMediaElement(videoElement);
+                
+                // 绑定事件
+                flvPlayer.on(flvjs.Events.ERROR, (errorType, errorDetail) => {
+                    this.log(`❌ FLV播放错误: ${errorType} - ${errorDetail}`);
+                    this.$message.error(`播放失败: ${errorDetail}`);
+                    this.$set(this.cameraErrors, camera.Id, true);
                 });
                 
-                await player.play();
-                this.log(`摄像头 ${camera.Name} 播放开始（低延迟模式）`);
-                this.$set(this.cameraErrors, camera.Id, false);
+                flvPlayer.on(flvjs.Events.LOADING_COMPLETE, () => {
+                    this.log(`FLV加载完成`);
+                });
+                
+                // 加载并播放
+                flvPlayer.load();
+                flvPlayer.play().then(() => {
+                    this.log(`✅ ${camera.Name} 播放成功（FLV模式，延迟1-2秒）⚡`);
+                    this.$message.success(`${camera.Name} 播放成功`);
+                    this.$set(this.cameraErrors, camera.Id, false);
+                }).catch(err => {
+                    this.log(`❌ 播放失败: ${err}`);
+                    this.$message.error(`播放失败`);
+                    this.$set(this.cameraErrors, camera.Id, true);
+                });
+                
+                // 保存播放器实例
+                this.players[camera.Id] = flvPlayer;
                 
             } catch (error) {
                 this.log(`播放失败: ${error.message}`);
+                this.$message.error(`播放失败: ${error.message}`);
                 this.$set(this.cameraErrors, camera.Id, true);
             }
         },
+
+        /* WebRTC功能暂时禁用（与Video.js冲突）
+        async playWebRTC(camera) {
+            try {
+                this.log(`${camera.Name} - WebRTC模式（延迟 < 500ms）`);
+                
+                // 销毁Video.js播放器（WebRTC需要原生video元素）
+                const player = this.players[camera.Id];
+                if (player && player.dispose) {
+                    player.dispose();
+                    delete this.players[camera.Id];
+                    this.log(`${camera.Name} 销毁Video.js播放器`);
+                }
+                
+                // 获取原生video元素
+                const videoElement = document.getElementById(`videoPlayer_${camera.Id}`);
+                if (!videoElement) {
+                    throw new Error('视频元素未找到');
+                }
+                
+                // 重置video元素（清除Video.js的影响）
+                videoElement.className = '';
+                videoElement.removeAttribute('data-setup');
+                videoElement.controls = true;
+                videoElement.muted = true;
+                videoElement.playsinline = true;
+                videoElement.autoplay = true;
+
+                // 创建RTCPeerConnection
+                const pc = new RTCPeerConnection({ iceServers: [] });
+
+                // 监听连接状态
+                pc.onconnectionstatechange = () => {
+                    this.log(`${camera.Name} WebRTC: ${pc.connectionState}`);
+                    if (pc.connectionState === 'connected') {
+                        this.$message.success(`${camera.Name} WebRTC已连接！`);
+                        this.$set(this.cameraErrors, camera.Id, false);
+                    }
+                };
+
+                // 接收视频轨道
+                pc.ontrack = (event) => {
+                    this.log(`${camera.Name} 接收到视频轨道`);
+                    videoElement.srcObject = event.streams[0];
+                    // 确保视频播放
+                    videoElement.muted = true;  // 静音以允许自动播放
+                    videoElement.play().then(() => {
+                        this.log(`${camera.Name} WebRTC视频播放中！`);
+                        this.$message.success(`${camera.Name} 播放成功（延迟 < 500ms）`);
+                    }).catch(e => {
+                        this.log(`自动播放受限: ${e.message}，请点击视频播放`);
+                    });
+                };
+
+                // 创建Offer
+                const offer = await pc.createOffer({
+                    offerToReceiveVideo: true,
+                    offerToReceiveAudio: false
+                });
+                await pc.setLocalDescription(offer);
+
+                // 与SRS交换SDP
+                const response = await fetch(`${this.srsApiUrl}/rtc/v1/play/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        api: `${this.srsApiUrl}/rtc/v1/play/`,
+                        streamurl: `webrtc://localhost/live/camera_${camera.Id}`,
+                        sdp: offer.sdp
+                    })
+                });
+
+                const data = await response.json();
+                if (data.code !== 0) {
+                    throw new Error(`SRS错误: ${data.code}`);
+                }
+
+                // 设置远程描述
+                await pc.setRemoteDescription({
+                    type: 'answer',
+                    sdp: data.sdp
+                });
+
+                // 保存连接
+                this.peerConnections[camera.Id] = pc;
+                this.log(`${camera.Name} WebRTC播放成功！`);
+                
+            } catch (error) {
+                this.log(`WebRTC失败: ${error.message}`);
+            }
+        },
+        */
         
-        // 停止指定摄像头流
+        // 停止指定摄像头流（FLV方式）
         stopCameraStream(cameraId) {
             try {
-                const player = this.players[cameraId];
-                if (player) {
-                    player.pause();
-                    player.src('');
+                const flvPlayer = this.players[cameraId];
+                if (flvPlayer) {
+                    flvPlayer.pause();
+                    flvPlayer.unload();
+                    flvPlayer.detachMediaElement();
+                    flvPlayer.destroy();
                     delete this.players[cameraId];
                     this.log(`摄像头 ${cameraId} 已停止`);
                     this.$set(this.cameraErrors, cameraId, false);
                 }
             } catch (error) {
                 this.log(`停止失败: ${error.message}`);
+                delete this.players[cameraId];
             }
         },
         
@@ -529,9 +611,44 @@ export default {
     position: relative;
 }
 
-.video-js {
+.video-player {
     width: 100% !important;
-    height: 280px !important;
+    height: 400px !important;
+    background: #000;
+    border-radius: 6px;
+}
+
+/* 隐藏视频控制条 */
+.video-live::-webkit-media-controls {
+    display: none !important;
+}
+.video-live::-webkit-media-controls-enclosure {
+    display: none !important;
+}
+
+/* 直播标识 */
+.live-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: #ff4444;
+    color: #fff;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    z-index: 10;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.live-badge::before {
+    content: '● ';
+    animation: blink 1.5s infinite;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
 }
 
 .camera-controls {
