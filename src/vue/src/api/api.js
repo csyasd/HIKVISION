@@ -387,6 +387,218 @@ export const DeleteUser = (params) => {
 		params: params
 	}).then(res => res.data).catch(error => console.log(error));
 }
+export const SelectWorkOrder = (params) => {
+	console.log(params)
+	return axios({
+		method: 'Post',
+		url: BaseUrl + 'WorkOrder/Pages',
+		data: params
+	}).then(res => res.data).catch(error => console.log(error));
+}
+export const SelectALLWorkOrder = () => {
+    return axios({
+        method: 'Get',
+        url: BaseUrl + 'WorkOrder/All',
+    })
+        .then((res) => res.data)
+        .catch((error) => console.log(error));
+};
+export const SelectWorkOrderById = (params) => {
+	console.log(params)
+	return axios({
+		method: 'Get',
+		url: BaseUrl + 'WorkOrder',
+		params: params
+	}).then(res => res.data).catch(error => console.log(error));
+}
+
+export const AddWorkOrder = (params) => {
+	console.log(params)
+	return axios({
+		method: 'Post',
+		url: BaseUrl + 'WorkOrder',
+		data: params
+	}).then(res => res.data).catch(error => console.log(error));
+}
+
+export const EditWorkOrder = (params) => {
+	console.log(params)
+	return axios({
+		method: 'Put',
+		url: BaseUrl + 'WorkOrder',
+		data: params
+	}).then(res => res.data).catch(error => console.log(error));
+}
+
+export const DeleteWorkOrder = (params) => {
+	console.log(params)
+	return axios({
+		method: 'Delete',
+		url: BaseUrl + 'WorkOrder',
+		params: params
+	}).then(res => res.data).catch(error => console.log(error));
+}
+
+// 人员管理相关API
+export const SelectPersonnel = (params) => {
+	console.log(params)
+	return axios({
+		method: 'Post',
+		url: BaseUrl + 'Personnel/Pages',
+		data: params
+	}).then(res => res.data).catch(error => console.log(error));
+}
+export const SelectALLPersonnel = () => {
+    return axios({
+        method: 'Get',
+        url: BaseUrl + 'Personnel/All',
+    })
+        .then((res) => res.data)
+        .catch((error) => console.log(error));
+};
+export const SelectPersonnelById = (params) => {
+	console.log(params)
+	return axios({
+		method: 'Get',
+		url: BaseUrl + 'Personnel',
+		params: params
+	}).then(res => res.data).catch(error => console.log(error));
+}
+
+export const AddPersonnel = (params) => {
+	console.log(params)
+	return axios({
+		method: 'Post',
+		url: BaseUrl + 'Personnel',
+		data: params
+	}).then(res => res.data).catch(error => console.log(error));
+}
+
+export const EditPersonnel = (params) => {
+	console.log(params)
+	return axios({
+		method: 'Put',
+		url: BaseUrl + 'Personnel',
+		data: params
+	}).then(res => res.data).catch(error => console.log(error));
+}
+
+export const DeletePersonnel = (params) => {
+	console.log(params)
+	return axios({
+		method: 'Delete',
+		url: BaseUrl + 'Personnel',
+		params: params
+	}).then(res => res.data).catch(error => console.log(error));
+}
+
+// 手环管理相关API
+export const SelectBracelet = (params) => {
+	console.log(params)
+	return axios({
+		method: 'Post',
+		url: BaseUrl + 'Bracelet/Pages',
+		data: params
+	}).then(res => res.data).catch(error => console.log(error));
+}
+export const SelectALLBracelet = () => {
+    return axios({
+        method: 'Get',
+        url: BaseUrl + 'Bracelet/All',
+    })
+        .then((res) => res.data)
+        .catch((error) => console.log(error));
+};
+export const SelectBraceletById = (params) => {
+	console.log(params)
+	return axios({
+		method: 'Get',
+		url: BaseUrl + 'Bracelet',
+		params: params
+	}).then(res => res.data).catch(error => console.log(error));
+}
+
+export const AddBracelet = (params) => {
+	console.log(params)
+	return axios({
+		method: 'Post',
+		url: BaseUrl + 'Bracelet',
+		data: params
+	}).then(res => res.data).catch(error => console.log(error));
+}
+
+export const EditBracelet = (params) => {
+	console.log(params)
+	return axios({
+		method: 'Put',
+		url: BaseUrl + 'Bracelet',
+		data: params
+	}).then(res => res.data).catch(error => console.log(error));
+}
+
+export const DeleteBracelet = (params) => {
+	console.log(params)
+	return axios({
+		method: 'Delete',
+		url: BaseUrl + 'Bracelet',
+		params: params
+	}).then(res => res.data).catch(error => console.log(error));
+}
+
+// 作业手环管理相关API
+export const SelectWorkBracelet = (params) => {
+	console.log(params)
+	return axios({
+		method: 'Post',
+		url: BaseUrl + 'WorkBracelet/Pages',
+		data: params
+	}).then(res => res.data).catch(error => console.log(error));
+}
+export const SelectALLWorkBracelet = () => {
+    return axios({
+        method: 'Get',
+        url: BaseUrl + 'WorkBracelet/All',
+    })
+        .then((res) => res.data)
+        .catch((error) => console.log(error));
+};
+export const SelectWorkBraceletById = (params) => {
+	console.log(params)
+	return axios({
+		method: 'Get',
+		url: BaseUrl + 'WorkBracelet',
+		params: params
+	}).then(res => res.data).catch(error => console.log(error));
+}
+
+export const AddWorkBracelet = (params) => {
+	console.log(params)
+	return axios({
+		method: 'Post',
+		url: BaseUrl + 'WorkBracelet',
+		data: params
+	}).then(res => res.data).catch(error => console.log(error));
+}
+
+export const EditWorkBracelet = (params) => {
+	console.log(params)
+	return axios({
+		method: 'Put',
+		url: BaseUrl + 'WorkBracelet',
+		data: params
+	}).then(res => res.data).catch(error => console.log(error));
+}
+
+export const DeleteWorkBracelet = (params) => {
+	console.log(params)
+	return axios({
+		method: 'Delete',
+		url: BaseUrl + 'WorkBracelet',
+		params: params
+	}).then(res => res.data).catch(error => console.log(error));
+}
+
+// 作业记录管理相关API
 export const SelectWorkRecord = (params) => {
 	console.log(params)
 	return axios({

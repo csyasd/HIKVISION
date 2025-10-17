@@ -11,64 +11,59 @@
                     :collapse="NavigationBarState"
                     mode="vertical"
                 >
-                    <el-submenu index="1">
+                    <!-- 首页 -->
+                    <el-menu-item index="/home/main">
+                        <i class="el-icon-s-home"></i>
+                        <span slot="title">首页</span>
+                    </el-menu-item>
+
+                    <!-- 实时数据 -->
+                    <el-menu-item index="/home/CameraDetail">
+                        <i class="el-icon-data-line"></i>
+                        <span slot="title">实时数据</span>
+                    </el-menu-item>
+
+                    <!-- 设备管理 -->
+                    <el-submenu index="3">
                         <template slot="title">
-                            <i class="el-icon-printer"></i>
-                            <span>菜单一</span>
+                            <i class="el-icon-monitor"></i>
+                            <span>设备管理</span>
                         </template>
-                        <el-menu-item-group>
-                            <template slot="title">分组1</template>
-                            <el-menu-item index="/home/OrderManagement">选项1</el-menu-item>
-                            <el-menu-item
-                                v-if="JudgeUserAccess('带权限的选项2')"
-                                index="/home/WeeklyProductionPlanManagement"
-                                >带权限的选项2</el-menu-item
-                            >
-                        </el-menu-item-group>
-                        <el-menu-item-group>
-                            <template slot="title">分组2</template>
-                            <el-menu-item index="/home/MachineDistributeManagement">选项3</el-menu-item>
-                            <el-menu-item index="/home/TeamPlanManagement">选项4</el-menu-item>
-                            <el-menu-item index="/home/TeamPlanBoard">选项5</el-menu-item>
-                        </el-menu-item-group>
-                        <el-menu-item-group>
-                            <template slot="title">设备管理</template>
-                            <el-menu-item index="/home/DeviceManagement">设备管理</el-menu-item>
-                            <el-menu-item index="/home/CameraManagement">摄像头管理</el-menu-item>
-                        </el-menu-item-group>
-                        <el-menu-item-group>
-                            <template slot="title">记录管理</template>
-                            <el-menu-item index="/home/WorkRecordManagement">作业记录</el-menu-item>
-                            <el-menu-item index="/home/CameraRecordManagement">摄像头记录</el-menu-item>
-                        </el-menu-item-group>
+                        <el-menu-item index="/home/DeviceManagement">设备管理</el-menu-item>
+                        <el-menu-item index="/home/CameraManagement">摄像头管理</el-menu-item>
                     </el-submenu>
-                    <el-submenu index="2">
+
+                    <!-- 人员管理 -->
+                    <el-submenu index="4">
                         <template slot="title">
                             <i class="el-icon-user"></i>
-                            <span>菜单二</span>
+                            <span>人员管理</span>
                         </template>
-                        <el-menu-item-group>
-                            <template slot="title">分组3</template>
-                            <el-menu-item index="/home/ProductTrackingCardManagement">选项6</el-menu-item>
-                        </el-menu-item-group>
-                        <el-menu-item-group>
-                            <template slot="title">分组4</template>
-                            <el-menu-item index="/home/ProductTrackingCardManagement">选项7</el-menu-item>
-                            <el-menu-item index="/home/PlaceBrickPlannngManagement">选项8</el-menu-item>
-                        </el-menu-item-group>
-                        <el-menu-item-group>
-                            <template slot="title">分组5</template>
-                            <el-menu-item index="/home/PlaceBrickPlannngManagement">选项9</el-menu-item>
-                            <el-menu-item index="/home/MakeUpBricksManagement">选项10</el-menu-item>
-                        </el-menu-item-group>
+                        <el-menu-item index="/home/PersonnelManagement">人员管理</el-menu-item>
+                        <el-menu-item index="/home/BraceletManagement">手环管理</el-menu-item>
+                        <el-menu-item index="/home/WorkBraceletManagement">作业手环管理</el-menu-item>
+                        <el-menu-item index="/home/WorkRecordManagement">作业记录管理</el-menu-item>
                     </el-submenu>
-                    <el-submenu index="3">
-                        <template slot="title"> <i class="el-icon-setting"></i><span>数据管理</span> </template>
-                        <el-menu-item-group title="用户管理">
-                            <el-menu-item index="/home/UserManagement">用户管理</el-menu-item>
-                            <el-menu-item index="/home/RoleManagement">角色管理</el-menu-item>
-                            <el-menu-item index="/home/RightManagement">功能管理</el-menu-item>
-                        </el-menu-item-group>
+
+                    <!-- 作业管理 -->
+                    <el-submenu index="5">
+                        <template slot="title">
+                            <i class="el-icon-folder"></i>
+                            <span>作业管理</span>
+                        </template>
+                        <el-menu-item index="/home/WorkOrderManagement">施工工单</el-menu-item>
+                        <el-menu-item index="/home/CameraRecordManagement">摄像头记录</el-menu-item>
+                    </el-submenu>
+
+                    <!-- 系统管理 -->
+                    <el-submenu index="6">
+                        <template slot="title">
+                            <i class="el-icon-setting"></i>
+                            <span>系统管理</span>
+                        </template>
+                        <el-menu-item index="/home/UserManagement">用户管理</el-menu-item>
+                        <el-menu-item index="/home/RoleManagement">角色管理</el-menu-item>
+                        <el-menu-item index="/home/RightManagement">功能管理</el-menu-item>
                     </el-submenu>
                 </el-menu>
             </el-aside>
@@ -205,8 +200,19 @@ export default {
 
         /*权限开始*/
         ParseUserAccess() {
-            let accessStr = JSON.parse(localStorage.getItem('access'))
-            this.accessList = accessStr.RoleRights
+            try {
+                const accessStr = localStorage.getItem('access');
+                if (accessStr && accessStr !== 'undefined') {
+                    const parsedAccess = JSON.parse(accessStr);
+                    this.accessList = parsedAccess.RoleRights || [];
+                } else {
+                    this.accessList = [];
+                    console.warn('用户权限信息未找到，使用默认权限');
+                }
+            } catch (error) {
+                console.error('解析用户权限失败:', error);
+                this.accessList = [];
+            }
         },
         JudgeUserAccess(accessStr) {
             return this.accessList.findIndex(x => x.Right.Name == accessStr) != -1

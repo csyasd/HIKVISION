@@ -5,9 +5,9 @@ using YixiaoAdmin.Common;
 namespace YixiaoAdmin.IServices
 {
     /// <summary>
-    /// 作业记录服务接口
+    /// 作业手环服务接口
     /// </summary>
-    public interface IWorkRecordServices : IBaseServices<WorkRecord>
+    public interface IWorkBraceletServices : IBaseServices<WorkBracelet>
     {
         /// <summary>
         /// 分页查询

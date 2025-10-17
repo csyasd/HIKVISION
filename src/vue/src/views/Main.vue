@@ -1,860 +1,680 @@
 <template>
-    <div class="video-container">
-        <h2>摄像头实时直播监控 ⚡ 低延迟模式</h2>
-        
-        <div id="status" class="status">{{ statusText }}</div>
-        
-        <div class="controls">
-            <el-button @click="refreshCameras" type="primary">刷新摄像头</el-button>
-            <el-button @click="checkAllStatus" type="info">检查状态</el-button>
-            <el-button @click="clearLog" type="warning">清除日志</el-button>
+    <div class="monitoring-dashboard">
+        <!-- 顶部标题栏 -->
+        <div class="header">
+            <h1>AIS数字化安全监控系统</h1>
+            
         </div>
-        
-        <!-- 摄像头网格布局 -->
-        <div class="cameras-grid" v-if="cameras.length > 0">
-            <div 
-                v-for="camera in cameras" 
-                :key="camera.Id" 
-                class="camera-item"
-                :class="{ 'camera-error': cameraErrors[camera.Id] }"
-            >
-                <div class="camera-header">
-                    <h3>{{ camera.Name || '未命名摄像头' }}</h3>
-                    <div class="camera-info">
-                        <span class="camera-ip">{{ camera.IP }}</span>
-                        <span 
-                            class="camera-status" 
-                            :class="getCameraStatusClass(camera.Id)"
-                        >
-                            {{ getCameraStatus(camera.Id) }}
-                        </span>
+
+            <!-- 主要内容区域 -->
+            <div class="content-area">
+                <!-- 左侧数据面板 -->
+                <div class="left-panel">
+                    <!-- 时间显示 -->
+                    <div class="time-display">
+                        <div class="current-time">{{ currentTime }}</div>
+                        <div class="current-date">{{ currentDate }}</div>
+                    </div>
+
+                    <!-- 设备总数卡片 -->
+                    <div class="device-summary-card">
+                        <div class="card-title">设备总数</div>
+                        <div class="device-count">97</div>
+                        <div class="device-types">
+                            <div class="device-type">
+                                <span class="type-name">便携式</span>
+                                <span class="type-count">58</span>
+                            </div>
+                            <div class="device-type">
+                                <span class="type-name">移动式</span>
+                                <span class="type-count">37</span>
+                            </div>
+                            <div class="device-type">
+                                <span class="type-name">布控球</span>
+                                <span class="type-count">2</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 场景名称表格 -->
+                    <div class="scene-table-card">
+                        <div class="card-title">场景名称</div>
+                        <table class="scene-table">
+                            <thead>
+                                <tr>
+                                    <th>便携式</th>
+                                    <th>移动式</th>
+                                    <th>报警</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>4</td>
+                                    <td>28</td>
+                                    <td>0</td>
+                                </tr>
+                                <tr>
+                                    <td>0</td>
+                                    <td>0</td>
+                                    <td>0</td>
+                                </tr>
+                                <tr>
+                                    <td>0</td>
+                                    <td>0</td>
+                                    <td>0</td>
+                                </tr>
+                                <tr>
+                                    <td>1</td>
+                                    <td>0</td>
+                                    <td>0</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- 设备视频区域 -->
+                    <div class="video-panel">
+                        <div class="panel-header">
+                            <span class="panel-title">设备视频</span>
+                            <span class="more-videos">更多视频</span>
+                        </div>
+                        <div class="video-grid">
+                            <div class="video-item" v-for="camera in cameras" :key="camera.id">
+                                <div class="video-container">
+                                    <video 
+                                        :id="`videoPlayer_${camera.id}`"
+                                        class="video-stream"
+                                        muted
+                                        playsinline
+                                        autoplay>
+                                    </video>
+                                    <div class="video-controls">
+                                        <button class="control-btn" @click="playCamera(camera)">播放</button>
+                                        <button class="control-btn" @click="stopCamera(camera.id)">停止</button>
+                                    </div>
+                                </div>
+                                <div class="video-info">{{ camera.name }}</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                
-                <!-- 视频播放器（FLV直播模式） -->
-                <div class="video-wrapper">
-                    <video
-                        :id="`videoPlayer_${camera.Id}`"
-                        class="video-player video-live"
-                        muted
-                        playsinline
-                        autoplay
-                        style="width: 100%; height: 400px; background: #000; object-fit: fill;">
-                    </video>
-                    <div class="live-badge">直播</div>
-                </div>
-                
-                <div class="camera-controls">
-                    <el-button 
-                        @click="playCameraStream(camera)" 
-                        type="success" 
-                        size="mini"
-                    >
-                        播放
-                    </el-button>
-                    <el-button 
-                        @click="stopCameraStream(camera.Id)" 
-                        type="danger" 
-                        size="mini"
-                    >
-                        停止
-                    </el-button>
-                </div>
-                
-                <!-- 云台控制 -->
-                <div class="ptz-panel">
-                    <div class="ptz-title">
-                        云台控制 
-                        <span class="ptz-speed-label">
-                            速度: <el-slider v-model="ptzSpeed" :min="1" :max="7" style="width: 60px; display: inline-block;"></el-slider>
-                        </span>
+
+                <!-- 右侧地图和数据显示 -->
+                <div class="right-panel">
+                    <!-- 地图容器 -->
+                    <div id="map" class="map-container"></div>
+
+                    <!-- 气体监测数据表格 -->
+                    <div class="gas-monitoring-table">
+                        <div class="table-header">气体监测实时数据</div>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>设备名称及编号</th>
+                                    <th>气体名称</th>
+                                    <th>检测数值</th>
+                                    <th>状态</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>试流13/920210074</td>
+                                    <td>O2</td>
+                                    <td>20.9%VOL</td>
+                                    <td class="status-online">在线</td>
+                                </tr>
+                                <tr>
+                                    <td>ZJ测试3333/913813</td>
+                                    <td>CH4</td>
+                                    <td>0%LEL</td>
+                                    <td class="status-online">在线</td>
+                                </tr>
+                                <tr>
+                                    <td>ZJ测试3333/913813</td>
+                                    <td>H2S</td>
+                                    <td>0ppm</td>
+                                    <td class="status-online">在线</td>
+                                </tr>
+                                <tr>
+                                    <td>ZJ测试3333/913813</td>
+                                    <td>CO</td>
+                                    <td>7ppm</td>
+                                    <td class="status-online">在线</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
-                    
-                    <!-- 方向控制 -->
-                    <div class="ptz-grid">
-                        <div></div>
-                        <button class="ptz-btn" @mousedown="ptz(camera, 21, 0)" @mouseup="ptz(camera, 21, 1)" title="上">↑</button>
-                        <div></div>
-                        <button class="ptz-btn" @mousedown="ptz(camera, 23, 0)" @mouseup="ptz(camera, 23, 1)" title="左">←</button>
-                        <div class="ptz-center">⊙</div>
-                        <button class="ptz-btn" @mousedown="ptz(camera, 24, 0)" @mouseup="ptz(camera, 24, 1)" title="右">→</button>
-                        <div></div>
-                        <button class="ptz-btn" @mousedown="ptz(camera, 22, 0)" @mouseup="ptz(camera, 22, 1)" title="下">↓</button>
-                        <div></div>
-                    </div>
-                    
-                    <!-- 其他控制 -->
-                    <div class="ptz-extra">
-                        <button class="ptz-small-btn" @mousedown="ptz(camera, 11, 0)" @mouseup="ptz(camera, 11, 1)">放大+</button>
-                        <button class="ptz-small-btn" @mousedown="ptz(camera, 12, 0)" @mouseup="ptz(camera, 12, 1)">缩小-</button>
-                        <button class="ptz-small-btn" @mousedown="ptz(camera, 13, 0)" @mouseup="ptz(camera, 13, 1)">近焦</button>
-                        <button class="ptz-small-btn" @mousedown="ptz(camera, 14, 0)" @mouseup="ptz(camera, 14, 1)">远焦</button>
+
+                    <!-- 报警信息表格 -->
+                    <div class="alarm-table">
+                        <div class="table-header">报警信息</div>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>设备名称及编号</th>
+                                    <th>报警类型</th>
+                                    <th>报警时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>ZJ测试-6366/913813</td>
+                                    <td class="alarm-type">跌倒报警</td>
+                                    <td>2024-07-01 11:15:23</td>
+                                    <td><button class="handle-btn">处理</button></td>
+                                </tr>
+                                <tr>
+                                    <td>ZJ测试-6360/913813</td>
+                                    <td class="alarm-type">跌倒报警</td>
+                                    <td>2024-07-01 11:12:45</td>
+                                    <td><button class="handle-btn">处理</button></td>
+                                </tr>
+                                <tr>
+                                    <td>ZJ测试-6362/913813</td>
+                                    <td class="alarm-type">SOS求救</td>
+                                    <td>2024-07-01 11:08:12</td>
+                                    <td><button class="handle-btn">处理</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
         </div>
-        
-        <!-- 加载状态 -->
-        <div v-else-if="loading" class="loading">
-            <i class="el-icon-loading"></i>
-            <span>正在加载摄像头列表...</span>
-        </div>
-        
-        <!-- 无摄像头提示 -->
-        <div v-else class="no-cameras">
-            <i class="el-icon-video-camera"></i>
-            <p>暂无摄像头数据</p>
-            <el-button @click="refreshCameras" type="primary">重新加载</el-button>
-        </div>
-        
-        <div id="log" class="log"></div>
-    </div>
 </template>
 
 <script>
-import { PTZControl } from '../api/api'
-
 export default {
+    name: 'MonitoringDashboard',
     data() {
         return {
-            cameras: [],
-            players: {},  // FLV播放器实例
-            cameraErrors: {},
-            streamStatus: {},
-            loading: false,
-            statusText: '正在初始化...',
-            API_BASE: window.location.hostname === '127.0.0.1' ? 'http://127.0.0.1:5002' : 'http://localhost:5002',
-            ptzSpeed: 4  // 云台速度 1-7
+            currentTime: '',
+            currentDate: '',
+            cameras: [
+                { id: 1, name: 'ZJ测试-6366', ip: '192.168.100.101' },
+                { id: 2, name: 'ZJ测试-6360', ip: '192.168.100.102' },
+                { id: 3, name: 'ZJ测试-6362', ip: '192.168.100.103' },
+                { id: 4, name: 'ZJ测试3332', ip: '192.168.100.104' }
+            ],
+            map: null,
+            markers: []
         }
     },
     mounted() {
-        // 加载摄像头列表
+        this.updateTime();
+        this.initMap();
         this.loadCameras();
-    },
-    beforeDestroy() {
-        // 清理所有播放器
-        Object.keys(this.players).forEach(cameraId => {
-            this.stopCameraStream(cameraId);
-        });
+        setInterval(this.updateTime, 1000);
     },
     methods: {
-        // 加载摄像头列表
-        async loadCameras() {
-            try {
-                this.loading = true;
-                this.statusText = '正在加载摄像头列表...';
-                this.log('开始加载摄像头列表');
-                
-                const response = await fetch(`${this.API_BASE}/Camera/All`);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                
-                const cameras = await response.json();
-                this.cameras = cameras || [];
-                
-                this.log(`加载到 ${this.cameras.length} 个摄像头`);
-                this.statusText = `找到 ${this.cameras.length} 个摄像头`;
-                
-                if (this.cameras.length > 0) {
-                    // 等待DOM更新后初始化播放器
-                    this.$nextTick(() => {
-                        this.initAllPlayers();
-                        this.autoPlayAll();
-                    });
-                } else {
-                    this.statusText = '未找到摄像头';
-                }
-                
-            } catch (error) {
-                this.log(`加载摄像头列表失败: ${error.message}`);
-                this.statusText = `加载失败: ${error.message}`;
-            } finally {
-                this.loading = false;
+        updateTime() {
+            const now = new Date();
+            this.currentTime = now.toLocaleTimeString();
+            this.currentDate = now.toLocaleDateString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                weekday: 'long'
+            });
+        },
+        
+        initMap() {
+            // 动态加载高德地图API
+            if (typeof AMap === 'undefined') {
+                const script = document.createElement('script');
+                script.src = 'https://webapi.amap.com/maps?v=2.0&key=933b70f0dfaf67b0f950d1682dc27ca1';
+                script.onload = () => {
+                    this.createMap();
+                };
+                document.head.appendChild(script);
+            } else {
+                this.createMap();
             }
         },
         
-        // 初始化所有播放器
-        initAllPlayers() {
-            // FLV播放器按需创建，不需要预先初始化
-            this.log(`摄像头准备就绪（FLV模式）`);
+        createMap() {
+            // 初始化地图
+            this.map = new AMap.Map('map', {
+                viewMode: '3D',
+                zoom: 12,
+                center: [116.4074, 39.9042], // 北京坐标
+                mapStyle: 'amap://styles/dark',
+                pitch: 45,
+                rotation: 0
+            });
+
+            // 添加摄像头位置标记
+            this.addCameraMarkers();
         },
         
-        // 自动播放所有摄像头
-        async autoPlayAll() {
-            this.log('请手动点击播放按钮');
-            this.statusText = `已加载 ${this.cameras.length} 个摄像头，请点击"播放"按钮`;
-        },
-        
-        // 播放指定摄像头流（FLV方式 - 低延迟）
-        async playCameraStream(camera) {
-            try {
-                this.log(`开始播放摄像头: ${camera.Name}(${camera.IP})`);
-                
-                // 检查flv.js是否加载
-                if (typeof flvjs === 'undefined') {
-                    this.$message.error('flv.js未加载');
-                    this.log('❌ flv.js未定义');
-                    return;
-                }
-                
-                const videoId = `videoPlayer_${camera.Id}`;
-                const videoElement = document.getElementById(videoId);
-                
-                if (!videoElement) {
-                    throw new Error('视频元素未找到');
-                }
-                
-                // 如果已有播放器，先停止
-                if (this.players[camera.Id]) {
-                    this.stopCameraStream(camera.Id);
-                    await new Promise(resolve => setTimeout(resolve, 300));
-                }
-                
-                // 检查浏览器是否支持
-                if (!flvjs.isSupported()) {
-                    this.$message.error('当前浏览器不支持FLV播放');
-                    this.log('❌ 浏览器不支持flv.js');
-                    return;
-                }
-                
-                // 构造FLV流地址
-                const flvUrl = `${this.API_BASE}/api/HK/flv-stream/${camera.Id}`;
-                this.log(`FLV地址: ${flvUrl}`);
-                
-                // 创建flv.js播放器
-                const flvPlayer = flvjs.createPlayer({
-                    type: 'flv',
-                    url: flvUrl,
-                    isLive: true,
-                    hasAudio: false
-                }, {
-                    enableWorker: false,
-                    enableStashBuffer: false,
-                    stashInitialSize: 128,
-                    // 低延迟配置
-                    autoCleanupSourceBuffer: true,
-                    autoCleanupMaxBackwardDuration: 3,
-                    autoCleanupMinBackwardDuration: 2,
-                    liveBufferLatencyChasing: true,
-                    liveBufferLatencyChasingOnPaused: false,
-                    liveBufferLatencyMaxLatency: 1.5,
-                    liveBufferLatencyMinRemain: 0.3
-                });
-                
-                flvPlayer.attachMediaElement(videoElement);
-                
-                // 绑定事件
-                flvPlayer.on(flvjs.Events.ERROR, (errorType, errorDetail) => {
-                    this.log(`❌ FLV播放错误: ${errorType} - ${errorDetail}`);
-                    this.$message.error(`播放失败: ${errorDetail}`);
-                    this.$set(this.cameraErrors, camera.Id, true);
-                });
-                
-                flvPlayer.on(flvjs.Events.LOADING_COMPLETE, () => {
-                    this.log(`FLV加载完成`);
-                });
-                
-                // 加载并播放
-                flvPlayer.load();
-                flvPlayer.play().then(() => {
-                    this.log(`✅ ${camera.Name} 播放成功（FLV模式，延迟1-2秒）⚡`);
-                    this.$message.success(`${camera.Name} 播放成功`);
-                    this.$set(this.cameraErrors, camera.Id, false);
-                }).catch(err => {
-                    this.log(`❌ 播放失败: ${err}`);
-                    this.$message.error(`播放失败`);
-                    this.$set(this.cameraErrors, camera.Id, true);
-                });
-                
-                // 保存播放器实例
-                this.players[camera.Id] = flvPlayer;
-                
-            } catch (error) {
-                this.log(`播放失败: ${error.message}`);
-                this.$message.error(`播放失败: ${error.message}`);
-                this.$set(this.cameraErrors, camera.Id, true);
-            }
-        },
+        addCameraMarkers() {
+            if (!this.map) return;
+            
+            // 模拟摄像头GPS坐标（实际应该从后端获取）
+            const cameraPositions = [
+                { id: 1, name: 'ZJ测试-6366', lng: 116.4074, lat: 39.9042 },
+                { id: 2, name: 'ZJ测试-6360', lng: 116.4174, lat: 39.9142 },
+                { id: 3, name: 'ZJ测试-6362', lng: 116.3974, lat: 39.8942 },
+                { id: 4, name: 'ZJ测试3332', lng: 116.4274, lat: 39.9242 }
+            ];
 
-        /* WebRTC功能暂时禁用（与Video.js冲突）
-        async playWebRTC(camera) {
-            try {
-                this.log(`${camera.Name} - WebRTC模式（延迟 < 500ms）`);
-                
-                // 销毁Video.js播放器（WebRTC需要原生video元素）
-                const player = this.players[camera.Id];
-                if (player && player.dispose) {
-                    player.dispose();
-                    delete this.players[camera.Id];
-                    this.log(`${camera.Name} 销毁Video.js播放器`);
-                }
-                
-                // 获取原生video元素
-                const videoElement = document.getElementById(`videoPlayer_${camera.Id}`);
-                if (!videoElement) {
-                    throw new Error('视频元素未找到');
-                }
-                
-                // 重置video元素（清除Video.js的影响）
-                videoElement.className = '';
-                videoElement.removeAttribute('data-setup');
-                videoElement.controls = true;
-                videoElement.muted = true;
-                videoElement.playsinline = true;
-                videoElement.autoplay = true;
-
-                // 创建RTCPeerConnection
-                const pc = new RTCPeerConnection({ iceServers: [] });
-
-                // 监听连接状态
-                pc.onconnectionstatechange = () => {
-                    this.log(`${camera.Name} WebRTC: ${pc.connectionState}`);
-                    if (pc.connectionState === 'connected') {
-                        this.$message.success(`${camera.Name} WebRTC已连接！`);
-                        this.$set(this.cameraErrors, camera.Id, false);
-                    }
-                };
-
-                // 接收视频轨道
-                pc.ontrack = (event) => {
-                    this.log(`${camera.Name} 接收到视频轨道`);
-                    videoElement.srcObject = event.streams[0];
-                    // 确保视频播放
-                    videoElement.muted = true;  // 静音以允许自动播放
-                    videoElement.play().then(() => {
-                        this.log(`${camera.Name} WebRTC视频播放中！`);
-                        this.$message.success(`${camera.Name} 播放成功（延迟 < 500ms）`);
-                    }).catch(e => {
-                        this.log(`自动播放受限: ${e.message}，请点击视频播放`);
-                    });
-                };
-
-                // 创建Offer
-                const offer = await pc.createOffer({
-                    offerToReceiveVideo: true,
-                    offerToReceiveAudio: false
-                });
-                await pc.setLocalDescription(offer);
-
-                // 与SRS交换SDP
-                const response = await fetch(`${this.srsApiUrl}/rtc/v1/play/`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        api: `${this.srsApiUrl}/rtc/v1/play/`,
-                        streamurl: `webrtc://localhost/live/camera_${camera.Id}`,
-                        sdp: offer.sdp
+            cameraPositions.forEach(camera => {
+                const marker = new AMap.Marker({
+                    position: [camera.lng, camera.lat],
+                    title: camera.name,
+                    icon: new AMap.Icon({
+                        size: new AMap.Size(32, 32),
+                        image: 'data:image/svg+xml;base64,' + btoa(`
+                            <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="16" cy="16" r="12" fill="#ff4444" stroke="#fff" stroke-width="2"/>
+                                <circle cx="16" cy="16" r="6" fill="#fff"/>
+                            </svg>
+                        `)
                     })
                 });
 
-                const data = await response.json();
-                if (data.code !== 0) {
-                    throw new Error(`SRS错误: ${data.code}`);
-                }
-
-                // 设置远程描述
-                await pc.setRemoteDescription({
-                    type: 'answer',
-                    sdp: data.sdp
+                // 添加点击事件
+                marker.on('click', () => {
+                    this.showCameraInfo(camera);
                 });
 
-                // 保存连接
-                this.peerConnections[camera.Id] = pc;
-                this.log(`${camera.Name} WebRTC播放成功！`);
-                
-            } catch (error) {
-                this.log(`WebRTC失败: ${error.message}`);
-            }
-        },
-        */
-        
-        // 停止指定摄像头流（FLV方式）
-        stopCameraStream(cameraId) {
-            try {
-                const flvPlayer = this.players[cameraId];
-                if (flvPlayer) {
-                    flvPlayer.pause();
-                    flvPlayer.unload();
-                    flvPlayer.detachMediaElement();
-                    flvPlayer.destroy();
-                    delete this.players[cameraId];
-                    this.log(`摄像头 ${cameraId} 已停止`);
-                    this.$set(this.cameraErrors, cameraId, false);
-                }
-            } catch (error) {
-                this.log(`停止失败: ${error.message}`);
-                delete this.players[cameraId];
-            }
+                this.map.add(marker);
+                this.markers.push(marker);
+            });
         },
         
-        // 刷新摄像头列表
-        refreshCameras() {
-            this.log('重新加载摄像头列表...');
-            this.loadCameras();
-        },
-        
-        // 检查所有摄像头状态
-        async checkAllStatus() {
-            try {
-                this.log('检查所有摄像头流状态...');
-                
-                let activeCount = 0;
-                for (const camera of this.cameras) {
-                    try {
-                        const response = await fetch(`${this.API_BASE}/api/HK/camera-hls/${camera.Id}`);
-                        const result = await response.json();
-                        
-                        if (response.ok && result.exists) {
-                            activeCount++;
-                            this.$set(this.streamStatus, camera.Id, { IsActive: true });
-                        } else {
-                            this.$set(this.streamStatus, camera.Id, { IsActive: false, LastError: result.message });
-                        }
-                    } catch (error) {
-                        this.$set(this.streamStatus, camera.Id, { IsActive: false, LastError: error.message });
-                    }
-                }
-                
-                this.log(`流状态检查完成: ${activeCount}/${this.cameras.length} 个流可用`);
-                this.statusText = `活动流: ${activeCount}/${this.cameras.length}`;
-                
-            } catch (error) {
-                this.log(`状态检查失败: ${error.message}`);
-                this.statusText = `状态检查失败: ${error.message}`;
-            }
-        },
-        
-        // 获取摄像头状态
-        getCameraStatus(cameraId) {
-            const streamInfo = this.streamStatus[cameraId];
-            if (!streamInfo) return '未知';
+        showCameraInfo(camera) {
+            const infoWindow = new AMap.InfoWindow({
+                content: `
+                    <div style="color: white; padding: 10px;">
+                        <h4>${camera.name}</h4>
+                        <p>经度: ${camera.lng}</p>
+                        <p>纬度: ${camera.lat}</p>
+                        <button onclick="this.playCamera(${camera.id})" style="background: #409eff; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer;">播放视频</button>
+                    </div>
+                `,
+                offset: new AMap.Pixel(0, -30)
+            });
             
-            if (streamInfo.IsActive) {
-                return '在线';
-            } else if (streamInfo.LastError) {
-                return '错误';
-            } else {
-                return '离线';
-            }
+            infoWindow.open(this.map, [camera.lng, camera.lat]);
         },
         
-        // 获取摄像头状态样式类
-        getCameraStatusClass(cameraId) {
-            const status = this.getCameraStatus(cameraId);
-            switch (status) {
-                case '在线': return 'status-online';
-                case '错误': return 'status-error';
-                case '离线': return 'status-offline';
-                default: return 'status-unknown';
-            }
-        },
-        
-        // 日志函数
-        log(message) {
-            const time = new Date().toLocaleTimeString();
-            const logDiv = document.getElementById('log');
-            if (logDiv) {
-                logDiv.innerHTML += `<div>[${time}] ${message}</div>`;
-                logDiv.scrollTop = logDiv.scrollHeight;
-            }
-            console.log(message);
-        },
-        
-        clearLog() {
-            const logDiv = document.getElementById('log');
-            if (logDiv) {
-                logDiv.innerHTML = '';
-            }
-        },
-
-        // 云台控制 - 简化版本
-        async ptz(camera, command, stop) {
+        async loadCameras() {
             try {
-                const result = await PTZControl({
-                    ip: camera.IP,
-                    port: 8000,
-                    username: 'admin',
-                    password: 'wzxc2025',
-                    channel: 1,
-                    command: command,
-                    stop: stop,
-                    speed: this.ptzSpeed
-                });
-                
-                if (result && result.success) {
-                    this.log(`云台控制: ${stop ? '停止' : '执行'} 命令${command}`);
-                } else {
-                    this.$message.error('云台控制失败');
-                }
+                // 这里应该从后端API加载摄像头列表
+                console.log('加载摄像头列表...');
             } catch (error) {
-                console.error('PTZ错误:', error);
+                console.error('加载摄像头失败:', error);
             }
+        },
+        
+        async playCamera(camera) {
+            try {
+                console.log(`播放摄像头: ${camera.name}`);
+                // 这里应该启动视频流播放
+            } catch (error) {
+                console.error('播放失败:', error);
+            }
+        },
+        
+        stopCamera(cameraId) {
+            console.log(`停止摄像头: ${cameraId}`);
+            // 这里应该停止视频流
         }
     }
 }
 </script>
 
 <style scoped>
-.video-container {
-    padding: 20px;
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+.monitoring-dashboard {
+    width: 100%;
+    height: 100vh;
+    background: linear-gradient(135deg, #0c1426 0%, #1a2332 100%);
+    color: #ffffff;
+    font-family: 'Microsoft YaHei', sans-serif;
+    overflow: hidden;
 }
 
-.video-container h2 {
-    text-align: center;
-    color: #333;
-    margin-bottom: 20px;
-}
-
-.controls {
-    margin: 20px 0;
-    text-align: center;
-}
-
-.controls .el-button {
-    margin: 5px;
-}
-
-/* 摄像头网格布局 */
-.cameras-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-    gap: 20px;
-    margin: 20px 0;
-}
-
-.camera-item {
-    border: 2px solid #e9ecef;
-    border-radius: 8px;
-    padding: 15px;
-    background: #fff;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    transition: all 0.3s ease;
-}
-
-.camera-item:hover {
-    border-color: #409eff;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
-
-.camera-item.camera-error {
-    border-color: #f56c6c;
-    background: #fef0f0;
-}
-
-.camera-header {
+.header {
+    height: 60px;
+    background: rgba(0, 0, 0, 0.8);
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #eee;
+    justify-content: space-between;
+    padding: 0 20px;
+    border-bottom: 1px solid #2a3441;
 }
 
-.camera-header h3 {
+.header h1 {
     margin: 0;
-    color: #333;
-    font-size: 16px;
-    font-weight: 600;
+    font-size: 24px;
+    font-weight: bold;
+    color: #ffffff;
 }
 
-.camera-info {
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.user-info, .app-download {
+    color: #409eff;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.main-content {
+    display: flex;
+    height: calc(100vh - 60px);
+}
+
+.sidebar {
+    width: 200px;
+    background: rgba(0, 0, 0, 0.6);
+    border-right: 1px solid #2a3441;
+    padding: 20px 0;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    padding: 15px 20px;
+    cursor: pointer;
+    transition: all 0.3s;
+    border-left: 3px solid transparent;
+}
+
+.nav-item:hover {
+    background: rgba(64, 158, 255, 0.1);
+}
+
+.nav-item.active {
+    background: rgba(64, 158, 255, 0.2);
+    border-left-color: #409eff;
+    color: #409eff;
+}
+
+.nav-item i {
+    width: 20px;
+    height: 20px;
+    margin-right: 10px;
+    background: #666;
+}
+
+.nav-item.active i {
+    background: #409eff;
+}
+
+.content-area {
+    flex: 1;
+    display: flex;
+    padding: 20px;
+    gap: 20px;
+}
+
+.left-panel {
+    width: 400px;
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
-    gap: 4px;
+    gap: 20px;
 }
 
-.camera-ip {
-    font-size: 12px;
-    color: #666;
-    font-family: 'Courier New', monospace;
-}
-
-.camera-status {
-    font-size: 11px;
-    padding: 2px 6px;
-    border-radius: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-}
-
-.status-online {
-    background: #f0f9ff;
-    color: #1e40af;
-}
-
-.status-error {
-    background: #fef2f2;
-    color: #dc2626;
-}
-
-.status-offline {
-    background: #f5f5f5;
-    color: #6b7280;
-}
-
-.status-unknown {
-    background: #fefce8;
-    color: #ca8a04;
-}
-
-.video-wrapper {
-    margin: 10px 0;
-    background: #000;
-    border-radius: 6px;
-    overflow: hidden;
+.right-panel {
+    flex: 1;
     position: relative;
 }
 
-.video-player {
-    width: 100% !important;
-    height: 400px !important;
-    background: #000;
-    border-radius: 6px;
+.time-display {
+    background: rgba(0, 0, 0, 0.6);
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #2a3441;
 }
 
-/* 隐藏视频控制条 */
-.video-live::-webkit-media-controls {
-    display: none !important;
-}
-.video-live::-webkit-media-controls-enclosure {
-    display: none !important;
-}
-
-/* 直播标识 */
-.live-badge {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    background: #ff4444;
-    color: #fff;
-    padding: 4px 12px;
-    border-radius: 4px;
-    font-size: 12px;
+.current-time {
+    font-size: 32px;
     font-weight: bold;
-    z-index: 10;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    color: #409eff;
+    margin-bottom: 5px;
 }
 
-.live-badge::before {
-    content: '● ';
-    animation: blink 1.5s infinite;
-}
-
-@keyframes blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
-}
-
-.camera-controls {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-    margin-top: 10px;
-}
-
-.status {
-    padding: 12px;
-    margin: 10px 0;
-    border-radius: 6px;
-    background-color: #e1f5fe;
-    color: #0277bd;
-    text-align: center;
-    font-weight: 500;
-    border: 1px solid #b3e5fc;
-}
-
-/* 加载和空状态 */
-.loading, .no-cameras {
-    text-align: center;
-    padding: 60px 20px;
-    color: #666;
-}
-
-.loading i, .no-cameras i {
-    font-size: 48px;
-    color: #ddd;
-    margin-bottom: 16px;
-    display: block;
-}
-
-.loading span, .no-cameras p {
+.current-date {
     font-size: 16px;
-    margin: 0 0 20px 0;
+    color: #ccc;
 }
 
-.log {
-    margin-top: 20px;
-    padding: 15px;
-    background: #f8f9fa;
-    border-radius: 6px;
-    font-family: 'Courier New', monospace;
-    font-size: 12px;
-    max-height: 200px;
-    overflow-y: auto;
-    border: 1px solid #e9ecef;
+.device-summary-card, .scene-table-card {
+    background: rgba(0, 0, 0, 0.6);
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #2a3441;
 }
 
-.log div {
-    margin-bottom: 2px;
-    line-height: 1.4;
+.card-title {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 15px;
+    color: #ffffff;
 }
 
-/* 云台控制样式 */
-.ptz-panel {
-    margin-top: 15px;
-    padding: 12px;
-    background: #f5f7fa;
-    border-radius: 6px;
+.device-count {
+    font-size: 48px;
+    font-weight: bold;
+    color: #409eff;
+    text-align: center;
+    margin-bottom: 15px;
 }
 
-.ptz-title {
-    font-size: 13px;
-    font-weight: 600;
-    color: #333;
-    margin-bottom: 10px;
+.device-types {
+    display: flex;
+    justify-content: space-between;
+}
+
+.device-type {
+    text-align: center;
+}
+
+.type-name {
+    display: block;
+    font-size: 14px;
+    color: #ccc;
+    margin-bottom: 5px;
+}
+
+.type-count {
+    display: block;
+    font-size: 20px;
+    font-weight: bold;
+    color: #ffffff;
+}
+
+.scene-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.scene-table th,
+.scene-table td {
+    padding: 8px;
+    text-align: center;
+    border: 1px solid #2a3441;
+}
+
+.scene-table th {
+    background: rgba(64, 158, 255, 0.2);
+    color: #409eff;
+}
+
+.video-panel {
+    background: rgba(0, 0, 0, 0.6);
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #2a3441;
+    flex: 1;
+}
+
+.panel-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    margin-bottom: 15px;
 }
 
-.ptz-speed-label {
-    font-size: 12px;
-    font-weight: normal;
-    color: #666;
+.panel-title {
+    font-size: 18px;
+    font-weight: bold;
+    color: #ffffff;
+}
+
+.more-videos {
+    color: #409eff;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.video-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.video-item {
+    background: #000;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.video-container {
+    position: relative;
+    width: 100%;
+    height: 120px;
+}
+
+.video-stream {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.video-controls {
+    position: absolute;
+    bottom: 5px;
+    left: 5px;
     display: flex;
-    align-items: center;
     gap: 5px;
 }
 
-.ptz-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 40px);
-    gap: 3px;
-    justify-content: center;
-    margin-bottom: 10px;
-}
-
-.ptz-btn {
-    width: 40px;
-    height: 40px;
-    border: 2px solid #ddd;
-    background: white;
-    border-radius: 6px;
+.control-btn {
+    background: rgba(64, 158, 255, 0.8);
+    color: white;
+    border: none;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 12px;
     cursor: pointer;
-    font-size: 18px;
-    color: #333;
-    transition: all 0.2s;
 }
 
-.ptz-btn:hover {
+.video-info {
+    padding: 8px;
+    font-size: 12px;
+    color: #ccc;
+    text-align: center;
+}
+
+.map-container {
+    width: 100%;
+    height: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.gas-monitoring-table, .alarm-table {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.8);
+    border-radius: 6px;
+    border: 1px solid #2a3441;
+    max-width: 400px;
+}
+
+.gas-monitoring-table {
+    top: 20px;
+    right: 20px;
+}
+
+.alarm-table {
+    bottom: 20px;
+    left: 20px;
+}
+
+.table-header {
+    padding: 10px 15px;
+    background: rgba(64, 158, 255, 0.2);
+    color: #409eff;
+    font-weight: bold;
+    border-bottom: 1px solid #2a3441;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid #2a3441;
+    font-size: 12px;
+}
+
+.data-table th {
+    background: rgba(0, 0, 0, 0.5);
+    color: #409eff;
+    font-weight: bold;
+}
+
+.data-table td {
+    color: #ffffff;
+}
+
+.status-online {
+    color: #67c23a !important;
+}
+
+.alarm-type {
+    color: #f56c6c !important;
+}
+
+.handle-btn {
     background: #409eff;
     color: white;
-    border-color: #409eff;
-}
-
-.ptz-btn:active {
-    transform: scale(0.95);
-}
-
-.ptz-center {
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #e9ecef;
-    border-radius: 6px;
-    font-size: 20px;
-    color: #999;
-}
-
-.ptz-extra {
-    display: flex;
-    justify-content: center;
-    gap: 5px;
-    flex-wrap: wrap;
-}
-
-.ptz-small-btn {
-    padding: 5px 10px;
-    border: 1px solid #ddd;
-    background: white;
-    border-radius: 4px;
-    cursor: pointer;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 3px;
     font-size: 12px;
-    transition: all 0.2s;
+    cursor: pointer;
 }
 
-.ptz-small-btn:hover {
-    background: #67c23a;
-    color: white;
-    border-color: #67c23a;
-}
-
-.ptz-small-btn:active {
-    transform: scale(0.95);
+.handle-btn:hover {
+    background: #66b1ff;
 }
 
 /* 响应式设计 */
 @media (max-width: 1200px) {
-    .cameras-grid {
-        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-        gap: 15px;
-    }
-}
-
-@media (max-width: 768px) {
-    .video-container {
-        padding: 15px;
-    }
-    
-    .cameras-grid {
-        grid-template-columns: 1fr;
-        gap: 15px;
-    }
-    
-    .video-js {
-        height: 220px !important;
-    }
-    
-    .controls .el-button {
-        margin: 3px;
-        font-size: 12px;
-    }
-    
-    .camera-header {
+    .content-area {
         flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
     }
     
-    .camera-info {
-        align-items: flex-start;
-    }
-}
-
-@media (max-width: 480px) {
-    .video-container {
-        padding: 10px;
+    .left-panel {
+        width: 100%;
+        flex-direction: row;
+        overflow-x: auto;
     }
     
-    .video-js {
-        height: 180px !important;
-    }
-    
-    .camera-item {
-        padding: 10px;
-    }
-    
-    .camera-controls .el-button {
-        font-size: 11px;
-        padding: 5px 10px;
+    .right-panel {
+        height: 400px;
     }
 }
 </style>

@@ -14,7 +14,7 @@ using YixiaoAdmin.Models;
 namespace YixiaoAdmin.IServices
 {
 
-    public partial interface  IWorkRecordServices:IBaseServices<WorkRecord>
+    public partial interface  IWorkOrderServices:IBaseServices<WorkOrder>
     {
         /// <summary>
         /// 分页查询

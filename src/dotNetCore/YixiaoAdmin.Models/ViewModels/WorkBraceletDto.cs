@@ -3,9 +3,9 @@ using System;
 namespace YixiaoAdmin.Models.ViewModels
 {
     /// <summary>
-    /// 作业记录DTO
+    /// 作业手环DTO
     /// </summary>
-    public class WorkRecordDto
+    public class WorkBraceletDto
     {
         /// <summary>
         /// 主键ID
@@ -18,29 +18,9 @@ namespace YixiaoAdmin.Models.ViewModels
         public string Name { get; set; }
 
         /// <summary>
-        /// 所属施工工单id
+        /// 工人姓名
         /// </summary>
-        public string WorkOrderId { get; set; }
-
-        /// <summary>
-        /// 所属施工工单
-        /// </summary>
-        public WorkOrderDto WorkOrder { get; set; }
-
-        /// <summary>
-        /// 所属作业手环id
-        /// </summary>
-        public string WorkBraceletId { get; set; }
-
-        /// <summary>
-        /// 所属作业手环
-        /// </summary>
-        public WorkBraceletDto WorkBracelet { get; set; }
-
-        /// <summary>
-        /// 心率
-        /// </summary>
-        public string HeartRate { get; set; }
+        public string WorkerName { get; set; }
 
         /// <summary>
         /// 进离场状态 (0-离场, 1-进场)
@@ -61,6 +41,16 @@ namespace YixiaoAdmin.Models.ViewModels
         /// 紧急呼叫状态描述
         /// </summary>
         public string EmergencyCallStatusText { get; set; }
+
+        /// <summary>
+        /// 进场时间
+        /// </summary>
+        public string EntryTime { get; set; }
+
+        /// <summary>
+        /// 离场时间
+        /// </summary>
+        public string ExitTime { get; set; }
 
         /// <summary>
         /// 创建用户名

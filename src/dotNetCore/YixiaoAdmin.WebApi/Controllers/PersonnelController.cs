@@ -12,18 +12,18 @@ using YixiaoAdmin.Common;
 namespace YixiaoAdmin.WebApi.Controllers
 {
     /// <summary>
-    /// 作业记录控制器
+    /// 人员控制器
     /// </summary>
     [Route("[controller]")]
     [ApiController]
-    public class WorkRecordController : ControllerBase
+    public class PersonnelController : ControllerBase
     {
-        private readonly IWorkRecordServices _workRecordServices;
+        private readonly IPersonnelServices _personnelServices;
 
-        public WorkRecordController(IWorkRecordServices workRecordServices)
+        public PersonnelController(IPersonnelServices personnelServices)
         {
-            _workRecordServices = workRecordServices ?? 
-                                       throw new ArgumentNullException(nameof(workRecordServices));
+            _personnelServices = personnelServices ?? 
+                                       throw new ArgumentNullException(nameof(personnelServices));
         }
 
         /// <summary>
@@ -31,9 +31,9 @@ namespace YixiaoAdmin.WebApi.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpGet("[action]")]
-        public async Task<IList<WorkRecord>> All()
+        public async Task<IList<Personnel>> All()
         {
-            return await _workRecordServices.Query();
+            return await _personnelServices.Query();
         }
 
         /// <summary>
@@ -42,9 +42,9 @@ namespace YixiaoAdmin.WebApi.Controllers
         /// <param name="queryPageModel">查询模型</param>
         /// <returns></returns>
         [HttpPost("[action]")]
-        public async Task<ActionResult<IEnumerable<WorkRecord>>> Pages(QueryPageModel queryPageModel)
+        public async Task<ActionResult<IEnumerable<Personnel>>> Pages(QueryPageModel queryPageModel)
         {
-            return Ok(await _workRecordServices.QueryPages(queryPageModel));
+            return Ok(await _personnelServices.QueryPages(queryPageModel));
         }
 
         /// <summary>
@@ -52,9 +52,9 @@ namespace YixiaoAdmin.WebApi.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpGet]
-        public async Task<WorkRecord> Get(string Id)
+        public async Task<Personnel> Get(string Id)
         {
-            return await _workRecordServices.QueryById(Id);
+            return await _personnelServices.QueryById(Id);
         }
 
         /// <summary>
@@ -62,9 +62,9 @@ namespace YixiaoAdmin.WebApi.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpPost]
-        public async Task<bool> Post(WorkRecord viewModel)
+        public async Task<bool> Post(Personnel viewModel)
         {
-            return await _workRecordServices.Add(viewModel);
+            return await _personnelServices.Add(viewModel);
         }
 
         /// <summary>
@@ -72,9 +72,9 @@ namespace YixiaoAdmin.WebApi.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpPut]
-        public async Task<bool> Put(WorkRecord viewModel)
+        public async Task<bool> Put(Personnel viewModel)
         {
-            return await _workRecordServices.Update(viewModel);
+            return await _personnelServices.Update(viewModel);
         }
 
         /// <summary>
@@ -84,7 +84,7 @@ namespace YixiaoAdmin.WebApi.Controllers
         [HttpDelete]
         public async Task<bool> Delete(string Id)
         {
-            return await _workRecordServices.RemoveById(Id);
+            return await _personnelServices.RemoveById(Id);
         }
     }
 }

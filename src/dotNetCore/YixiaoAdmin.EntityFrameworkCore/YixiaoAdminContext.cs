@@ -49,27 +49,44 @@ namespace YixiaoAdmin.EntityFrameworkCore
         public DbSet<Camera> Camera { get; set; }
 
         /// <summary>
-        /// 作业记录
+        /// 施工工单
         /// </summary>
-        public DbSet<WorkRecord> WorkRecord { get; set; }
+        public DbSet<WorkOrder> WorkOrder { get; set; }
 
         /// <summary>
         /// 摄像头记录
         /// </summary>
         public DbSet<CameraRecord> CameraRecord { get; set; }
 
+        /// <summary>
+        /// 人员
+        /// </summary>
+        public DbSet<Personnel> Personnel { get; set; }
+
+        /// <summary>
+        /// 手环
+        /// </summary>
+        public DbSet<Bracelet> Bracelet { get; set; }
+
+        /// <summary>
+        /// 作业手环
+        /// </summary>
+        public DbSet<WorkBracelet> WorkBracelet { get; set; }
+
+        /// <summary>
+        /// 作业记录
+        /// </summary>
+        public DbSet<WorkRecord> WorkRecord { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-
 
             //配置级联删除的样例
             //modelBuilder.Entity<PalletIdentificationCard>().HasMany(b => b.PalletIdentificationCardSubOrder).WithOne(p => p.PalletIdentificationCard)
             //    .HasForeignKey(p => p.PalletIdentificationCardId)
             //    .OnDelete(DeleteBehavior.Cascade);
             //base.OnModelCreating(modelBuilder);
-
-
         }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

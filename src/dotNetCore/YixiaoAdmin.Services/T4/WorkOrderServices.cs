@@ -18,10 +18,10 @@ using YixiaoAdmin.Common;
 namespace YixiaoAdmin.Services
 {
 
-    public partial class  WorkRecordServices:BaseServices<WorkRecord>, IWorkRecordServices
+    public partial class  WorkOrderServices:BaseServices<WorkOrder>, IWorkOrderServices
     {
-        private IWorkRecordRepository _WorkRecordRepository;
-        public WorkRecordServices(IWorkRecordRepository WorkRecordRepository)
+        private IWorkOrderRepository _WorkRecordRepository;
+        public WorkOrderServices(IWorkOrderRepository WorkRecordRepository)
         {
             this._WorkRecordRepository = WorkRecordRepository;
             base.baseRepository = _WorkRecordRepository;
@@ -31,14 +31,14 @@ namespace YixiaoAdmin.Services
              //自定义分页Response
             PagesResponse pagesResponse = new PagesResponse();
             //初始化查询表达式
-            Expression<Func<WorkRecord, bool>> whereExpression = PredicateBuilder.True<WorkRecord>();
+            Expression<Func<WorkOrder, bool>> whereExpression = PredicateBuilder.True<WorkOrder>();
             //判断是否存在查询条件
             if (queryPageModel.Query != null)
             {
                 foreach (QueryFieldModel item in queryPageModel.Query)
                 {
                     //根据属性名获取属性
-                    var property = typeof(WorkRecord).GetProperty(item.QueryField);
+                    var property = typeof(WorkOrder).GetProperty(item.QueryField);
                     if (property == null)
                     {
                         continue;

@@ -12,9 +12,9 @@ using YixiaoAdmin.EntityFrameworkCore;
 namespace YixiaoAdmin.Repository
 {
 
-    public partial class WorkRecordRepository : BaseRepository<WorkRecord>, IWorkRecordRepository
+    public partial class WorkOrderRepository : BaseRepository<WorkOrder>, IWorkOrderRepository
     {
-        public WorkRecordRepository(YixiaoAdminContext db):base(db)
+        public WorkOrderRepository(YixiaoAdminContext db):base(db)
         {
         }
     }

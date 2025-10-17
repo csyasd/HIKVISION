@@ -1,6 +1,3 @@
-using System;
-using System.ComponentModel;
-
 namespace YixiaoAdmin.Models
 {
     /// <summary>
@@ -9,23 +6,38 @@ namespace YixiaoAdmin.Models
     public class WorkRecord : Entity
     {
         /// <summary>
-        /// 所属设备id
+        /// 所属施工工单id
         /// </summary>
-        public string DeviceId { get; set; }
+        public string WorkOrderId { get; set; }
 
         /// <summary>
-        /// 所属设备
+        /// 所属施工工单
         /// </summary>
-        public Device Device { get; set; }
+        public WorkOrder WorkOrder { get; set; }
 
         /// <summary>
-        /// 开始时间
+        /// 所属作业手环id
         /// </summary>
-        public string StartTime { get; set; }
+        public string WorkBraceletId { get; set; }
 
         /// <summary>
-        /// 结束时间
+        /// 所属作业手环
         /// </summary>
-        public string EndTime { get; set; }
+        public WorkBracelet WorkBracelet { get; set; }
+
+        /// <summary>
+        /// 心率
+        /// </summary>
+        public string HeartRate { get; set; }
+
+        /// <summary>
+        /// 进离场状态 (0-离场, 1-进场)
+        /// </summary>
+        public string EntryExitStatus { get; set; }
+
+        /// <summary>
+        /// 紧急呼叫状态 (0-正常, 1-紧急呼叫)
+        /// </summary>
+        public string EmergencyCallStatus { get; set; }
     }
 }

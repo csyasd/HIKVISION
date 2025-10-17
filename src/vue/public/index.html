@@ -8,17 +8,46 @@
     <title><%= htmlWebpackPlugin.options.title %></title>
     
     <!-- FLV.js 播放器 - 低延迟方案 -->
-    <script src="https://cdn.jsdelivr.net/npm/flv.js@1.6.2/dist/flv.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flv.js@1.6.2/dist/flv.min.js" 
+            onerror="console.error('CDN flv.js加载失败，尝试备用CDN'); loadFlvBackup();"></script>
+    <script src="https://webapi.amap.com/maps?v=2.0&key=933b70f0dfaf67b0f950d1682dc27ca1"></script>
     <script>
-      // flv.js加载检测
-      window.addEventListener('DOMContentLoaded', function() {
-        console.log('=== FLV播放器加载检测 ===');
-        console.log('flv.js:', typeof flvjs !== 'undefined' ? '✅ 已加载' : '❌ 未加载');
-        if (typeof flvjs !== 'undefined') {
-          console.log('✅ FLV播放器已就绪（延迟1-2秒）');
-          console.log('浏览器支持:', flvjs.isSupported() ? '✅' : '❌');
+        // 备用flv.js加载函数
+        function loadFlvBackup() {
+            const script = document.createElement('script');
+            script.src = 'https://unpkg.com/flv.js@1.6.2/dist/flv.min.js';
+            script.onerror = function() {
+                console.error('所有flv.js CDN都加载失败，请检查网络连接');
+                window.flvjs = null;
+            };
+            script.onload = function() {
+                console.log('✅ 备用CDN flv.js加载成功');
+            };
+            document.head.appendChild(script);
         }
-      });
+        
+        // flv.js加载检测
+        window.addEventListener('DOMContentLoaded', function() {
+            // 延迟检测，确保脚本完全加载
+            setTimeout(function() {
+                console.log('=== FLV播放器加载检测 ===');
+                console.log('flv.js:', typeof flvjs !== 'undefined' ? '✅ 已加载' : '❌ 未加载');
+                if (typeof flvjs !== 'undefined') {
+                    console.log('✅ FLV播放器已就绪（延迟1-2秒）');
+                    console.log('浏览器支持:', flvjs.isSupported() ? '✅' : '❌');
+                } else {
+                    console.error('❌ flv.js未定义，视频播放功能将不可用');
+                    console.error('请检查网络连接或防火墙设置');
+                }
+                
+                // 高德地图加载检测
+                console.log('=== 高德地图加载检测 ===');
+                console.log('AMap:', typeof AMap !== 'undefined' ? '✅ 已加载' : '❌ 未加载');
+                if (typeof AMap !== 'undefined') {
+                    console.log('✅ 高德地图API已就绪');
+                }
+            }, 1000);
+        });
     </script>
   </head>
   <body>

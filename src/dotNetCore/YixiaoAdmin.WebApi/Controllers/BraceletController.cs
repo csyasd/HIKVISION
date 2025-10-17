@@ -12,18 +12,18 @@ using YixiaoAdmin.Common;
 namespace YixiaoAdmin.WebApi.Controllers
 {
     /// <summary>
-    /// 作业记录控制器
+    /// 手环控制器
     /// </summary>
     [Route("[controller]")]
     [ApiController]
-    public class WorkRecordController : ControllerBase
+    public class BraceletController : ControllerBase
     {
-        private readonly IWorkRecordServices _workRecordServices;
+        private readonly IBraceletServices _braceletServices;
 
-        public WorkRecordController(IWorkRecordServices workRecordServices)
+        public BraceletController(IBraceletServices braceletServices)
         {
-            _workRecordServices = workRecordServices ?? 
-                                       throw new ArgumentNullException(nameof(workRecordServices));
+            _braceletServices = braceletServices ?? 
+                                       throw new ArgumentNullException(nameof(braceletServices));
         }
 
         /// <summary>
@@ -31,9 +31,9 @@ namespace YixiaoAdmin.WebApi.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpGet("[action]")]
-        public async Task<IList<WorkRecord>> All()
+        public async Task<IList<Bracelet>> All()
         {
-            return await _workRecordServices.Query();
+            return await _braceletServices.Query();
         }
 
         /// <summary>
@@ -42,9 +42,9 @@ namespace YixiaoAdmin.WebApi.Controllers
         /// <param name="queryPageModel">查询模型</param>
         /// <returns></returns>
         [HttpPost("[action]")]
-        public async Task<ActionResult<IEnumerable<WorkRecord>>> Pages(QueryPageModel queryPageModel)
+        public async Task<ActionResult<IEnumerable<Bracelet>>> Pages(QueryPageModel queryPageModel)
         {
-            return Ok(await _workRecordServices.QueryPages(queryPageModel));
+            return Ok(await _braceletServices.QueryPages(queryPageModel));
         }
 
         /// <summary>
@@ -52,9 +52,9 @@ namespace YixiaoAdmin.WebApi.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpGet]
-        public async Task<WorkRecord> Get(string Id)
+        public async Task<Bracelet> Get(string Id)
         {
-            return await _workRecordServices.QueryById(Id);
+            return await _braceletServices.QueryById(Id);
         }
 
         /// <summary>
@@ -62,9 +62,9 @@ namespace YixiaoAdmin.WebApi.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpPost]
-        public async Task<bool> Post(WorkRecord viewModel)
+        public async Task<bool> Post(Bracelet viewModel)
         {
-            return await _workRecordServices.Add(viewModel);
+            return await _braceletServices.Add(viewModel);
         }
 
         /// <summary>
@@ -72,9 +72,9 @@ namespace YixiaoAdmin.WebApi.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpPut]
-        public async Task<bool> Put(WorkRecord viewModel)
+        public async Task<bool> Put(Bracelet viewModel)
         {
-            return await _workRecordServices.Update(viewModel);
+            return await _braceletServices.Update(viewModel);
         }
 
         /// <summary>
@@ -84,7 +84,7 @@ namespace YixiaoAdmin.WebApi.Controllers
         [HttpDelete]
         public async Task<bool> Delete(string Id)
         {
-            return await _workRecordServices.RemoveById(Id);
+            return await _braceletServices.RemoveById(Id);
         }
     }
 }

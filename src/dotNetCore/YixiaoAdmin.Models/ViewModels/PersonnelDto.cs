@@ -3,9 +3,9 @@ using System;
 namespace YixiaoAdmin.Models.ViewModels
 {
     /// <summary>
-    /// 作业记录DTO
+    /// 人员DTO
     /// </summary>
-    public class WorkRecordDto
+    public class PersonnelDto
     {
         /// <summary>
         /// 主键ID
@@ -18,49 +18,14 @@ namespace YixiaoAdmin.Models.ViewModels
         public string Name { get; set; }
 
         /// <summary>
-        /// 所属施工工单id
+        /// 工号
         /// </summary>
-        public string WorkOrderId { get; set; }
+        public string EmployeeNumber { get; set; }
 
         /// <summary>
-        /// 所属施工工单
+        /// 姓名
         /// </summary>
-        public WorkOrderDto WorkOrder { get; set; }
-
-        /// <summary>
-        /// 所属作业手环id
-        /// </summary>
-        public string WorkBraceletId { get; set; }
-
-        /// <summary>
-        /// 所属作业手环
-        /// </summary>
-        public WorkBraceletDto WorkBracelet { get; set; }
-
-        /// <summary>
-        /// 心率
-        /// </summary>
-        public string HeartRate { get; set; }
-
-        /// <summary>
-        /// 进离场状态 (0-离场, 1-进场)
-        /// </summary>
-        public string EntryExitStatus { get; set; }
-
-        /// <summary>
-        /// 进离场状态描述
-        /// </summary>
-        public string EntryExitStatusText { get; set; }
-
-        /// <summary>
-        /// 紧急呼叫状态 (0-正常, 1-紧急呼叫)
-        /// </summary>
-        public string EmergencyCallStatus { get; set; }
-
-        /// <summary>
-        /// 紧急呼叫状态描述
-        /// </summary>
-        public string EmergencyCallStatusText { get; set; }
+        public string FullName { get; set; }
 
         /// <summary>
         /// 创建用户名
