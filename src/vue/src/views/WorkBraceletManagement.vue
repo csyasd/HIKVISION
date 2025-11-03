@@ -29,6 +29,10 @@
             
             <el-table-column :show-overflow-tooltip="true" prop="WorkerName" label="工人姓名" width="220" ></el-table-column>
     
+            <el-table-column :show-overflow-tooltip="true" prop="HeartRate" label="心率" width="120" ></el-table-column>
+    
+            <el-table-column :show-overflow-tooltip="true" prop="Bracelet.BraceletNumber" label="所属手环" width="220" ></el-table-column>
+    
             <el-table-column :show-overflow-tooltip="true" prop="EntryExitStatus" label="进离场状态" width="150" >
                 <template slot-scope="scope">
                     <el-tag :type="scope.row.EntryExitStatus === '1' ? 'success' : 'info'">
@@ -81,6 +85,21 @@
                 <el-input v-model="addForm.WorkerName" autocomplete="off" placeholder="请输入工人姓名"></el-input>
             </el-form-item>
 
+            <el-form-item label="心率" :label-width="formLabelWidth">
+                <el-input v-model="addForm.HeartRate" autocomplete="off" placeholder="请输入心率"></el-input>
+            </el-form-item>
+
+            <el-form-item label="所属手环" :label-width="formLabelWidth">
+                <el-select v-model="addForm.BraceletId" placeholder="请选择手环" filterable>
+                    <el-option
+                        v-for="item in braceletList"
+                        :key="item.Id"
+                        :label="item.BraceletNumber"
+                        :value="item.Id">
+                    </el-option>
+                </el-select>
+            </el-form-item>
+
             <el-form-item label="进离场状态" :label-width="formLabelWidth">
                 <el-select v-model="addForm.EntryExitStatus" placeholder="请选择状态">
                     <el-option label="离场" value="0"></el-option>
@@ -129,6 +148,21 @@
                 <el-input v-model="editForm.WorkerName" autocomplete="off" placeholder="请输入工人姓名"></el-input>
             </el-form-item>
 
+            <el-form-item label="心率" :label-width="formLabelWidth">
+                <el-input v-model="editForm.HeartRate" autocomplete="off" placeholder="请输入心率"></el-input>
+            </el-form-item>
+
+            <el-form-item label="所属手环" :label-width="formLabelWidth">
+                <el-select v-model="editForm.BraceletId" placeholder="请选择手环" filterable>
+                    <el-option
+                        v-for="item in braceletList"
+                        :key="item.Id"
+                        :label="item.BraceletNumber"
+                        :value="item.Id">
+                    </el-option>
+                </el-select>
+            </el-form-item>
+
             <el-form-item label="进离场状态" :label-width="formLabelWidth">
                 <el-select v-model="editForm.EntryExitStatus" placeholder="请选择状态">
                     <el-option label="离场" value="0"></el-option>
@@ -172,7 +206,7 @@
     </div>
 </template>
 <script>
-import { SelectWorkBracelet, AddWorkBracelet, EditWorkBracelet, DeleteWorkBracelet, SelectWorkBraceletById } from "../api/api";
+import { SelectWorkBracelet, AddWorkBracelet, EditWorkBracelet, DeleteWorkBracelet, SelectWorkBraceletById, SelectALLBracelet } from "../api/api";
 
 export default {
     data() {
@@ -189,6 +223,8 @@ export default {
             editDialogFormVisible: false,
             addForm: {
                WorkerName: null,
+               HeartRate: null,
+               BraceletId: null,
                EntryExitStatus: null,
                EmergencyCallStatus: null,
                EntryTime: null,
@@ -197,6 +233,8 @@ export default {
             editForm: {
             Id:"",
                WorkerName: null,
+               HeartRate: null,
+               BraceletId: null,
                EntryExitStatus: null,
                EmergencyCallStatus: null,
                EntryTime: null,
@@ -204,6 +242,7 @@ export default {
             },
             operationDisabled: false,
             formLabelWidth: "120px",
+            braceletList: [],
             Query: [
                 {
                     QueryField: "WorkerName",
@@ -223,6 +262,7 @@ export default {
     mounted() {
        (async () => {
             this.getTableData();
+            this.loadBraceletList();
         })();
     },
     methods: {
@@ -307,6 +347,8 @@ export default {
         handleEdit(row) {
                this.editForm.Id = row.Id;
                this.editForm.WorkerName = row.WorkerName;
+               this.editForm.HeartRate = row.HeartRate;
+               this.editForm.BraceletId = row.BraceletId;
                this.editForm.EntryExitStatus = row.EntryExitStatus;
                this.editForm.EmergencyCallStatus = row.EmergencyCallStatus;
                this.editForm.EntryTime = row.EntryTime;
@@ -477,6 +519,16 @@ export default {
         /*行多选结束*/
 
         /*请将自定义函数写在我的下面*/
+        
+        //加载手环列表
+        loadBraceletList() {
+            SelectALLBracelet().then(res => {
+                this.braceletList = res || [];
+            }).catch(error => {
+                console.log(error);
+                this.$message.error("加载手环列表失败！");
+            });
+        },
     }
 };
 </script>

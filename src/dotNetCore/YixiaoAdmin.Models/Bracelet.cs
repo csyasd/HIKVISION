@@ -16,5 +16,10 @@ namespace YixiaoAdmin.Models
         /// 手环记录
         /// </summary>
         public string BraceletRecord { get; set; }
+
+        /// <summary>
+        /// 设备编号
+        /// </summary>
+        public string DeviceNumber { get; set; }
     }
 }

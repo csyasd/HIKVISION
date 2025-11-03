@@ -36,6 +36,30 @@
     
             <el-table-column :show-overflow-tooltip="true" prop="BelongToUnit" label="所属单位" width="220" ></el-table-column>
     
+            <el-table-column :show-overflow-tooltip="true" prop="WorkAreaScanner" label="手环扫描器-作业区" width="200" ></el-table-column>
+    
+            <el-table-column :show-overflow-tooltip="true" prop="EntryAreaScanner" label="手环扫描器-人口区" width="200" ></el-table-column>
+    
+            <el-table-column :show-overflow-tooltip="true" prop="GpsOnlineStatus" label="GPS在线状态" width="150" >
+                <template slot-scope="scope">
+                    <el-tag :type="scope.row.GpsOnlineStatus === '1' ? 'success' : 'info'">
+                        {{ scope.row.GpsOnlineStatus === '1' ? '在线' : '离线' }}
+                    </el-tag>
+                </template>
+            </el-table-column>
+    
+            <el-table-column :show-overflow-tooltip="true" prop="GpsLongitude" label="GPS经度" width="150" ></el-table-column>
+    
+            <el-table-column :show-overflow-tooltip="true" prop="GpsLatitude" label="GPS纬度" width="150" ></el-table-column>
+    
+            <el-table-column :show-overflow-tooltip="true" prop="ToxicGasAlarmOnlineStatus" label="有毒气体报警在线状态" width="200" >
+                <template slot-scope="scope">
+                    <el-tag :type="scope.row.ToxicGasAlarmOnlineStatus === '1' ? 'success' : 'info'">
+                        {{ scope.row.ToxicGasAlarmOnlineStatus === '1' ? '在线' : '离线' }}
+                    </el-tag>
+                </template>
+            </el-table-column>
+    
             <el-table-column :show-overflow-tooltip="true" prop="Name" label="名称" width="220" ></el-table-column>
     
             <el-table-column
@@ -91,8 +115,35 @@
                 <el-input v-model="addForm.BelongToUnit" autocomplete="off" placeholder="请输入所属单位"></el-input>
             </el-form-item>
 
-    
-    
+            <el-form-item label="手环扫描器-作业区" :label-width="formLabelWidth">
+                <el-input v-model="addForm.WorkAreaScanner" autocomplete="off" placeholder="请输入手环扫描器-作业区"></el-input>
+            </el-form-item>
+
+            <el-form-item label="手环扫描器-人口区" :label-width="formLabelWidth">
+                <el-input v-model="addForm.EntryAreaScanner" autocomplete="off" placeholder="请输入手环扫描器-人口区"></el-input>
+            </el-form-item>
+
+            <el-form-item label="GPS在线状态" :label-width="formLabelWidth">
+                <el-select v-model="addForm.GpsOnlineStatus" placeholder="请选择状态">
+                    <el-option label="离线" value="0"></el-option>
+                    <el-option label="在线" value="1"></el-option>
+                </el-select>
+            </el-form-item>
+
+            <el-form-item label="GPS经度" :label-width="formLabelWidth">
+                <el-input v-model="addForm.GpsLongitude" autocomplete="off" placeholder="请输入GPS经度"></el-input>
+            </el-form-item>
+
+            <el-form-item label="GPS纬度" :label-width="formLabelWidth">
+                <el-input v-model="addForm.GpsLatitude" autocomplete="off" placeholder="请输入GPS纬度"></el-input>
+            </el-form-item>
+
+            <el-form-item label="有毒气体报警在线状态" :label-width="formLabelWidth">
+                <el-select v-model="addForm.ToxicGasAlarmOnlineStatus" placeholder="请选择状态">
+                    <el-option label="离线" value="0"></el-option>
+                    <el-option label="在线" value="1"></el-option>
+                </el-select>
+            </el-form-item>
 
             <el-form-item label="名称" :label-width="formLabelWidth">
                 <el-input v-model="addForm.Name" autocomplete="off" placeholder="请输入名称"></el-input>
@@ -133,7 +184,35 @@
                 <el-input v-model="editForm.BelongToUnit" autocomplete="off" placeholder="请输入所属单位"></el-input>
             </el-form-item>
 
+            <el-form-item label="手环扫描器-作业区" :label-width="formLabelWidth">
+                <el-input v-model="editForm.WorkAreaScanner" autocomplete="off" placeholder="请输入手环扫描器-作业区"></el-input>
+            </el-form-item>
 
+            <el-form-item label="手环扫描器-人口区" :label-width="formLabelWidth">
+                <el-input v-model="editForm.EntryAreaScanner" autocomplete="off" placeholder="请输入手环扫描器-人口区"></el-input>
+            </el-form-item>
+
+            <el-form-item label="GPS在线状态" :label-width="formLabelWidth">
+                <el-select v-model="editForm.GpsOnlineStatus" placeholder="请选择状态">
+                    <el-option label="离线" value="0"></el-option>
+                    <el-option label="在线" value="1"></el-option>
+                </el-select>
+            </el-form-item>
+
+            <el-form-item label="GPS经度" :label-width="formLabelWidth">
+                <el-input v-model="editForm.GpsLongitude" autocomplete="off" placeholder="请输入GPS经度"></el-input>
+            </el-form-item>
+
+            <el-form-item label="GPS纬度" :label-width="formLabelWidth">
+                <el-input v-model="editForm.GpsLatitude" autocomplete="off" placeholder="请输入GPS纬度"></el-input>
+            </el-form-item>
+
+            <el-form-item label="有毒气体报警在线状态" :label-width="formLabelWidth">
+                <el-select v-model="editForm.ToxicGasAlarmOnlineStatus" placeholder="请选择状态">
+                    <el-option label="离线" value="0"></el-option>
+                    <el-option label="在线" value="1"></el-option>
+                </el-select>
+            </el-form-item>
 
             <el-form-item label="名称" :label-width="formLabelWidth">
                 <el-input v-model="editForm.Name" autocomplete="off" placeholder="请输入名称"></el-input>
@@ -176,6 +255,18 @@ export default {
     
                BelongToUnit: null,
     
+               WorkAreaScanner: null,
+    
+               EntryAreaScanner: null,
+    
+               GpsOnlineStatus: null,
+    
+               GpsLongitude: null,
+    
+               GpsLatitude: null,
+    
+               ToxicGasAlarmOnlineStatus: null,
+    
                Name: null,
     
             },
@@ -187,6 +278,18 @@ export default {
                ManufactureDate: null,
     
                BelongToUnit: null,
+    
+               WorkAreaScanner: null,
+    
+               EntryAreaScanner: null,
+    
+               GpsOnlineStatus: null,
+    
+               GpsLongitude: null,
+    
+               GpsLatitude: null,
+    
+               ToxicGasAlarmOnlineStatus: null,
     
                Name: null,
     
@@ -304,6 +407,18 @@ export default {
                this.editForm.ManufactureDate = row.ManufactureDate;
     
                this.editForm.BelongToUnit = row.BelongToUnit;
+    
+               this.editForm.WorkAreaScanner = row.WorkAreaScanner;
+    
+               this.editForm.EntryAreaScanner = row.EntryAreaScanner;
+    
+               this.editForm.GpsOnlineStatus = row.GpsOnlineStatus;
+    
+               this.editForm.GpsLongitude = row.GpsLongitude;
+    
+               this.editForm.GpsLatitude = row.GpsLatitude;
+    
+               this.editForm.ToxicGasAlarmOnlineStatus = row.ToxicGasAlarmOnlineStatus;
     
                this.editForm.Name = row.Name;
     

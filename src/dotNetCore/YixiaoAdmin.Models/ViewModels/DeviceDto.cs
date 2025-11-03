@@ -27,6 +27,29 @@ namespace YixiaoAdmin.Models.ViewModels
     public string BelongToUnit { get; set; }
     
 
+    [Description("手环扫描器-作业区")]
+    public string WorkAreaScanner { get; set; }
+    
+
+    [Description("手环扫描器-人口区")]
+    public string EntryAreaScanner { get; set; }
+    
+
+    [Description("GPS在线状态")]
+    public string GpsOnlineStatus { get; set; }
+    
+
+    [Description("GPS经度")]
+    public string GpsLongitude { get; set; }
+    
+
+    [Description("GPS纬度")]
+    public string GpsLatitude { get; set; }
+    
+
+    [Description("有毒气体报警在线状态")]
+    public string ToxicGasAlarmOnlineStatus { get; set; }
+    
 
     public string Id { get; set; }
     

@@ -29,6 +29,8 @@
             
             <el-table-column :show-overflow-tooltip="true" prop="BraceletNumber" label="手环编号" width="220" ></el-table-column>
     
+            <el-table-column :show-overflow-tooltip="true" prop="DeviceNumber" label="设备编号" width="220" ></el-table-column>
+    
             <el-table-column :show-overflow-tooltip="true" prop="BraceletRecord" label="手环记录" width="300" ></el-table-column>
     
             <el-table-column
@@ -63,6 +65,10 @@
                 <el-input v-model="addForm.BraceletNumber" autocomplete="off" placeholder="请输入手环编号"></el-input>
             </el-form-item>
 
+            <el-form-item label="设备编号" :label-width="formLabelWidth">
+                <el-input v-model="addForm.DeviceNumber" autocomplete="off" placeholder="请输入设备编号"></el-input>
+            </el-form-item>
+
             <el-form-item label="手环记录" :label-width="formLabelWidth">
                 <el-input v-model="addForm.BraceletRecord" type="textarea" :rows="4" autocomplete="off" placeholder="请输入手环记录"></el-input>
             </el-form-item>
@@ -79,6 +85,10 @@
 
             <el-form-item label="手环编号" :label-width="formLabelWidth">
                 <el-input v-model="editForm.BraceletNumber" autocomplete="off" placeholder="请输入手环编号"></el-input>
+            </el-form-item>
+
+            <el-form-item label="设备编号" :label-width="formLabelWidth">
+                <el-input v-model="editForm.DeviceNumber" autocomplete="off" placeholder="请输入设备编号"></el-input>
             </el-form-item>
 
             <el-form-item label="手环记录" :label-width="formLabelWidth">
@@ -111,11 +121,13 @@ export default {
             editDialogFormVisible: false,
             addForm: {
                BraceletNumber: null,
+               DeviceNumber: null,
                BraceletRecord: null,
             },
             editForm: {
             Id:"",
                BraceletNumber: null,
+               DeviceNumber: null,
                BraceletRecord: null,
             },
             operationDisabled: false,
@@ -223,6 +235,7 @@ export default {
         handleEdit(row) {
                this.editForm.Id = row.Id;
                this.editForm.BraceletNumber = row.BraceletNumber;
+               this.editForm.DeviceNumber = row.DeviceNumber;
                this.editForm.BraceletRecord = row.BraceletRecord;
             
             this.editDialogFormVisible = true;

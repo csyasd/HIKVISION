@@ -22,5 +22,35 @@ namespace YixiaoAdmin.Models
         /// 所属单位
         /// </summary>
         public string BelongToUnit { get; set; }
+
+        /// <summary>
+        /// 手环扫描器-作业区
+        /// </summary>
+        public string WorkAreaScanner { get; set; }
+
+        /// <summary>
+        /// 手环扫描器-人口区
+        /// </summary>
+        public string EntryAreaScanner { get; set; }
+
+        /// <summary>
+        /// GPS在线状态
+        /// </summary>
+        public string GpsOnlineStatus { get; set; }
+
+        /// <summary>
+        /// GPS经度
+        /// </summary>
+        public string GpsLongitude { get; set; }
+
+        /// <summary>
+        /// GPS纬度
+        /// </summary>
+        public string GpsLatitude { get; set; }
+
+        /// <summary>
+        /// 有毒气体报警在线状态
+        /// </summary>
+        public string ToxicGasAlarmOnlineStatus { get; set; }
     }
 }

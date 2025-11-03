@@ -31,5 +31,20 @@ namespace YixiaoAdmin.Models
         /// 离场时间
         /// </summary>
         public string ExitTime { get; set; }
+
+        /// <summary>
+        /// 心率
+        /// </summary>
+        public string HeartRate { get; set; }
+
+        /// <summary>
+        /// 所属手环id
+        /// </summary>
+        public string BraceletId { get; set; }
+
+        /// <summary>
+        /// 所属手环
+        /// </summary>
+        public Bracelet Bracelet { get; set; }
     }
 }

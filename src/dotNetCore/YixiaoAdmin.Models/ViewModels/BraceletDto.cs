@@ -28,6 +28,11 @@ namespace YixiaoAdmin.Models.ViewModels
         public string BraceletRecord { get; set; }
 
         /// <summary>
+        /// 设备编号
+        /// </summary>
+        public string DeviceNumber { get; set; }
+
+        /// <summary>
         /// 创建用户名
         /// </summary>
         public string CreateUsername { get; set; }

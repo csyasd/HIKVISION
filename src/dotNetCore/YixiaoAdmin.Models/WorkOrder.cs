@@ -4,7 +4,7 @@ using System.ComponentModel;
 namespace YixiaoAdmin.Models
 {
     /// <summary>
-    /// 作业记录实体类
+    /// 施工工单类
     /// </summary>
     public class WorkOrder : Entity
     {

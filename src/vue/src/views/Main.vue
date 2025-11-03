@@ -334,6 +334,7 @@ export default {
     color: #ffffff;
     font-family: 'Microsoft YaHei', sans-serif;
     overflow: hidden;
+    position: relative;
 }
 
 .header {
@@ -410,8 +411,10 @@ export default {
 .content-area {
     flex: 1;
     display: flex;
-    padding: 20px;
-    gap: 20px;
+    padding: 0;
+    gap: 0;
+    position: relative;
+    height: calc(100vh - 60px);
 }
 
 .left-panel {
@@ -419,11 +422,17 @@ export default {
     display: flex;
     flex-direction: column;
     gap: 20px;
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    z-index: 2;
+    padding: 0;
 }
 
 .right-panel {
     flex: 1;
     position: relative;
+    height: 100%;
 }
 
 .time-display {
@@ -584,10 +593,14 @@ export default {
 }
 
 .map-container {
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
-    border-radius: 8px;
+    border-radius: 0;
     overflow: hidden;
+    z-index: 1;
 }
 
 .gas-monitoring-table, .alarm-table {
@@ -596,16 +609,21 @@ export default {
     border-radius: 6px;
     border: 1px solid #2a3441;
     max-width: 400px;
+    z-index: 3;
 }
 
 .gas-monitoring-table {
     top: 20px;
     right: 20px;
+    max-height: 45vh;
+    overflow-y: auto;
 }
 
 .alarm-table {
     bottom: 20px;
-    left: 20px;
+    right: 20px;
+    max-height: 45vh;
+    overflow-y: auto;
 }
 
 .table-header {

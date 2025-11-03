@@ -53,6 +53,21 @@ namespace YixiaoAdmin.Models.ViewModels
         public string ExitTime { get; set; }
 
         /// <summary>
+        /// 心率
+        /// </summary>
+        public string HeartRate { get; set; }
+
+        /// <summary>
+        /// 所属手环id
+        /// </summary>
+        public string BraceletId { get; set; }
+
+        /// <summary>
+        /// 所属手环
+        /// </summary>
+        public BraceletDto Bracelet { get; set; }
+
+        /// <summary>
         /// 创建用户名
         /// </summary>
         public string CreateUsername { get; set; }
