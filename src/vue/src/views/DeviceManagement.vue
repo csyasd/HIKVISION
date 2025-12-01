@@ -60,6 +60,8 @@
                 </template>
             </el-table-column>
     
+            <el-table-column :show-overflow-tooltip="true" prop="IP" label="IP地址" width="150" ></el-table-column>
+    
             <el-table-column :show-overflow-tooltip="true" prop="Name" label="名称" width="220" ></el-table-column>
     
             <el-table-column
@@ -145,6 +147,10 @@
                 </el-select>
             </el-form-item>
 
+            <el-form-item label="IP地址" :label-width="formLabelWidth">
+                <el-input v-model="addForm.IP" autocomplete="off" placeholder="请输入IP地址"></el-input>
+            </el-form-item>
+
             <el-form-item label="名称" :label-width="formLabelWidth">
                 <el-input v-model="addForm.Name" autocomplete="off" placeholder="请输入名称"></el-input>
             </el-form-item>
@@ -214,6 +220,10 @@
                 </el-select>
             </el-form-item>
 
+            <el-form-item label="IP地址" :label-width="formLabelWidth">
+                <el-input v-model="editForm.IP" autocomplete="off" placeholder="请输入IP地址"></el-input>
+            </el-form-item>
+
             <el-form-item label="名称" :label-width="formLabelWidth">
                 <el-input v-model="editForm.Name" autocomplete="off" placeholder="请输入名称"></el-input>
             </el-form-item>
@@ -267,6 +277,8 @@ export default {
     
                ToxicGasAlarmOnlineStatus: null,
     
+               IP: null,
+    
                Name: null,
     
             },
@@ -290,6 +302,8 @@ export default {
                GpsLatitude: null,
     
                ToxicGasAlarmOnlineStatus: null,
+    
+               IP: null,
     
                Name: null,
     
@@ -419,6 +433,8 @@ export default {
                this.editForm.GpsLatitude = row.GpsLatitude;
     
                this.editForm.ToxicGasAlarmOnlineStatus = row.ToxicGasAlarmOnlineStatus;
+    
+               this.editForm.IP = row.IP;
     
                this.editForm.Name = row.Name;
     

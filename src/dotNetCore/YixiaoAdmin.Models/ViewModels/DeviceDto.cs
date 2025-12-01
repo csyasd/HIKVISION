@@ -51,6 +51,10 @@ namespace YixiaoAdmin.Models.ViewModels
     public string ToxicGasAlarmOnlineStatus { get; set; }
     
 
+    [Description("IP地址")]
+    public string IP { get; set; }
+    
+
     public string Id { get; set; }
     
 

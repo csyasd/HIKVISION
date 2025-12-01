@@ -52,5 +52,10 @@ namespace YixiaoAdmin.Models
         /// 有毒气体报警在线状态
         /// </summary>
         public string ToxicGasAlarmOnlineStatus { get; set; }
+
+        /// <summary>
+        /// IP地址
+        /// </summary>
+        public string IP { get; set; }
     }
 }
