@@ -47,35 +47,56 @@ namespace YixiaoAdmin.WebApi.Services
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation("S7 PLC数据采集服务启动");
+            _logger.LogInformation("[服务启动] S7 PLC数据采集服务启动");
+            _logger.LogDebug("[服务启动] 服务配置 - CollectInterval: {CollectInterval}秒, Rack: {Rack}, Slot: {Slot}, DataBlock: {DataBlock}",
+                _configuration.GetValue<int>("S7Plc:CollectInterval", 5),
+                _configuration.GetValue<int>("S7Plc:Rack", 0),
+                _configuration.GetValue<int>("S7Plc:Slot", 1),
+                _configuration.GetValue<int>("S7Plc:DataBlockNumber", 1));
 
             // 等待应用程序完全启动
+            _logger.LogDebug("[服务启动] 等待应用程序完全启动 (5秒)...");
             await Task.Delay(5000, stoppingToken);
 
             try
             {
                 // 加载并连接所有设备
+                _logger.LogInformation("[服务启动] 开始加载并连接所有设备...");
                 await LoadAndConnectAllDevices(stoppingToken);
+                _logger.LogInformation($"[服务启动] 设备连接完成 - 已连接设备数: {_deviceConnections.Values.Count(d => d.IsConnected)}, 总设备数: {_deviceConnections.Count}");
 
                 // 启动设备状态监控任务（独立任务）
+                _logger.LogDebug("[服务启动] 启动设备状态监控任务...");
                 var monitorTask = Task.Run(() => MonitorDeviceStatus(stoppingToken), stoppingToken);
 
                 // 开始定时采集数据
+                _logger.LogInformation("[服务启动] 开始定时采集数据循环...");
+                int collectCycle = 0;
                 while (!stoppingToken.IsCancellationRequested)
                 {
+                    collectCycle++;
+                    _logger.LogDebug($"[采集循环] 开始第 {collectCycle} 次数据采集...");
+                    var cycleStartTime = DateTime.Now;
+                    
                     await CollectAllDevicesData(stoppingToken);
+                    
+                    var cycleElapsed = (DateTime.Now - cycleStartTime).TotalMilliseconds;
+                    _logger.LogDebug($"[采集循环] 第 {collectCycle} 次数据采集完成 - 耗时: {cycleElapsed:F2}ms, 已采集设备数: {_collectedData.Count}");
                     
                     // 获取采集间隔（默认5秒）
                     var interval = _configuration.GetValue<int>("S7Plc:CollectInterval", 5);
+                    _logger.LogTrace($"[采集循环] 等待 {interval} 秒后进行下次采集...");
                     await Task.Delay(TimeSpan.FromSeconds(interval), stoppingToken);
                 }
 
                 // 等待监控任务结束
+                _logger.LogInformation("[服务停止] 等待监控任务结束...");
                 await monitorTask;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "S7 PLC数据采集服务执行出错");
+                _logger.LogError(ex, "[服务异常] S7 PLC数据采集服务执行出错");
+                _logger.LogDebug($"[服务异常] 异常详情 - 类型: {ex.GetType().Name}, 消息: {ex.Message}, 堆栈: {ex.StackTrace}");
             }
         }
 
@@ -84,39 +105,70 @@ namespace YixiaoAdmin.WebApi.Services
         /// </summary>
         private async Task LoadAndConnectAllDevices(CancellationToken cancellationToken)
         {
+            var startTime = DateTime.Now;
             try
             {
+                _logger.LogDebug("[设备加载] 开始从数据库加载设备列表...");
                 using var scope = _serviceProvider.CreateScope();
                 var deviceService = scope.ServiceProvider.GetRequiredService<IDeviceServices>();
                 
                 var devices = await deviceService.Query();
-                _logger.LogInformation($"加载到 {devices.Count} 个设备");
+                _logger.LogInformation($"[设备加载] 从数据库加载到 {devices.Count} 个设备");
+                _logger.LogDebug($"[设备加载] 设备列表: {string.Join(", ", devices.Select(d => $"{d.Name}({d.IP})"))}");
+
+                int successCount = 0;
+                int failCount = 0;
+                int skipCount = 0;
 
                 foreach (var device in devices)
                 {
                     if (cancellationToken.IsCancellationRequested)
+                    {
+                        _logger.LogWarning("[设备加载] 收到取消信号，停止加载设备");
                         break;
+                    }
 
                     if (string.IsNullOrWhiteSpace(device.IP))
                     {
-                        _logger.LogWarning($"设备 {device.Name} IP地址为空，跳过");
+                        _logger.LogWarning($"[设备加载] 设备 {device.Name} (ID: {device.Id}) IP地址为空，跳过");
+                        skipCount++;
                         continue;
                     }
 
                     try
                     {
+                        _logger.LogDebug($"[设备加载] 开始连接设备 - 名称: {device.Name}, IP: {device.IP}, ID: {device.Id}");
                         await ConnectDevice(device);
+                        
+                        if (_deviceConnections.TryGetValue(device.Id, out var connInfo) && connInfo.IsConnected)
+                        {
+                            successCount++;
+                            _logger.LogDebug($"[设备加载] 设备连接成功 - {device.Name}({device.IP})");
+                        }
+                        else
+                        {
+                            failCount++;
+                            _logger.LogDebug($"[设备加载] 设备连接失败 - {device.Name}({device.IP})");
+                        }
+                        
                         await Task.Delay(1000, cancellationToken); // 每个设备连接间隔1秒
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, $"连接设备 {device.Name}({device.IP}) 失败");
+                        failCount++;
+                        _logger.LogError(ex, $"[设备加载] 连接设备 {device.Name}({device.IP}) 时发生异常");
+                        _logger.LogDebug($"[设备加载] 异常详情 - 设备ID: {device.Id}, 异常类型: {ex.GetType().Name}, 消息: {ex.Message}");
                     }
                 }
+
+                var elapsed = (DateTime.Now - startTime).TotalMilliseconds;
+                _logger.LogInformation($"[设备加载] 设备加载完成 - 成功: {successCount}, 失败: {failCount}, 跳过: {skipCount}, 总耗时: {elapsed:F2}ms");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "加载设备列表失败");
+                var elapsed = (DateTime.Now - startTime).TotalMilliseconds;
+                _logger.LogError(ex, $"[设备加载异常] 加载设备列表失败 - 耗时: {elapsed:F2}ms");
+                _logger.LogDebug($"[设备加载异常] 异常详情 - 类型: {ex.GetType().Name}, 消息: {ex.Message}, 堆栈: {ex.StackTrace}");
             }
         }
 
@@ -125,8 +177,11 @@ namespace YixiaoAdmin.WebApi.Services
         /// </summary>
         private async Task ConnectDevice(Device device)
         {
+            var startTime = DateTime.Now;
             try
             {
+                _logger.LogDebug($"[设备连接] 开始连接设备 - 名称: {device.Name}, IP: {device.IP}, ID: {device.Id}");
+                
                 // 创建PLC配置
                 var config = new S7PlcConfig
                 {
@@ -136,12 +191,15 @@ namespace YixiaoAdmin.WebApi.Services
                     DataBlockNumber = _configuration.GetValue<int>("S7Plc:DataBlockNumber", 1),
                     CollectInterval = _configuration.GetValue<int>("S7Plc:CollectInterval", 5)
                 };
+                _logger.LogDebug($"[设备连接] PLC配置 - IP: {config.IpAddress}, Rack: {config.Rack}, Slot: {config.Slot}, DB: {config.DataBlockNumber}");
 
                 // 创建连接服务
                 var connectionService = new S7PlcConnectionService(config, _plcConnectionLogger);
 
                 // 尝试连接
+                _logger.LogDebug($"[设备连接] 尝试建立PLC连接...");
                 var connected = await connectionService.ConnectAsync();
+                var elapsed = (DateTime.Now - startTime).TotalMilliseconds;
                 
                 // 创建连接信息（无论连接成功与否都要记录，以便监控任务可以重连）
                 var connectionInfo = new S7DeviceConnectionInfo
@@ -159,21 +217,29 @@ namespace YixiaoAdmin.WebApi.Services
 
                 if (!connected)
                 {
-                    _logger.LogWarning($"设备 {device.Name}({device.IP}) 连接失败，将定期尝试重连");
+                    _logger.LogWarning($"[设备连接失败] 设备 {device.Name}({device.IP}) 连接失败，将定期尝试重连 - 耗时: {elapsed:F2}ms");
                     connectionService.Dispose();
                     connectionInfo.DisconnectedTime = DateTime.Now;
+                    _logger.LogDebug($"[设备连接失败] 连接信息已保存，将在重连间隔后自动重试");
                 }
                 else
                 {
-                    _logger.LogInformation($"设备 {device.Name}({device.IP}) 连接成功");
+                    _logger.LogInformation($"[设备连接成功] 设备 {device.Name}({device.IP}) 连接成功 - 耗时: {elapsed:F2}ms");
+                    _logger.LogDebug($"[设备连接成功] 连接状态 - IsConnected: {connectionService.IsConnected}, DeviceId: {device.Id}");
                 }
 
                 // 保存连接信息（无论连接成功与否）
-                _deviceConnections.AddOrUpdate(device.Id, connectionInfo, (key, oldValue) => connectionInfo);
+                _deviceConnections.AddOrUpdate(device.Id, connectionInfo, (key, oldValue) => 
+                {
+                    _logger.LogDebug($"[设备连接] 更新已存在的设备连接信息 - DeviceId: {device.Id}, 旧状态: {oldValue.IsConnected}, 新状态: {connectionInfo.IsConnected}");
+                    return connectionInfo;
+                });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"连接设备 {device.Name}({device.IP}) 时出错");
+                var elapsed = (DateTime.Now - startTime).TotalMilliseconds;
+                _logger.LogError(ex, $"[设备连接异常] 连接设备 {device.Name}({device.IP}) 时出错 - 耗时: {elapsed:F2}ms");
+                _logger.LogDebug($"[设备连接异常] 异常详情 - 设备ID: {device.Id}, 异常类型: {ex.GetType().Name}, 消息: {ex.Message}, 堆栈: {ex.StackTrace}");
             }
         }
 
@@ -182,18 +248,33 @@ namespace YixiaoAdmin.WebApi.Services
         /// </summary>
         private async Task CollectAllDevicesData(CancellationToken cancellationToken)
         {
+            var cycleStartTime = DateTime.Now;
             var dataReader = new S7DataReaderService(_dataReaderLogger);
+            
+            var totalDevices = _deviceConnections.Count;
+            var onlineDevices = _deviceConnections.Values.Count(d => d.IsConnected);
+            _logger.LogDebug($"[数据采集] 开始采集数据 - 总设备数: {totalDevices}, 在线设备数: {onlineDevices}");
+
+            int successCount = 0;
+            int failCount = 0;
+            int skipCount = 0;
 
             foreach (var kvp in _deviceConnections)
             {
                 if (cancellationToken.IsCancellationRequested)
+                {
+                    _logger.LogWarning("[数据采集] 收到取消信号，停止数据采集");
                     break;
+                }
 
                 var connectionInfo = kvp.Value;
+                var deviceStartTime = DateTime.Now;
                 
                 // 只采集在线设备的数据
                 if (!connectionInfo.IsConnected || connectionInfo.ConnectionService == null)
                 {
+                    skipCount++;
+                    _logger.LogTrace($"[数据采集] 跳过离线设备 - {connectionInfo.DeviceName}({connectionInfo.DeviceIP}), 原因: {(connectionInfo.ConnectionService == null ? "连接服务为空" : "未连接")}");
                     continue;
                 }
 
@@ -202,18 +283,24 @@ namespace YixiaoAdmin.WebApi.Services
                     // 检查连接状态
                     if (!connectionInfo.ConnectionService.IsConnected)
                     {
-                        _logger.LogWarning($"设备 {connectionInfo.DeviceName}({connectionInfo.DeviceIP}) 连接已断开");
+                        _logger.LogWarning($"[数据采集] 设备 {connectionInfo.DeviceName}({connectionInfo.DeviceIP}) 连接已断开");
                         connectionInfo.IsConnected = false;
                         connectionInfo.DisconnectedTime = DateTime.Now;
+                        skipCount++;
                         continue;
                     }
 
+                    _logger.LogDebug($"[数据采集] 开始采集设备数据 - {connectionInfo.DeviceName}({connectionInfo.DeviceIP})");
+                    
                     // 读取数据
                     var data = await dataReader.ReadAllDataAsync(
                         connectionInfo.ConnectionService, 
                         connectionInfo.DeviceId);
 
+                    var deviceElapsed = (DateTime.Now - deviceStartTime).TotalMilliseconds;
+
                     // 保存到内存（临时存储）
+                    var isNewData = !_collectedData.ContainsKey(connectionInfo.DeviceId);
                     _collectedData.AddOrUpdate(connectionInfo.DeviceId, data, (key, oldValue) => data);
 
                     connectionInfo.LastCollectTime = DateTime.Now;
@@ -224,20 +311,32 @@ namespace YixiaoAdmin.WebApi.Services
                     {
                         connectionInfo.ReconnectAttemptCount = 0;
                         connectionInfo.DisconnectedTime = null;
+                        successCount++;
+                        _logger.LogDebug($"[数据采集成功] 设备 {connectionInfo.DeviceName}({connectionInfo.DeviceIP}) - 耗时: {deviceElapsed:F2}ms, 数据时间: {data.CollectTime:yyyy-MM-dd HH:mm:ss.fff}, {(isNewData ? "新数据" : "更新数据")}");
                     }
-
-                    _logger.LogDebug($"成功采集设备 {connectionInfo.DeviceName}({connectionInfo.DeviceIP}) 数据");
+                    else
+                    {
+                        failCount++;
+                        _logger.LogWarning($"[数据采集失败] 设备 {connectionInfo.DeviceName}({connectionInfo.DeviceIP}) 采集失败 - 耗时: {deviceElapsed:F2}ms, IsConnected: {data.IsConnected}");
+                    }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, $"采集设备 {connectionInfo.DeviceName}({connectionInfo.DeviceIP}) 数据时出错");
+                    failCount++;
+                    var deviceElapsed = (DateTime.Now - deviceStartTime).TotalMilliseconds;
+                    _logger.LogError(ex, $"[数据采集异常] 采集设备 {connectionInfo.DeviceName}({connectionInfo.DeviceIP}) 数据时出错 - 耗时: {deviceElapsed:F2}ms");
+                    _logger.LogDebug($"[数据采集异常] 异常详情 - 设备ID: {connectionInfo.DeviceId}, 异常类型: {ex.GetType().Name}, 消息: {ex.Message}");
                     connectionInfo.IsConnected = false;
                     if (connectionInfo.DisconnectedTime == null)
                     {
                         connectionInfo.DisconnectedTime = DateTime.Now;
+                        _logger.LogDebug($"[数据采集异常] 记录设备断开时间: {connectionInfo.DisconnectedTime:yyyy-MM-dd HH:mm:ss}");
                     }
                 }
             }
+
+            var cycleElapsed = (DateTime.Now - cycleStartTime).TotalMilliseconds;
+            _logger.LogDebug($"[数据采集] 数据采集循环完成 - 成功: {successCount}, 失败: {failCount}, 跳过: {skipCount}, 总耗时: {cycleElapsed:F2}ms");
         }
 
         /// <summary>
@@ -245,33 +344,50 @@ namespace YixiaoAdmin.WebApi.Services
         /// </summary>
         private async Task MonitorDeviceStatus(CancellationToken cancellationToken)
         {
-            _logger.LogInformation("设备状态监控任务启动");
+            _logger.LogInformation("[状态监控] 设备状态监控任务启动");
 
             // 获取重连间隔（默认3分钟）
             var reconnectInterval = _configuration.GetValue<int>("S7Plc:ReconnectInterval", 180);
+            _logger.LogDebug($"[状态监控] 监控配置 - 重连间隔: {reconnectInterval}秒, 检查间隔: 30秒");
 
+            int checkCycle = 0;
             while (!cancellationToken.IsCancellationRequested)
             {
                 try
                 {
+                    checkCycle++;
                     await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken); // 每30秒检查一次
 
                     var now = DateTime.Now;
+                    var totalDevices = _deviceConnections.Count;
+                    var onlineDevices = _deviceConnections.Values.Count(d => d.IsConnected);
                     var offlineDevices = _deviceConnections.Values
                         .Where(d => !d.IsConnected)
                         .ToList();
 
+                    _logger.LogDebug($"[状态监控] 第 {checkCycle} 次状态检查 - 总设备: {totalDevices}, 在线: {onlineDevices}, 离线: {offlineDevices.Count}");
+
+                    int reconnectAttemptCount = 0;
                     foreach (var connectionInfo in offlineDevices)
                     {
                         if (cancellationToken.IsCancellationRequested)
+                        {
+                            _logger.LogWarning("[状态监控] 收到取消信号，停止状态监控");
                             break;
+                        }
 
                         // 检查是否到了重连时间
                         var timeSinceLastAttempt = (now - connectionInfo.LastConnectAttemptTime).TotalSeconds;
+                        var offlineDuration = connectionInfo.DisconnectedTime.HasValue 
+                            ? (now - connectionInfo.DisconnectedTime.Value).TotalSeconds 
+                            : 0;
+                        
+                        _logger.LogTrace($"[状态监控] 检查设备 - {connectionInfo.DeviceName}({connectionInfo.DeviceIP}), 距上次尝试: {timeSinceLastAttempt:F1}秒, 离线时长: {offlineDuration:F1}秒, 重连次数: {connectionInfo.ReconnectAttemptCount}");
                         
                         if (timeSinceLastAttempt >= reconnectInterval)
                         {
-                            _logger.LogInformation($"尝试重连离线设备: {connectionInfo.DeviceName}({connectionInfo.DeviceIP})，第 {connectionInfo.ReconnectAttemptCount + 1} 次尝试");
+                            reconnectAttemptCount++;
+                            _logger.LogInformation($"[状态监控] 尝试重连离线设备: {connectionInfo.DeviceName}({connectionInfo.DeviceIP})，第 {connectionInfo.ReconnectAttemptCount + 1} 次尝试，离线时长: {offlineDuration:F1}秒");
                             
                             await ReconnectDevice(connectionInfo);
                             connectionInfo.LastConnectAttemptTime = now;
@@ -279,16 +395,22 @@ namespace YixiaoAdmin.WebApi.Services
                         }
                     }
 
+                    if (reconnectAttemptCount > 0)
+                    {
+                        _logger.LogDebug($"[状态监控] 本次检查尝试重连 {reconnectAttemptCount} 个设备");
+                    }
+
                     // 检查是否有新设备需要连接（从数据库加载）
                     await CheckAndConnectNewDevices(cancellationToken);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "监控设备状态时出错");
+                    _logger.LogError(ex, $"[状态监控异常] 监控设备状态时出错 - 检查周期: {checkCycle}");
+                    _logger.LogDebug($"[状态监控异常] 异常详情 - 类型: {ex.GetType().Name}, 消息: {ex.Message}, 堆栈: {ex.StackTrace}");
                 }
             }
 
-            _logger.LogInformation("设备状态监控任务已停止");
+            _logger.LogInformation($"[状态监控] 设备状态监控任务已停止 - 总检查次数: {checkCycle}");
         }
 
         /// <summary>
@@ -333,22 +455,29 @@ namespace YixiaoAdmin.WebApi.Services
         /// </summary>
         private async Task ReconnectDevice(S7DeviceConnectionInfo connectionInfo)
         {
+            var startTime = DateTime.Now;
             try
             {
+                _logger.LogDebug($"[设备重连] 开始重连设备 - {connectionInfo.DeviceName}({connectionInfo.DeviceIP}), 重连次数: {connectionInfo.ReconnectAttemptCount + 1}");
+                
                 // 如果连接服务存在，先断开
                 if (connectionInfo.ConnectionService != null)
                 {
                     try
                     {
+                        _logger.LogDebug($"[设备重连] 断开旧连接...");
                         await connectionInfo.ConnectionService.DisconnectAsync();
                         connectionInfo.ConnectionService.Dispose();
+                        _logger.LogDebug($"[设备重连] 旧连接已断开");
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, $"断开设备 {connectionInfo.DeviceName} 旧连接时出错");
+                        _logger.LogWarning(ex, $"[设备重连] 断开设备 {connectionInfo.DeviceName} 旧连接时出错");
+                        _logger.LogDebug($"[设备重连] 异常详情 - 类型: {ex.GetType().Name}, 消息: {ex.Message}");
                     }
                 }
 
+                _logger.LogDebug($"[设备重连] 等待2秒后重新连接...");
                 await Task.Delay(2000); // 等待2秒
 
                 // 重新创建连接服务
@@ -360,9 +489,12 @@ namespace YixiaoAdmin.WebApi.Services
                     DataBlockNumber = _configuration.GetValue<int>("S7Plc:DataBlockNumber", 1),
                     CollectInterval = _configuration.GetValue<int>("S7Plc:CollectInterval", 5)
                 };
+                _logger.LogDebug($"[设备重连] PLC配置 - IP: {config.IpAddress}, Rack: {config.Rack}, Slot: {config.Slot}, DB: {config.DataBlockNumber}");
 
                 var newConnectionService = new S7PlcConnectionService(config, _plcConnectionLogger);
+                _logger.LogDebug($"[设备重连] 尝试建立新连接...");
                 var connected = await newConnectionService.ConnectAsync();
+                var elapsed = (DateTime.Now - startTime).TotalMilliseconds;
                 
                 if (connected)
                 {
@@ -370,18 +502,23 @@ namespace YixiaoAdmin.WebApi.Services
                     connectionInfo.IsConnected = true;
                     connectionInfo.DisconnectedTime = null;
                     connectionInfo.ReconnectAttemptCount = 0;
-                    _logger.LogInformation($"设备 {connectionInfo.DeviceName}({connectionInfo.DeviceIP}) 重连成功");
+                    _logger.LogInformation($"[设备重连成功] 设备 {connectionInfo.DeviceName}({connectionInfo.DeviceIP}) 重连成功 - 耗时: {elapsed:F2}ms, 重连次数: {connectionInfo.ReconnectAttemptCount + 1}");
+                    _logger.LogDebug($"[设备重连成功] 连接状态 - IsConnected: {newConnectionService.IsConnected}, DeviceId: {connectionInfo.DeviceId}");
                 }
                 else
                 {
                     newConnectionService.Dispose();
                     connectionInfo.IsConnected = false;
-                    _logger.LogWarning($"设备 {connectionInfo.DeviceName}({connectionInfo.DeviceIP}) 重连失败，将在 {_configuration.GetValue<int>("S7Plc:ReconnectInterval", 180)} 秒后重试");
+                    var nextRetryTime = _configuration.GetValue<int>("S7Plc:ReconnectInterval", 180);
+                    _logger.LogWarning($"[设备重连失败] 设备 {connectionInfo.DeviceName}({connectionInfo.DeviceIP}) 重连失败 - 耗时: {elapsed:F2}ms, 将在 {nextRetryTime} 秒后重试");
+                    _logger.LogDebug($"[设备重连失败] 连接状态 - IsConnected: false, 下次重连时间: {connectionInfo.LastConnectAttemptTime.AddSeconds(nextRetryTime):yyyy-MM-dd HH:mm:ss}");
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"重连设备 {connectionInfo.DeviceName}({connectionInfo.DeviceIP}) 时出错");
+                var elapsed = (DateTime.Now - startTime).TotalMilliseconds;
+                _logger.LogError(ex, $"[设备重连异常] 重连设备 {connectionInfo.DeviceName}({connectionInfo.DeviceIP}) 时出错 - 耗时: {elapsed:F2}ms");
+                _logger.LogDebug($"[设备重连异常] 异常详情 - 设备ID: {connectionInfo.DeviceId}, 异常类型: {ex.GetType().Name}, 消息: {ex.Message}, 堆栈: {ex.StackTrace}");
                 connectionInfo.IsConnected = false;
             }
         }
