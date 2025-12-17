@@ -153,6 +153,34 @@ namespace YixiaoAdmin.WebApi.Services
 
             try
             {
+                // 检查数据块大小（根据偏移量表，最大偏移量是38332，加上Real类型的4字节，至少需要38336字节）
+                const int requiredDbSize = 38336; // 最小需要的数据块大小
+                _logger.LogDebug($"[数据读取] 检查数据块大小 - DB{dbNumber}, 需要至少: {requiredDbSize}字节");
+                
+                try
+                {
+                    // 尝试读取数据块末尾的数据来验证数据块大小
+                    var testBytes = await Task.Run(() => plc.ReadBytes(DataType.DataBlock, dbNumber, requiredDbSize - 4, 4));
+                    if (testBytes == null || testBytes.Length < 4)
+                    {
+                        _logger.LogWarning($"[数据读取] 数据块大小可能不足 - DB{dbNumber}, 尝试读取偏移量 {requiredDbSize - 4} 失败");
+                        _logger.LogWarning($"[数据读取] 请检查PLC中DB{dbNumber}的大小，至少需要 {requiredDbSize} 字节");
+                    }
+                    else
+                    {
+                        _logger.LogDebug($"[数据读取] 数据块大小检查通过 - DB{dbNumber}");
+                    }
+                }
+                catch (Exception sizeCheckEx)
+                {
+                    _logger.LogError(sizeCheckEx, $"[数据读取] 数据块大小检查失败 - DB{dbNumber}, 偏移量: {requiredDbSize - 4}");
+                    _logger.LogWarning($"[数据读取] 错误: {sizeCheckEx.Message}");
+                    _logger.LogWarning($"[数据读取] 请确认PLC中DB{dbNumber}的大小至少为 {requiredDbSize} 字节");
+                    _logger.LogWarning($"[数据读取] 如果使用S7-1500，请确保数据块属性设置为'非优化访问'");
+                    
+                    // 不抛出异常，继续尝试读取，让具体的读取操作来报告错误
+                }
+
                 _logger.LogDebug($"[数据读取] 开始读取11个工单数据...");
                 // ============================================
                 // 读取11个工单数据（Construction_Order[0-10]）
@@ -448,13 +476,84 @@ namespace YixiaoAdmin.WebApi.Services
 
                 var totalElapsed = (DateTime.Now - startTime).TotalMilliseconds;
                 _logger.LogInformation($"[数据读取成功] 成功读取S7数据 - DeviceId: {deviceId}, IP: {data.DeviceIP}, 总耗时: {totalElapsed:F2}ms");
-                _logger.LogDebug($"[数据读取成功] 数据统计 - 工单数: 11, 空工单: 1, 传感器数据: Gas({data.Gas_Alarm.Count(g => g > 0)}个非零), GPS: ({data.GPS_lon:F6}, {data.GPS_lat:F6})");
+                
+                // 输出数据读取摘要
+                _logger.LogInformation($"[数据读取成功] ========== 数据读取摘要 ==========");
+                _logger.LogInformation($"[数据读取成功] 设备信息 - DeviceId: {data.DeviceId}, IP: {data.DeviceIP}, 采集时间: {data.CollectTime:yyyy-MM-dd HH:mm:ss.fff}");
+                _logger.LogInformation($"[数据读取成功] 全局控制 - 开始按钮: {data.ConstructionOrder_Start_PB}, 结束按钮: {data.ConstructionOrder_Stop_PB}");
+                
+                // 统计工单数据
+                int activeOrderCount = 0;
+                int totalWorkers = 0;
+                int activeWorkers = 0;
+                for (int i = 0; i < 11; i++)
+                {
+                    var order = data.Construction_Order[i];
+                    if (order.Construction_Order_No > 0)
+                    {
+                        activeOrderCount++;
+                        _logger.LogInformation($"[数据读取成功] 工单[{i}] - 工单号: {order.Construction_Order_No}, 状态: {order.Construction_Status}, 内容: '{order.Construction_Order_Content}'");
+                        
+                        // 统计工人数据
+                        for (int j = 0; j <= 10; j++)
+                        {
+                            if (!string.IsNullOrEmpty(order.Workers_Name[j]))
+                            {
+                                totalWorkers++;
+                                if (order.Workers_Status[j] > 0)
+                                {
+                                    activeWorkers++;
+                                }
+                                _logger.LogInformation($"[数据读取成功]   工人[{j}] - 姓名: '{order.Workers_Name[j]}', 手环号: {order.SmartBand_No[j]}, 状态: {order.Workers_Status[j]}, 心率: {order.Heart_Rate[j]}");
+                            }
+                        }
+                    }
+                }
+                _logger.LogInformation($"[数据读取成功] 工单统计 - 活跃工单数: {activeOrderCount}/11, 总工人数: {totalWorkers}, 活跃工人数: {activeWorkers}");
+                
+                // 传感器数据
+                int gasAlarmCount = data.Gas_Alarm.Count(g => g > 0);
+                _logger.LogInformation($"[数据读取成功] 传感器状态 - 有害气体报警器在线: {data.Hazardous_Gas_Alarm_Online}, GPS在线: {data.GPS_online}");
+                if (gasAlarmCount > 0)
+                {
+                    _logger.LogInformation($"[数据读取成功] 气体报警数据 - 非零数据: {gasAlarmCount}个");
+                    for (int i = 0; i <= 10; i++)
+                    {
+                        if (data.Gas_Alarm[i] > 0)
+                        {
+                            _logger.LogInformation($"[数据读取成功]   Gas_Alarm[{i}] = {data.Gas_Alarm[i]:F2}");
+                        }
+                    }
+                }
+                if (data.GPS_lon != 0 || data.GPS_lat != 0)
+                {
+                    _logger.LogInformation($"[数据读取成功] GPS位置 - 经度: {data.GPS_lon:F6}, 纬度: {data.GPS_lat:F6}");
+                }
+                
+                _logger.LogInformation($"[数据读取成功] ========================================");
+                _logger.LogDebug($"[数据读取成功] 数据统计 - 工单数: 11, 空工单: 1, 传感器数据: Gas({gasAlarmCount}个非零), GPS: ({data.GPS_lon:F6}, {data.GPS_lat:F6})");
             }
             catch (Exception ex)
             {
                 var totalElapsed = (DateTime.Now - startTime).TotalMilliseconds;
                 _logger.LogError(ex, $"[数据读取异常] 读取S7数据时发生异常 - DeviceId: {deviceId}, 耗时: {totalElapsed:F2}ms");
                 _logger.LogDebug($"[数据读取异常] 异常详情 - 类型: {ex.GetType().Name}, 消息: {ex.Message}, 堆栈: {ex.StackTrace}");
+                
+                // 检查是否是地址超出范围错误
+                if (ex.Message.Contains("Address out of range") || ex.Message.Contains("地址超出范围"))
+                {
+                    _logger.LogError($"[数据读取异常] 地址超出范围错误！");
+                    _logger.LogError($"[数据读取异常] 可能的原因：");
+                    _logger.LogError($"[数据读取异常] 1. DB{dbNumber}数据块大小不足（至少需要38336字节）");
+                    _logger.LogError($"[数据读取异常] 2. 数据块编号配置错误（当前配置: DB{dbNumber}）");
+                    _logger.LogError($"[数据读取异常] 3. S7-1500数据块属性未设置为'非优化访问'");
+                    _logger.LogError($"[数据读取异常] 解决方案：");
+                    _logger.LogError($"[数据读取异常] - 在TIA Portal中检查DB{dbNumber}的大小");
+                    _logger.LogError($"[数据读取异常] - 将DB{dbNumber}大小设置为至少40000字节（建议50000字节）");
+                    _logger.LogError($"[数据读取异常] - 如果使用S7-1500，右键DB{dbNumber} -> 属性 -> 取消'优化的块访问'");
+                    _logger.LogError($"[数据读取异常] - 或者修改appsettings.json中的DataBlockNumber为正确的数据块编号");
+                }
+                
                 data.IsConnected = false;
             }
 

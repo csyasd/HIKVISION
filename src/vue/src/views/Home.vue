@@ -230,66 +230,223 @@ export default {
 .el-main {
     height: 90vh;
     padding: 0px !important;
+    background: #f5f7fa;
 }
+
 .el-header {
-    background-color: #409eff;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     line-height: 6vh;
     font-size: 15px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    position: relative;
+    z-index: 100;
 }
-.el-header .logo span {
+
+.el-header::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+}
+
+.el-header .logo {
     float: left;
-    color: white;
-    font-size: 24px;
+    cursor: pointer;
+    transition: transform 0.3s ease;
 }
+
+.el-header .logo:hover {
+    transform: scale(1.05);
+}
+
+.el-header .logo span {
+    color: white;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
 .el-header .header-menu {
     padding: 0px 10px 0px 10px;
     float: left;
 }
+
 .el-header .header-menu-item {
-    padding: 0px 10px 0px 10px;
+    padding: 8px 15px;
     float: left;
     font-size: 20px;
     color: #fff;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
+
+.el-header .header-menu-item:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    transform: scale(1.1);
+}
+
 .el-header .header-menu-item-right {
-    padding: 0px 10px 0px 10px;
+    padding: 8px 15px;
     font-size: 20px;
     color: #fff !important;
     float: right;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
-.header-menu :hover {
-    background-color: rgb(102, 177, 255);
+
+.el-header .header-menu-item-right:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    transform: scale(1.1);
 }
+
 .el-header .el-dropdown {
     color: #fff !important;
     float: right;
+    padding: 8px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-right: 10px;
+}
+
+.el-header .el-dropdown:hover {
+    background-color: rgba(255, 255, 255, 0.2);
 }
 
 .el-aside {
     color: #333;
     height: 100vh;
+    background: #ffffff;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.08);
+    border-right: 1px solid #e4e7ed;
 }
-/* 修改侧边导航栏bug */
+
+/* 修改侧边导航栏样式 */
+.el-menu {
+    border-right: none !important;
+    background-color: transparent !important;
+}
+
 .el-menu:not(.el-menu--collapse) {
     min-width: 200px;
     transition: 0s;
 }
+
+.el-menu-item,
+.el-submenu__title {
+    height: 50px !important;
+    line-height: 50px !important;
+    margin: 4px 8px !important;
+    border-radius: 8px !important;
+    transition: all 0.3s ease !important;
+    color: #606266 !important;
+    font-weight: 500 !important;
+}
+
+.el-menu-item:hover,
+.el-submenu__title:hover {
+    background-color: rgba(102, 126, 234, 0.1) !important;
+    color: #667eea !important;
+}
+
+.el-menu-item.is-active {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%) !important;
+    color: #667eea !important;
+    font-weight: 600 !important;
+    border-left: 3px solid #667eea !important;
+}
+
+.el-menu-item i,
+.el-submenu__title i {
+    margin-right: 8px;
+    font-size: 18px;
+    width: 20px;
+    text-align: center;
+}
+
+.el-submenu .el-menu-item {
+    padding-left: 50px !important;
+    margin-left: 8px !important;
+}
+
+.el-submenu .el-menu-item.is-active {
+    border-left: 3px solid #667eea !important;
+}
+
 /* 子页面路由 */
 .SubPageBar {
     display: flex;
     justify-content: space-between;
     margin-bottom: 12px;
 }
+
 /* 子页面容器 */
 .SubPageContainer {
-    border: 1px solid #ebedf0;
-    border-radius: 4px;
+    border: none;
+    border-radius: 12px;
     min-height: 70vh;
     padding: 30px;
-    box-shadow: 0 5px 4px rgba(0, 0, 0, 0.12), 0 0 6px rgba(0, 0, 0, 0.04);
+    background: #ffffff;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    margin: 0 10px;
 }
-/* 去掉el-tabs的margin */
+
+/* 美化标签页 */
 .el-tabs__header {
     margin-bottom: 1vh !important;
+    margin-left: 10px;
+    margin-right: 10px;
+}
+
+.el-tabs--card >>> .el-tabs__header {
+    border-bottom: 2px solid #e4e7ed;
+    margin-bottom: 15px;
+}
+
+.el-tabs--card >>> .el-tabs__item {
+    border: none !important;
+    border-radius: 8px 8px 0 0 !important;
+    margin-right: 4px !important;
+    background: #f5f7fa !important;
+    color: #606266 !important;
+    transition: all 0.3s ease !important;
+    font-weight: 500 !important;
+}
+
+.el-tabs--card >>> .el-tabs__item:hover {
+    color: #667eea !important;
+    background: rgba(102, 126, 234, 0.1) !important;
+}
+
+.el-tabs--card >>> .el-tabs__item.is-active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3) !important;
+}
+
+.el-tabs--card >>> .el-tabs__item .el-icon-close {
+    color: inherit !important;
+    transition: all 0.3s ease !important;
+}
+
+.el-tabs--card >>> .el-tabs__item .el-icon-close:hover {
+    background-color: rgba(255, 255, 255, 0.3) !important;
+    border-radius: 50% !important;
 }
 </style>
