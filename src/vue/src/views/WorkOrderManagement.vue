@@ -26,12 +26,7 @@
             
         >
             <el-table-column type="selection" width="55"></el-table-column>
-            <el-table-column :show-overflow-tooltip="true" prop="Id" label="Id" width="220"></el-table-column>
             
-            
-    
-            <el-table-column :show-overflow-tooltip="true" prop="DeviceId" label="所属设备id" width="220" ></el-table-column>
-    
             <el-table-column :show-overflow-tooltip="true" prop="Device" label="所属设备" width="220" >
                 <template slot-scope="scope">
                     <div>{{ DeviceList[DeviceList.findIndex((x) => x.Id == scope.row.DeviceId)]?.Name}}</div>
@@ -48,16 +43,8 @@
     
             <el-table-column :show-overflow-tooltip="true" prop="Status" label="工单状态" width="150" >
                 <template slot-scope="scope">
-                    <el-tag :type="scope.row.Status === 0 ? 'info' : scope.row.Status === 1 ? 'success' : 'warning'">
-                        {{ scope.row.Status === 0 ? '未开始' : scope.row.Status === 1 ? '工单开始' : '工单结束' }}
-                    </el-tag>
-                </template>
-            </el-table-column>
-    
-            <el-table-column :show-overflow-tooltip="true" prop="ToxicGasAlarmOnlineStatus" label="有毒气体报警在线状态" width="220" >
-                <template slot-scope="scope">
-                    <el-tag :type="scope.row.ToxicGasAlarmOnlineStatus ? 'success' : 'info'">
-                        {{ scope.row.ToxicGasAlarmOnlineStatus ? '在线' : '离线' }}
+                    <el-tag :type="scope.row.Status === 0 ? 'info' : scope.row.Status === 1 ? 'success' : scope.row.Status === 2 ? 'warning' : 'info'">
+                        {{ scope.row.Status === 0 ? '未开始' : scope.row.Status === 1 ? '工单开始' : scope.row.Status === 2 ? '工单结束' : '未知' }}
                     </el-tag>
                 </template>
             </el-table-column>
@@ -90,13 +77,6 @@
         <el-dialog title="添加" :visible.sync="addDialogFormVisible">
             <el-form :model="addForm">
 
-
-            <el-form-item label="所属设备id" :label-width="formLabelWidth">
-                <el-input v-model="addForm.DeviceId" autocomplete="off" placeholder="请输入所属设备id"></el-input>
-            </el-form-item>
-
-    
-    
 
             <el-form-item label="所属设备" :label-width="formLabelWidth">
                 <el-select v-model="addForm.DeviceId" placeholder="请选择">
@@ -150,10 +130,6 @@
                     <el-option label="工单结束" :value="2"></el-option>
                 </el-select>
             </el-form-item>
-
-            <el-form-item label="有毒气体报警在线状态" :label-width="formLabelWidth">
-                <el-switch v-model="addForm.ToxicGasAlarmOnlineStatus" active-text="在线" inactive-text="离线"></el-switch>
-            </el-form-item>
     
     
             </el-form>
@@ -165,12 +141,6 @@
 
         <el-dialog title="编辑" :visible.sync="editDialogFormVisible">
             <el-form :model="editForm">
-
-
-            <el-form-item label="所属设备id" :label-width="formLabelWidth">
-                <el-input v-model="editForm.DeviceId" autocomplete="off" placeholder="请输入所属设备id"></el-input>
-            </el-form-item>
-
 
 
             <el-form-item label="所属设备" :label-width="formLabelWidth">
@@ -224,10 +194,6 @@
                 </el-select>
             </el-form-item>
 
-            <el-form-item label="有毒气体报警在线状态" :label-width="formLabelWidth">
-                <el-switch v-model="editForm.ToxicGasAlarmOnlineStatus" active-text="在线" inactive-text="离线"></el-switch>
-            </el-form-item>
-
 
             </el-form>
             <div slot="footer" class="dialog-footer">
@@ -263,8 +229,6 @@ export default {
     
                DeviceId: null,
     
-               DeviceId: null,
-    
                StartTime: null,
     
                EndTime: null,
@@ -274,8 +238,6 @@ export default {
                Content: null,
     
                Status: 0,
-    
-               ToxicGasAlarmOnlineStatus: false,
     
             },
             editForm: {
@@ -283,8 +245,6 @@ export default {
     
                DeviceId: null,
     
-               DeviceId: null,
-    
                StartTime: null,
     
                EndTime: null,
@@ -294,8 +254,6 @@ export default {
                Content: null,
     
                Status: 0,
-    
-               ToxicGasAlarmOnlineStatus: false,
     
             },
             operationDisabled: false,
@@ -412,8 +370,6 @@ export default {
     
                this.editForm.DeviceId = row.DeviceId;
     
-               this.editForm.DeviceId = row.DeviceId;
-    
                this.editForm.StartTime = row.StartTime;
     
                this.editForm.EndTime = row.EndTime;
@@ -422,9 +378,7 @@ export default {
     
                this.editForm.Content = row.Content;
     
-               this.editForm.GasAlarm = row.GasAlarm;
-    
-               this.editForm.ToxicGasAlarmOnlineStatus = row.ToxicGasAlarmOnlineStatus;
+               this.editForm.Status = row.Status;
     
             
             this.editDialogFormVisible = true;

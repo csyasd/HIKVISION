@@ -49,7 +49,7 @@ namespace YixiaoAdmin.WebApi.Services
         {
             _logger.LogInformation("[服务启动] S7 PLC数据采集服务启动");
             _logger.LogDebug("[服务启动] 服务配置 - CollectInterval: {CollectInterval}秒, Rack: {Rack}, Slot: {Slot}, DataBlock: {DataBlock}",
-                _configuration.GetValue<int>("S7Plc:CollectInterval", 5),
+                _configuration.GetValue<int>("S7Plc:CollectInterval", 30),
                 _configuration.GetValue<int>("S7Plc:Rack", 0),
                 _configuration.GetValue<int>("S7Plc:Slot", 1),
                 _configuration.GetValue<int>("S7Plc:DataBlockNumber", 1));
@@ -83,8 +83,8 @@ namespace YixiaoAdmin.WebApi.Services
                     var cycleElapsed = (DateTime.Now - cycleStartTime).TotalMilliseconds;
                     _logger.LogDebug($"[采集循环] 第 {collectCycle} 次数据采集完成 - 耗时: {cycleElapsed:F2}ms, 已采集设备数: {_collectedData.Count}");
                     
-                    // 获取采集间隔（默认5秒）
-                    var interval = _configuration.GetValue<int>("S7Plc:CollectInterval", 5);
+                    // 获取采集间隔（默认30秒）
+                    var interval = _configuration.GetValue<int>("S7Plc:CollectInterval", 30);
                     _logger.LogTrace($"[采集循环] 等待 {interval} 秒后进行下次采集...");
                     await Task.Delay(TimeSpan.FromSeconds(interval), stoppingToken);
                 }
@@ -189,7 +189,7 @@ namespace YixiaoAdmin.WebApi.Services
                     Rack = _configuration.GetValue<int>("S7Plc:Rack", 0),
                     Slot = _configuration.GetValue<int>("S7Plc:Slot", 1),
                     DataBlockNumber = _configuration.GetValue<int>("S7Plc:DataBlockNumber", 1),
-                    CollectInterval = _configuration.GetValue<int>("S7Plc:CollectInterval", 5)
+                    CollectInterval = _configuration.GetValue<int>("S7Plc:CollectInterval", 30)
                 };
                 _logger.LogDebug($"[设备连接] PLC配置 - IP: {config.IpAddress}, Rack: {config.Rack}, Slot: {config.Slot}, DB: {config.DataBlockNumber}");
 
@@ -509,7 +509,7 @@ namespace YixiaoAdmin.WebApi.Services
                     Rack = _configuration.GetValue<int>("S7Plc:Rack", 0),
                     Slot = _configuration.GetValue<int>("S7Plc:Slot", 1),
                     DataBlockNumber = _configuration.GetValue<int>("S7Plc:DataBlockNumber", 1),
-                    CollectInterval = _configuration.GetValue<int>("S7Plc:CollectInterval", 5)
+                    CollectInterval = _configuration.GetValue<int>("S7Plc:CollectInterval", 30)
                 };
                 _logger.LogDebug($"[设备重连] PLC配置 - IP: {config.IpAddress}, Rack: {config.Rack}, Slot: {config.Slot}, DB: {config.DataBlockNumber}");
 

@@ -26,35 +26,16 @@
             
         >
             <el-table-column type="selection" width="55"></el-table-column>
-            <el-table-column :show-overflow-tooltip="true" prop="Id" label="Id" width="220"></el-table-column>
             
-            
-    
             <el-table-column :show-overflow-tooltip="true" prop="Model" label="设备型号" width="220" ></el-table-column>
     
             <el-table-column :show-overflow-tooltip="true" prop="ManufactureDate" label="出厂日期" width="220" ></el-table-column>
     
             <el-table-column :show-overflow-tooltip="true" prop="BelongToUnit" label="所属单位" width="220" ></el-table-column>
     
-            <el-table-column :show-overflow-tooltip="true" prop="GpsOnlineStatus" label="GPS在线状态" width="150" >
-                <template slot-scope="scope">
-                    <el-tag :type="scope.row.GpsOnlineStatus === '1' ? 'success' : 'info'">
-                        {{ scope.row.GpsOnlineStatus === '1' ? '在线' : '离线' }}
-                    </el-tag>
-                </template>
-            </el-table-column>
-    
             <el-table-column :show-overflow-tooltip="true" prop="GpsLongitude" label="GPS经度" width="150" ></el-table-column>
     
             <el-table-column :show-overflow-tooltip="true" prop="GpsLatitude" label="GPS纬度" width="150" ></el-table-column>
-    
-            <el-table-column :show-overflow-tooltip="true" prop="ToxicGasAlarmOnlineStatus" label="有毒气体报警在线状态" width="200" >
-                <template slot-scope="scope">
-                    <el-tag :type="scope.row.ToxicGasAlarmOnlineStatus === '1' ? 'success' : 'info'">
-                        {{ scope.row.ToxicGasAlarmOnlineStatus === '1' ? '在线' : '离线' }}
-                    </el-tag>
-                </template>
-            </el-table-column>
     
             <el-table-column :show-overflow-tooltip="true" prop="IP" label="IP地址" width="150" ></el-table-column>
     
@@ -113,26 +94,12 @@
                 <el-input v-model="addForm.BelongToUnit" autocomplete="off" placeholder="请输入所属单位"></el-input>
             </el-form-item>
 
-            <el-form-item label="GPS在线状态" :label-width="formLabelWidth">
-                <el-select v-model="addForm.GpsOnlineStatus" placeholder="请选择状态">
-                    <el-option label="离线" value="0"></el-option>
-                    <el-option label="在线" value="1"></el-option>
-                </el-select>
-            </el-form-item>
-
             <el-form-item label="GPS经度" :label-width="formLabelWidth">
                 <el-input v-model="addForm.GpsLongitude" autocomplete="off" placeholder="请输入GPS经度"></el-input>
             </el-form-item>
 
             <el-form-item label="GPS纬度" :label-width="formLabelWidth">
                 <el-input v-model="addForm.GpsLatitude" autocomplete="off" placeholder="请输入GPS纬度"></el-input>
-            </el-form-item>
-
-            <el-form-item label="有毒气体报警在线状态" :label-width="formLabelWidth">
-                <el-select v-model="addForm.ToxicGasAlarmOnlineStatus" placeholder="请选择状态">
-                    <el-option label="离线" value="0"></el-option>
-                    <el-option label="在线" value="1"></el-option>
-                </el-select>
             </el-form-item>
 
             <el-form-item label="IP地址" :label-width="formLabelWidth">
@@ -178,26 +145,12 @@
                 <el-input v-model="editForm.BelongToUnit" autocomplete="off" placeholder="请输入所属单位"></el-input>
             </el-form-item>
 
-            <el-form-item label="GPS在线状态" :label-width="formLabelWidth">
-                <el-select v-model="editForm.GpsOnlineStatus" placeholder="请选择状态">
-                    <el-option label="离线" value="0"></el-option>
-                    <el-option label="在线" value="1"></el-option>
-                </el-select>
-            </el-form-item>
-
             <el-form-item label="GPS经度" :label-width="formLabelWidth">
                 <el-input v-model="editForm.GpsLongitude" autocomplete="off" placeholder="请输入GPS经度"></el-input>
             </el-form-item>
 
             <el-form-item label="GPS纬度" :label-width="formLabelWidth">
                 <el-input v-model="editForm.GpsLatitude" autocomplete="off" placeholder="请输入GPS纬度"></el-input>
-            </el-form-item>
-
-            <el-form-item label="有毒气体报警在线状态" :label-width="formLabelWidth">
-                <el-select v-model="editForm.ToxicGasAlarmOnlineStatus" placeholder="请选择状态">
-                    <el-option label="离线" value="0"></el-option>
-                    <el-option label="在线" value="1"></el-option>
-                </el-select>
             </el-form-item>
 
             <el-form-item label="IP地址" :label-width="formLabelWidth">
@@ -245,17 +198,9 @@ export default {
     
                BelongToUnit: null,
     
-               WorkAreaScanner: null,
-    
-               EntryAreaScanner: null,
-    
-               GpsOnlineStatus: null,
-    
                GpsLongitude: null,
     
                GpsLatitude: null,
-    
-               ToxicGasAlarmOnlineStatus: null,
     
                IP: null,
     
@@ -271,17 +216,9 @@ export default {
     
                BelongToUnit: null,
     
-               WorkAreaScanner: null,
-    
-               EntryAreaScanner: null,
-    
-               GpsOnlineStatus: null,
-    
                GpsLongitude: null,
     
                GpsLatitude: null,
-    
-               ToxicGasAlarmOnlineStatus: null,
     
                IP: null,
     
@@ -402,17 +339,9 @@ export default {
     
                this.editForm.BelongToUnit = row.BelongToUnit;
     
-               this.editForm.WorkAreaScanner = row.WorkAreaScanner;
-    
-               this.editForm.EntryAreaScanner = row.EntryAreaScanner;
-    
-               this.editForm.GpsOnlineStatus = row.GpsOnlineStatus;
-    
                this.editForm.GpsLongitude = row.GpsLongitude;
     
                this.editForm.GpsLatitude = row.GpsLatitude;
-    
-               this.editForm.ToxicGasAlarmOnlineStatus = row.ToxicGasAlarmOnlineStatus;
     
                this.editForm.IP = row.IP;
     

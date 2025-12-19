@@ -25,10 +25,7 @@
             
         >
             <el-table-column type="selection" width="55"></el-table-column>
-            <el-table-column :show-overflow-tooltip="true" prop="Id" label="Id" width="220"></el-table-column>
             
-            <el-table-column :show-overflow-tooltip="true" prop="WorkOrderId" label="所属工单id" width="220" ></el-table-column>
-    
             <el-table-column :show-overflow-tooltip="true" prop="WorkOrder" label="所属工单" width="220" >
                 <template slot-scope="scope">
                     <div>{{ WorkOrderList[WorkOrderList.findIndex((x) => x.Id == scope.row.WorkOrderId)]?.Code || '未分配' }}</div>

@@ -91,6 +91,14 @@ namespace YixiaoAdmin.WebApi.Services
         }
 
         /// <summary>
+        /// 检查字符串是否有效（不为null、空字符串或"?"）
+        /// </summary>
+        private bool IsValidString(string value)
+        {
+            return !string.IsNullOrWhiteSpace(value) && value.Trim() != "?";
+        }
+
+        /// <summary>
         /// 处理工单（比对、创建或更新）
         /// </summary>
         private async Task<WorkOrder> ProcessWorkOrder(ConstructionOrder order, Device device, S7DataCollectionModel data)
@@ -116,7 +124,7 @@ namespace YixiaoAdmin.WebApi.Services
                     {
                         DeviceId = device.Id,
                         Code = orderNo,
-                        Content = order.Construction_Order_Content ?? string.Empty,
+                        Content = IsValidString(order.Construction_Order_Content) ? order.Construction_Order_Content : string.Empty,
                         Status = order.Construction_Status,
                         ToxicGasAlarmOnlineStatus = data.Hazardous_Gas_Alarm_Online,
                         StartTime = order.Construction_Status == 1 ? currentTime : null,
@@ -135,8 +143,11 @@ namespace YixiaoAdmin.WebApi.Services
 
                     _logger.LogDebug($"[工单处理] 更新现有工单 - 编号: {orderNo}, 旧状态: {oldStatus}, 新状态: {newStatus}");
 
-                    // 更新工单内容
-                    workOrder.Content = order.Construction_Order_Content ?? workOrder.Content;
+                    // 更新工单内容（只有当新内容有效时才更新）
+                    if (IsValidString(order.Construction_Order_Content))
+                    {
+                        workOrder.Content = order.Construction_Order_Content;
+                    }
                     workOrder.ToxicGasAlarmOnlineStatus = data.Hazardous_Gas_Alarm_Online;
 
                     // 处理状态变化
@@ -211,9 +222,11 @@ namespace YixiaoAdmin.WebApi.Services
                 for (int i = 0; i <= 10; i++)
                 {
                     var workerName = order.Workers_Name[i];
-                    if (string.IsNullOrWhiteSpace(workerName))
+                    // 跳过无效的工人姓名（null、空字符串或"?"）
+                    if (!IsValidString(workerName))
                     {
-                        continue; // 跳过空工人
+                        _logger.LogTrace($"[手环处理] 跳过无效工人姓名 - 索引: {i}, 值: '{workerName}'");
+                        continue; // 跳过无效工人
                     }
 
                     var workerStatus = order.Workers_Status[i];
@@ -296,9 +309,10 @@ namespace YixiaoAdmin.WebApi.Services
                 for (int i = 0; i <= 10; i++)
                 {
                     var workerName = order.Workers_Name[i];
-                    if (string.IsNullOrWhiteSpace(workerName))
+                    // 跳过无效的工人姓名（null、空字符串或"?"）
+                    if (!IsValidString(workerName))
                     {
-                        continue; // 跳过空工人
+                        continue; // 跳过无效工人
                     }
 
                     var workerStatus = order.Workers_Status[i];

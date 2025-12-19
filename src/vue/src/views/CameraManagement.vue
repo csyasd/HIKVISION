@@ -26,13 +26,8 @@
             
         >
             <el-table-column type="selection" width="55"></el-table-column>
-            <el-table-column :show-overflow-tooltip="true" prop="Id" label="Id" width="220"></el-table-column>
             
-            
-    
             <el-table-column :show-overflow-tooltip="true" prop="Model" label="摄像头型号" width="220" ></el-table-column>
-    
-            <el-table-column :show-overflow-tooltip="true" prop="DeviceId" label="所属设备id" width="220" ></el-table-column>
     
             <el-table-column :show-overflow-tooltip="true" prop="Device" label="所属设备" width="220" >
                 <template slot-scope="scope">
@@ -77,13 +72,6 @@
 
             <el-form-item label="摄像头型号" :label-width="formLabelWidth">
                 <el-input v-model="addForm.Model" autocomplete="off" placeholder="请输入摄像头型号"></el-input>
-            </el-form-item>
-
-    
-    
-
-            <el-form-item label="所属设备id" :label-width="formLabelWidth">
-                <el-input v-model="addForm.DeviceId" autocomplete="off" placeholder="请输入所属设备id"></el-input>
             </el-form-item>
 
     
@@ -136,12 +124,6 @@
 
             <el-form-item label="摄像头型号" :label-width="formLabelWidth">
                 <el-input v-model="editForm.Model" autocomplete="off" placeholder="请输入摄像头型号"></el-input>
-            </el-form-item>
-
-
-
-            <el-form-item label="所属设备id" :label-width="formLabelWidth">
-                <el-input v-model="editForm.DeviceId" autocomplete="off" placeholder="请输入所属设备id"></el-input>
             </el-form-item>
 
 

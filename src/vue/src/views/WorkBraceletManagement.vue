@@ -25,7 +25,6 @@
             
         >
             <el-table-column type="selection" width="55"></el-table-column>
-            <el-table-column :show-overflow-tooltip="true" prop="Id" label="Id" width="220"></el-table-column>
             
             <el-table-column :show-overflow-tooltip="true" prop="WorkerName" label="工人姓名" width="220" ></el-table-column>
     
@@ -39,8 +38,8 @@
     
             <el-table-column :show-overflow-tooltip="true" prop="EntryExitStatus" label="进离场状态" width="150" >
                 <template slot-scope="scope">
-                    <el-tag :type="scope.row.EntryExitStatus === '1' ? 'success' : 'info'">
-                        {{ scope.row.EntryExitStatus === '1' ? '进场' : '离场' }}
+                    <el-tag :type="getEntryExitStatusType(scope.row.EntryExitStatus)">
+                        {{ getEntryExitStatusText(scope.row.EntryExitStatus) }}
                     </el-tag>
                 </template>
             </el-table-column>
@@ -98,8 +97,12 @@
 
             <el-form-item label="进离场状态" :label-width="formLabelWidth">
                 <el-select v-model="addForm.EntryExitStatus" placeholder="请选择状态">
-                    <el-option label="离场" value="0"></el-option>
-                    <el-option label="进场" value="1"></el-option>
+                    <el-option label="未进入" value="0"></el-option>
+                    <el-option label="申请进入" value="1"></el-option>
+                    <el-option label="刷卡成功" value="2"></el-option>
+                    <el-option label="进入" value="3"></el-option>
+                    <el-option label="申请签出" value="4"></el-option>
+                    <el-option label="已经签出" value="5"></el-option>
                 </el-select>
             </el-form-item>
 
@@ -154,8 +157,12 @@
 
             <el-form-item label="进离场状态" :label-width="formLabelWidth">
                 <el-select v-model="editForm.EntryExitStatus" placeholder="请选择状态">
-                    <el-option label="离场" value="0"></el-option>
-                    <el-option label="进场" value="1"></el-option>
+                    <el-option label="未进入" value="0"></el-option>
+                    <el-option label="申请进入" value="1"></el-option>
+                    <el-option label="刷卡成功" value="2"></el-option>
+                    <el-option label="进入" value="3"></el-option>
+                    <el-option label="申请签出" value="4"></el-option>
+                    <el-option label="已经签出" value="5"></el-option>
                 </el-select>
             </el-form-item>
 
@@ -498,6 +505,32 @@ export default {
         /*行多选结束*/
 
         /*请将自定义函数写在我的下面*/
+        
+        //获取进离场状态文本
+        getEntryExitStatusText(status) {
+            const statusMap = {
+                '0': '未进入',
+                '1': '申请进入',
+                '2': '刷卡成功',
+                '3': '进入',
+                '4': '申请签出',
+                '5': '已经签出'
+            };
+            return statusMap[status] || '未知';
+        },
+        
+        //获取进离场状态标签类型
+        getEntryExitStatusType(status) {
+            const typeMap = {
+                '0': 'info',      // 未进入 - 灰色
+                '1': 'warning',   // 申请进入 - 橙色
+                '2': 'success',   // 刷卡成功 - 绿色
+                '3': 'success',   // 进入 - 绿色
+                '4': 'warning',   // 申请签出 - 橙色
+                '5': 'info'       // 已经签出 - 灰色
+            };
+            return typeMap[status] || 'info';
+        },
         
         //加载工单列表
         loadWorkOrderList() {

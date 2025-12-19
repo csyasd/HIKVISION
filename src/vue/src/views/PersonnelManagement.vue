@@ -25,7 +25,6 @@
             
         >
             <el-table-column type="selection" width="55"></el-table-column>
-            <el-table-column :show-overflow-tooltip="true" prop="Id" label="Id" width="220"></el-table-column>
             
             <el-table-column :show-overflow-tooltip="true" prop="EmployeeNumber" label="工号" width="220" ></el-table-column>
     

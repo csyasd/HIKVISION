@@ -26,12 +26,7 @@
             
         >
             <el-table-column type="selection" width="55"></el-table-column>
-            <el-table-column :show-overflow-tooltip="true" prop="Id" label="Id" width="220"></el-table-column>
             
-            
-    
-            <el-table-column :show-overflow-tooltip="true" prop="CameraId" label="所属摄像头id" width="220" ></el-table-column>
-    
             <el-table-column :show-overflow-tooltip="true" prop="Camera" label="所属摄像头" width="220" >
                 <template slot-scope="scope">
                     <div>{{ CameraList[CameraList.findIndex((x) => x.Id == scope.row.CameraId)]?.Name}}</div>
@@ -70,13 +65,6 @@
         <el-dialog title="添加" :visible.sync="addDialogFormVisible">
             <el-form :model="addForm">
 
-
-            <el-form-item label="所属摄像头id" :label-width="formLabelWidth">
-                <el-input v-model="addForm.CameraId" autocomplete="off" placeholder="请输入所属摄像头id"></el-input>
-            </el-form-item>
-
-    
-    
 
             <el-form-item label="所属摄像头" :label-width="formLabelWidth">
                 <el-select v-model="addForm.CameraId" placeholder="请选择">
@@ -126,12 +114,6 @@
 
         <el-dialog title="编辑" :visible.sync="editDialogFormVisible">
             <el-form :model="editForm">
-
-
-            <el-form-item label="所属摄像头id" :label-width="formLabelWidth">
-                <el-input v-model="editForm.CameraId" autocomplete="off" placeholder="请输入所属摄像头id"></el-input>
-            </el-form-item>
-
 
 
             <el-form-item label="所属摄像头" :label-width="formLabelWidth">
