@@ -24,16 +24,6 @@ namespace YixiaoAdmin.Models
         public string BelongToUnit { get; set; }
 
         /// <summary>
-        /// 手环扫描器-作业区
-        /// </summary>
-        public string WorkAreaScanner { get; set; }
-
-        /// <summary>
-        /// 手环扫描器-人口区
-        /// </summary>
-        public string EntryAreaScanner { get; set; }
-
-        /// <summary>
         /// GPS在线状态
         /// </summary>
         public string GpsOnlineStatus { get; set; }

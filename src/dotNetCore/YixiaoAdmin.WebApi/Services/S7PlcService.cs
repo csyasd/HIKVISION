@@ -181,266 +181,263 @@ namespace YixiaoAdmin.WebApi.Services
                     // 不抛出异常，继续尝试读取，让具体的读取操作来报告错误
                 }
 
-                _logger.LogDebug($"[数据读取] 开始读取11个工单数据...");
+                _logger.LogDebug($"[数据读取] 开始读取工单数据（仅读取orderIndex[1]）...");
                 // ============================================
-                // 读取11个工单数据（Construction_Order[0-10]）
-                // 每个工单从偏移量开始：0, 3190, 6380, 9570, 12760, 15950, 19140, 22330, 25520, 28710, 31900
+                // 读取工单数据（仅读取Construction_Order[1]）
+                // 工单索引1的偏移量：3190
                 // ============================================
-                int[] orderOffsets = { 0, 3190, 6380, 9570, 12760, 15950, 19140, 22330, 25520, 28710, 31900 };
+                const int orderIndex = 1;
+                const int orderBaseOffset = 3190;
                 
-                for (int orderIndex = 0; orderIndex < 11; orderIndex++)
+                var orderStartTime = DateTime.Now;
+                var order = data.Construction_Order[orderIndex];
+                _logger.LogDebug($"[工单{orderIndex}] 开始读取工单数据 - 偏移量: {orderBaseOffset}");
+
+                // 读取Workers_Name数组（0-10），每个String占256字节
+                _logger.LogDebug($"[工单{orderIndex}] 读取Workers_Name数组 (11个String, 每个256字节)...");
+                for (int i = 0; i <= 10; i++)
                 {
-                    var orderStartTime = DateTime.Now;
-                    int orderBaseOffset = orderOffsets[orderIndex];
-                    var order = data.Construction_Order[orderIndex];
-                    _logger.LogDebug($"[工单{orderIndex}] 开始读取工单数据 - 偏移量: {orderBaseOffset}");
-
-                    // 读取Workers_Name数组（0-10），每个String占256字节
-                    _logger.LogDebug($"[工单{orderIndex}] 读取Workers_Name数组 (11个String, 每个256字节)...");
-                    for (int i = 0; i <= 10; i++)
+                    int nameOffset = orderBaseOffset + i * 256;
+                    order.Workers_Name[i] = await ReadStringAsync(plc, dbNumber, nameOffset, 256) ?? string.Empty;
+                    if (!string.IsNullOrEmpty(order.Workers_Name[i]))
                     {
-                        int nameOffset = orderBaseOffset + i * 256;
-                        order.Workers_Name[i] = await ReadStringAsync(plc, dbNumber, nameOffset, 256) ?? string.Empty;
-                        if (!string.IsNullOrEmpty(order.Workers_Name[i]))
-                        {
-                            _logger.LogDebug($"[工单{orderIndex}] Workers_Name[{i}] = '{order.Workers_Name[i]}' (偏移量: {nameOffset})");
-                        }
+                        _logger.LogDebug($"[工单{orderIndex}] Workers_Name[{i}] = '{order.Workers_Name[i]}' (偏移量: {nameOffset})");
                     }
-
-                    // 读取Construction_Order_No (Int，2字节)，偏移量：2816
-                    order.Construction_Order_No = await ReadIntAsync(plc, dbNumber, orderBaseOffset + 2816) ?? 0;
-                    _logger.LogDebug($"[工单{orderIndex}] Construction_Order_No = {order.Construction_Order_No} (偏移量: {orderBaseOffset + 2816})");
-
-                    // 读取SmartBand_No数组（0-10），每个Int占2字节，偏移量：2818
-                    _logger.LogDebug($"[工单{orderIndex}] 读取SmartBand_No数组 (11个Int, 每个2字节)...");
-                    for (int i = 0; i <= 10; i++)
-                    {
-                        int bandOffset = orderBaseOffset + 2818 + i * 2;
-                        order.SmartBand_No[i] = await ReadIntAsync(plc, dbNumber, bandOffset) ?? 0;
-                        if (order.SmartBand_No[i] != 0)
-                        {
-                            _logger.LogDebug($"[工单{orderIndex}] SmartBand_No[{i}] = {order.SmartBand_No[i]} (偏移量: {bandOffset})");
-                        }
-                    }
-
-                    // 读取Construction_Order_Content (String，256字节)，偏移量：2840
-                    order.Construction_Order_Content = await ReadStringAsync(plc, dbNumber, orderBaseOffset + 2840, 256) ?? string.Empty;
-                    if (!string.IsNullOrEmpty(order.Construction_Order_Content))
-                    {
-                        _logger.LogDebug($"[工单{orderIndex}] Construction_Order_Content = '{order.Construction_Order_Content}' (偏移量: {orderBaseOffset + 2840})");
-                    }
-
-                    // 读取Workers_Status数组（0-10），每个Int占2字节，偏移量：3096
-                    _logger.LogDebug($"[工单{orderIndex}] 读取Workers_Status数组 (11个Int, 每个2字节)...");
-                    for (int i = 0; i <= 10; i++)
-                    {
-                        int statusOffset = orderBaseOffset + 3096 + i * 2;
-                        order.Workers_Status[i] = await ReadIntAsync(plc, dbNumber, statusOffset) ?? 0;
-                        if (order.Workers_Status[i] != 0)
-                        {
-                            _logger.LogDebug($"[工单{orderIndex}] Workers_Status[{i}] = {order.Workers_Status[i]} (0=未进入,1=申请进入,2=刷卡成功,3=进入,4=申请签出,5=已签出) (偏移量: {statusOffset})");
-                        }
-                    }
-
-                    // 读取Construction_Status (Int，2字节)，偏移量：3118
-                    order.Construction_Status = await ReadIntAsync(plc, dbNumber, orderBaseOffset + 3118) ?? 0;
-                    _logger.LogDebug($"[工单{orderIndex}] Construction_Status = {order.Construction_Status} (0=未开始,1=工单开始,2=工单结束) (偏移量: {orderBaseOffset + 3118})");
-
-                    // 读取Button_In数组（0-10），Bool类型，打包在字节中
-                    // 偏移量：3120，Button_In[0-7]在3120字节的0-7位，Button_In[8-10]在3121字节的0-2位
-                    _logger.LogDebug($"[工单{orderIndex}] 读取Button_In数组 (11个Bool, 位打包)...");
-                    var buttonInBytes = await ReadBytesAsync(plc, dbNumber, orderBaseOffset + 3120, 2);
-                    if (buttonInBytes != null && buttonInBytes.Length >= 2)
-                    {
-                        _logger.LogDebug($"[工单{orderIndex}] Button_In字节数据: [{buttonInBytes[0]:X2}] [{buttonInBytes[1]:X2}] (偏移量: {orderBaseOffset + 3120})");
-                        for (int i = 0; i <= 7; i++)
-                        {
-                            order.Button_In[i] = (buttonInBytes[0] & (1 << i)) != 0;
-                            if (order.Button_In[i])
-                            {
-                                _logger.LogDebug($"[工单{orderIndex}] Button_In[{i}] = true (位{i})");
-                            }
-                        }
-                        for (int i = 8; i <= 10; i++)
-                        {
-                            order.Button_In[i] = (buttonInBytes[1] & (1 << (i - 8))) != 0;
-                            if (order.Button_In[i])
-                            {
-                                _logger.LogDebug($"[工单{orderIndex}] Button_In[{i}] = true (位{i - 8})");
-                            }
-                        }
-                    }
-                    else
-                    {
-                        _logger.LogWarning($"[工单{orderIndex}] Button_In数组读取失败 - 字节数据为空或长度不足");
-                    }
-
-                    // 读取Button_Out数组（0-10），Bool类型，打包在字节中
-                    // 偏移量：3122，Button_Out[0-7]在3122字节的0-7位，Button_Out[8-10]在3123字节的0-2位
-                    _logger.LogDebug($"[工单{orderIndex}] 读取Button_Out数组 (11个Bool, 位打包)...");
-                    var buttonOutBytes = await ReadBytesAsync(plc, dbNumber, orderBaseOffset + 3122, 2);
-                    if (buttonOutBytes != null && buttonOutBytes.Length >= 2)
-                    {
-                        _logger.LogDebug($"[工单{orderIndex}] Button_Out字节数据: [{buttonOutBytes[0]:X2}] [{buttonOutBytes[1]:X2}] (偏移量: {orderBaseOffset + 3122})");
-                        for (int i = 0; i <= 7; i++)
-                        {
-                            order.Button_Out[i] = (buttonOutBytes[0] & (1 << i)) != 0;
-                            if (order.Button_Out[i])
-                            {
-                                _logger.LogDebug($"[工单{orderIndex}] Button_Out[{i}] = true (位{i})");
-                            }
-                        }
-                        for (int i = 8; i <= 10; i++)
-                        {
-                            order.Button_Out[i] = (buttonOutBytes[1] & (1 << (i - 8))) != 0;
-                            if (order.Button_Out[i])
-                            {
-                                _logger.LogDebug($"[工单{orderIndex}] Button_Out[{i}] = true (位{i - 8})");
-                            }
-                        }
-                    }
-                    else
-                    {
-                        _logger.LogWarning($"[工单{orderIndex}] Button_Out数组读取失败 - 字节数据为空或长度不足");
-                    }
-
-                    // 读取Maximum_HeartRate数组（0-10），每个Int占2字节，偏移量：3124
-                    _logger.LogDebug($"[工单{orderIndex}] 读取Maximum_HeartRate数组 (11个Int, 每个2字节)...");
-                    for (int i = 0; i <= 10; i++)
-                    {
-                        int maxHrOffset = orderBaseOffset + 3124 + i * 2;
-                        order.Maximum_HeartRate[i] = await ReadIntAsync(plc, dbNumber, maxHrOffset) ?? 0;
-                        if (order.Maximum_HeartRate[i] > 0)
-                        {
-                            _logger.LogDebug($"[工单{orderIndex}] Maximum_HeartRate[{i}] = {order.Maximum_HeartRate[i]} (偏移量: {maxHrOffset})");
-                        }
-                    }
-
-                    // 读取MInimum_HeartRate数组（0-10），每个Int占2字节，偏移量：3146
-                    _logger.LogDebug($"[工单{orderIndex}] 读取MInimum_HeartRate数组 (11个Int, 每个2字节)...");
-                    for (int i = 0; i <= 10; i++)
-                    {
-                        int minHrOffset = orderBaseOffset + 3146 + i * 2;
-                        order.MInimum_HeartRate[i] = await ReadIntAsync(plc, dbNumber, minHrOffset) ?? 0;
-                        if (order.MInimum_HeartRate[i] > 0)
-                        {
-                            _logger.LogDebug($"[工单{orderIndex}] MInimum_HeartRate[{i}] = {order.MInimum_HeartRate[i]} (偏移量: {minHrOffset})");
-                        }
-                    }
-
-                    // 读取Heart_Rate数组（0-10），每个Int占2字节，偏移量：3168
-                    _logger.LogDebug($"[工单{orderIndex}] 读取Heart_Rate数组 (11个Int, 每个2字节)...");
-                    for (int i = 0; i <= 10; i++)
-                    {
-                        int hrOffset = orderBaseOffset + 3168 + i * 2;
-                        order.Heart_Rate[i] = await ReadIntAsync(plc, dbNumber, hrOffset) ?? 0;
-                        if (order.Heart_Rate[i] > 0)
-                        {
-                            _logger.LogDebug($"[工单{orderIndex}] Heart_Rate[{i}] = {order.Heart_Rate[i]} (偏移量: {hrOffset})");
-                        }
-                    }
-
-                    var orderElapsed = (DateTime.Now - orderStartTime).TotalMilliseconds;
-                    _logger.LogDebug($"[工单{orderIndex}] 工单数据读取完成 - 耗时: {orderElapsed:F2}ms");
                 }
 
-                // ============================================
-                // 读取全局控制按钮
-                // ============================================
-                _logger.LogDebug("[全局控制] 读取全局控制按钮...");
-                // 读取ConstructionOrder_Start_PB (Bool)，偏移量：35090，位0
-                data.ConstructionOrder_Start_PB = await ReadBoolAsync(plc, dbNumber, 35090, 0) ?? false;
-                _logger.LogDebug($"[全局控制] ConstructionOrder_Start_PB = {data.ConstructionOrder_Start_PB} (偏移量: 35090, 位0)");
+                // 读取Construction_Order_No (Int，2字节)，偏移量：2816
+                order.Construction_Order_No = await ReadIntAsync(plc, dbNumber, orderBaseOffset + 2816) ?? 0;
+                _logger.LogDebug($"[工单{orderIndex}] Construction_Order_No = {order.Construction_Order_No} (偏移量: {orderBaseOffset + 2816})");
 
-                // 读取ConstructionOrder_Stop_PB (Bool)，偏移量：35090，位1
-                data.ConstructionOrder_Stop_PB = await ReadBoolAsync(plc, dbNumber, 35090, 1) ?? false;
-                _logger.LogDebug($"[全局控制] ConstructionOrder_Stop_PB = {data.ConstructionOrder_Stop_PB} (偏移量: 35090, 位1)");
+                // 读取SmartBand_No数组（0-10），每个Int占2字节，偏移量：2818
+                _logger.LogDebug($"[工单{orderIndex}] 读取SmartBand_No数组 (11个Int, 每个2字节)...");
+                for (int i = 0; i <= 10; i++)
+                {
+                    int bandOffset = orderBaseOffset + 2818 + i * 2;
+                    order.SmartBand_No[i] = await ReadIntAsync(plc, dbNumber, bandOffset) ?? 0;
+                    if (order.SmartBand_No[i] != 0)
+                    {
+                        _logger.LogDebug($"[工单{orderIndex}] SmartBand_No[{i}] = {order.SmartBand_No[i]} (偏移量: {bandOffset})");
+                    }
+                }
+
+                // 读取Construction_Order_Content (String，256字节)，偏移量：2840
+                order.Construction_Order_Content = await ReadStringAsync(plc, dbNumber, orderBaseOffset + 2840, 256) ?? string.Empty;
+                if (!string.IsNullOrEmpty(order.Construction_Order_Content))
+                {
+                    _logger.LogDebug($"[工单{orderIndex}] Construction_Order_Content = '{order.Construction_Order_Content}' (偏移量: {orderBaseOffset + 2840})");
+                }
+
+                // 读取Workers_Status数组（0-10），每个Int占2字节，偏移量：3096
+                _logger.LogDebug($"[工单{orderIndex}] 读取Workers_Status数组 (11个Int, 每个2字节)...");
+                for (int i = 0; i <= 10; i++)
+                {
+                    int statusOffset = orderBaseOffset + 3096 + i * 2;
+                    order.Workers_Status[i] = await ReadIntAsync(plc, dbNumber, statusOffset) ?? 0;
+                    if (order.Workers_Status[i] != 0)
+                    {
+                        _logger.LogDebug($"[工单{orderIndex}] Workers_Status[{i}] = {order.Workers_Status[i]} (0=未进入,1=申请进入,2=刷卡成功,3=进入,4=申请签出,5=已签出) (偏移量: {statusOffset})");
+                    }
+                }
+
+                // 读取Construction_Status (Int，2字节)，偏移量：3118
+                order.Construction_Status = await ReadIntAsync(plc, dbNumber, orderBaseOffset + 3118) ?? 0;
+                _logger.LogDebug($"[工单{orderIndex}] Construction_Status = {order.Construction_Status} (0=未开始,1=工单开始,2=工单结束) (偏移量: {orderBaseOffset + 3118})");
+
+                // 读取Button_In数组（0-10），Bool类型，打包在字节中
+                // 偏移量：3120，Button_In[0-7]在3120字节的0-7位，Button_In[8-10]在3121字节的0-2位
+                //_logger.LogDebug($"[工单{orderIndex}] 读取Button_In数组 (11个Bool, 位打包)...");
+                //var buttonInBytes = await ReadBytesAsync(plc, dbNumber, orderBaseOffset + 3120, 2);
+                //if (buttonInBytes != null && buttonInBytes.Length >= 2)
+                //{
+                //    _logger.LogDebug($"[工单{orderIndex}] Button_In字节数据: [{buttonInBytes[0]:X2}] [{buttonInBytes[1]:X2}] (偏移量: {orderBaseOffset + 3120})");
+                //    for (int i = 0; i <= 7; i++)
+                //    {
+                //        order.Button_In[i] = (buttonInBytes[0] & (1 << i)) != 0;
+                //        if (order.Button_In[i])
+                //        {
+                //            _logger.LogDebug($"[工单{orderIndex}] Button_In[{i}] = true (位{i})");
+                //        }
+                //    }
+                //    for (int i = 8; i <= 10; i++)
+                //    {
+                //        order.Button_In[i] = (buttonInBytes[1] & (1 << (i - 8))) != 0;
+                //        if (order.Button_In[i])
+                //        {
+                //            _logger.LogDebug($"[工单{orderIndex}] Button_In[{i}] = true (位{i - 8})");
+                //        }
+                //    }
+                //}
+                //else
+                //{
+                //    _logger.LogWarning($"[工单{orderIndex}] Button_In数组读取失败 - 字节数据为空或长度不足");
+                //}
+
+                // 读取Button_Out数组（0-10），Bool类型，打包在字节中
+                // 偏移量：3122，Button_Out[0-7]在3122字节的0-7位，Button_Out[8-10]在3123字节的0-2位
+                //_logger.LogDebug($"[工单{orderIndex}] 读取Button_Out数组 (11个Bool, 位打包)...");
+                //var buttonOutBytes = await ReadBytesAsync(plc, dbNumber, orderBaseOffset + 3122, 2);
+                //if (buttonOutBytes != null && buttonOutBytes.Length >= 2)
+                //{
+                //    _logger.LogDebug($"[工单{orderIndex}] Button_Out字节数据: [{buttonOutBytes[0]:X2}] [{buttonOutBytes[1]:X2}] (偏移量: {orderBaseOffset + 3122})");
+                //    for (int i = 0; i <= 7; i++)
+                //    {
+                //        order.Button_Out[i] = (buttonOutBytes[0] & (1 << i)) != 0;
+                //        if (order.Button_Out[i])
+                //        {
+                //            _logger.LogDebug($"[工单{orderIndex}] Button_Out[{i}] = true (位{i})");
+                //        }
+                //    }
+                //    for (int i = 8; i <= 10; i++)
+                //    {
+                //        order.Button_Out[i] = (buttonOutBytes[1] & (1 << (i - 8))) != 0;
+                //        if (order.Button_Out[i])
+                //        {
+                //            _logger.LogDebug($"[工单{orderIndex}] Button_Out[{i}] = true (位{i - 8})");
+                //        }
+                //    }
+                //}
+                //else
+                //{
+                //    _logger.LogWarning($"[工单{orderIndex}] Button_Out数组读取失败 - 字节数据为空或长度不足");
+                //}
+
+                //// 读取Maximum_HeartRate数组（0-10），每个Int占2字节，偏移量：3124
+                //_logger.LogDebug($"[工单{orderIndex}] 读取Maximum_HeartRate数组 (11个Int, 每个2字节)...");
+                //for (int i = 0; i <= 10; i++)
+                //{
+                //    int maxHrOffset = orderBaseOffset + 3124 + i * 2;
+                //    order.Maximum_HeartRate[i] = await ReadIntAsync(plc, dbNumber, maxHrOffset) ?? 0;
+                //    if (order.Maximum_HeartRate[i] > 0)
+                //    {
+                //        _logger.LogDebug($"[工单{orderIndex}] Maximum_HeartRate[{i}] = {order.Maximum_HeartRate[i]} (偏移量: {maxHrOffset})");
+                //    }
+                //}
+
+                //// 读取MInimum_HeartRate数组（0-10），每个Int占2字节，偏移量：3146
+                //_logger.LogDebug($"[工单{orderIndex}] 读取MInimum_HeartRate数组 (11个Int, 每个2字节)...");
+                //for (int i = 0; i <= 10; i++)
+                //{
+                //    int minHrOffset = orderBaseOffset + 3146 + i * 2;
+                //    order.MInimum_HeartRate[i] = await ReadIntAsync(plc, dbNumber, minHrOffset) ?? 0;
+                //    if (order.MInimum_HeartRate[i] > 0)
+                //    {
+                //        _logger.LogDebug($"[工单{orderIndex}] MInimum_HeartRate[{i}] = {order.MInimum_HeartRate[i]} (偏移量: {minHrOffset})");
+                //    }
+                //}
+
+                // 读取Heart_Rate数组（0-10），每个Int占2字节，偏移量：3168
+                _logger.LogDebug($"[工单{orderIndex}] 读取Heart_Rate数组 (11个Int, 每个2字节)...");
+                for (int i = 0; i <= 10; i++)
+                {
+                    int hrOffset = orderBaseOffset + 3168 + i * 2;
+                    order.Heart_Rate[i] = await ReadIntAsync(plc, dbNumber, hrOffset) ?? 0;
+                    if (order.Heart_Rate[i] > 0)
+                    {
+                        _logger.LogDebug($"[工单{orderIndex}] Heart_Rate[{i}] = {order.Heart_Rate[i]} (偏移量: {hrOffset})");
+                    }
+                }
+
+                var orderElapsed = (DateTime.Now - orderStartTime).TotalMilliseconds;
+                _logger.LogDebug($"[工单{orderIndex}] 工单数据读取完成 - 耗时: {orderElapsed:F2}ms");
+
+                //// ============================================
+                //// 读取全局控制按钮
+                //// ============================================
+                //_logger.LogDebug("[全局控制] 读取全局控制按钮...");
+                //// 读取ConstructionOrder_Start_PB (Bool)，偏移量：35090，位0
+                //data.ConstructionOrder_Start_PB = await ReadBoolAsync(plc, dbNumber, 35090, 0) ?? false;
+                //_logger.LogDebug($"[全局控制] ConstructionOrder_Start_PB = {data.ConstructionOrder_Start_PB} (偏移量: 35090, 位0)");
+
+                //// 读取ConstructionOrder_Stop_PB (Bool)，偏移量：35090，位1
+                //data.ConstructionOrder_Stop_PB = await ReadBoolAsync(plc, dbNumber, 35090, 1) ?? false;
+                //_logger.LogDebug($"[全局控制] ConstructionOrder_Stop_PB = {data.ConstructionOrder_Stop_PB} (偏移量: 35090, 位1)");
 
                 // ============================================
                 // 读取空工单（Construction_Order_Null），偏移量：35092
                 // ============================================
-                _logger.LogDebug("[空工单] 开始读取空工单数据 (Construction_Order_Null)...");
-                int nullOrderOffset = 35092;
-                var nullOrder = data.Construction_Order_Null;
+                //_logger.LogDebug("[空工单] 开始读取空工单数据 (Construction_Order_Null)...");
+                //int nullOrderOffset = 35092;
+                //var nullOrder = data.Construction_Order_Null;
 
-                // 读取Workers_Name数组（0-10），每个String占256字节
-                for (int i = 0; i <= 10; i++)
-                {
-                    int nameOffset = nullOrderOffset + i * 256;
-                    nullOrder.Workers_Name[i] = await ReadStringAsync(plc, dbNumber, nameOffset, 256) ?? string.Empty;
-                }
+                //// 读取Workers_Name数组（0-10），每个String占256字节
+                //for (int i = 0; i <= 10; i++)
+                //{
+                //    int nameOffset = nullOrderOffset + i * 256;
+                //    nullOrder.Workers_Name[i] = await ReadStringAsync(plc, dbNumber, nameOffset, 256) ?? string.Empty;
+                //}
 
-                // 读取Construction_Order_No (Int，2字节)，偏移量：35092 + 2816 = 37908
-                nullOrder.Construction_Order_No = await ReadIntAsync(plc, dbNumber, nullOrderOffset + 2816) ?? 0;
+                //// 读取Construction_Order_No (Int，2字节)，偏移量：35092 + 2816 = 37908
+                //nullOrder.Construction_Order_No = await ReadIntAsync(plc, dbNumber, nullOrderOffset + 2816) ?? 0;
 
-                // 读取SmartBand_No数组（0-10），每个Int占2字节，偏移量：35092 + 2818 = 37910
-                for (int i = 0; i <= 10; i++)
-                {
-                    int bandOffset = nullOrderOffset + 2818 + i * 2;
-                    nullOrder.SmartBand_No[i] = await ReadIntAsync(plc, dbNumber, bandOffset) ?? 0;
-                }
+                //// 读取SmartBand_No数组（0-10），每个Int占2字节，偏移量：35092 + 2818 = 37910
+                //for (int i = 0; i <= 10; i++)
+                //{
+                //    int bandOffset = nullOrderOffset + 2818 + i * 2;
+                //    nullOrder.SmartBand_No[i] = await ReadIntAsync(plc, dbNumber, bandOffset) ?? 0;
+                //}
 
-                // 读取Construction_Order_Content (String，256字节)，偏移量：35092 + 2840 = 37932
-                nullOrder.Construction_Order_Content = await ReadStringAsync(plc, dbNumber, nullOrderOffset + 2840, 256) ?? string.Empty;
+                //// 读取Construction_Order_Content (String，256字节)，偏移量：35092 + 2840 = 37932
+                //nullOrder.Construction_Order_Content = await ReadStringAsync(plc, dbNumber, nullOrderOffset + 2840, 256) ?? string.Empty;
 
-                // 读取Workers_Status数组（0-10），每个Int占2字节，偏移量：35092 + 3096 = 38188
-                for (int i = 0; i <= 10; i++)
-                {
-                    int statusOffset = nullOrderOffset + 3096 + i * 2;
-                    nullOrder.Workers_Status[i] = await ReadIntAsync(plc, dbNumber, statusOffset) ?? 0;
-                }
+                //// 读取Workers_Status数组（0-10），每个Int占2字节，偏移量：35092 + 3096 = 38188
+                //for (int i = 0; i <= 10; i++)
+                //{
+                //    int statusOffset = nullOrderOffset + 3096 + i * 2;
+                //    nullOrder.Workers_Status[i] = await ReadIntAsync(plc, dbNumber, statusOffset) ?? 0;
+                //}
 
-                // 读取Construction_Status (Int，2字节)，偏移量：35092 + 3118 = 38210
-                nullOrder.Construction_Status = await ReadIntAsync(plc, dbNumber, nullOrderOffset + 3118) ?? 0;
+                //// 读取Construction_Status (Int，2字节)，偏移量：35092 + 3118 = 38210
+                //nullOrder.Construction_Status = await ReadIntAsync(plc, dbNumber, nullOrderOffset + 3118) ?? 0;
 
-                // 读取Button_In数组（0-10），Bool类型，偏移量：35092 + 3120 = 38212
-                var nullButtonInBytes = await ReadBytesAsync(plc, dbNumber, nullOrderOffset + 3120, 2);
-                if (nullButtonInBytes != null && nullButtonInBytes.Length >= 2)
-                {
-                    for (int i = 0; i <= 7; i++)
-                    {
-                        nullOrder.Button_In[i] = (nullButtonInBytes[0] & (1 << i)) != 0;
-                    }
-                    for (int i = 8; i <= 10; i++)
-                    {
-                        nullOrder.Button_In[i] = (nullButtonInBytes[1] & (1 << (i - 8))) != 0;
-                    }
-                }
+                //// 读取Button_In数组（0-10），Bool类型，偏移量：35092 + 3120 = 38212
+                ////var nullButtonInBytes = await ReadBytesAsync(plc, dbNumber, nullOrderOffset + 3120, 2);
+                ////if (nullButtonInBytes != null && nullButtonInBytes.Length >= 2)
+                ////{
+                ////    for (int i = 0; i <= 7; i++)
+                ////    {
+                ////        nullOrder.Button_In[i] = (nullButtonInBytes[0] & (1 << i)) != 0;
+                ////    }
+                ////    for (int i = 8; i <= 10; i++)
+                ////    {
+                ////        nullOrder.Button_In[i] = (nullButtonInBytes[1] & (1 << (i - 8))) != 0;
+                ////    }
+                ////}
 
-                // 读取Button_Out数组（0-10），Bool类型，偏移量：35092 + 3122 = 38214
-                var nullButtonOutBytes = await ReadBytesAsync(plc, dbNumber, nullOrderOffset + 3122, 2);
-                if (nullButtonOutBytes != null && nullButtonOutBytes.Length >= 2)
-                {
-                    for (int i = 0; i <= 7; i++)
-                    {
-                        nullOrder.Button_Out[i] = (nullButtonOutBytes[0] & (1 << i)) != 0;
-                    }
-                    for (int i = 8; i <= 10; i++)
-                    {
-                        nullOrder.Button_Out[i] = (nullButtonOutBytes[1] & (1 << (i - 8))) != 0;
-                    }
-                }
+                //// 读取Button_Out数组（0-10），Bool类型，偏移量：35092 + 3122 = 38214
+                ////var nullButtonOutBytes = await ReadBytesAsync(plc, dbNumber, nullOrderOffset + 3122, 2);
+                ////if (nullButtonOutBytes != null && nullButtonOutBytes.Length >= 2)
+                ////{
+                ////    for (int i = 0; i <= 7; i++)
+                ////    {
+                ////        nullOrder.Button_Out[i] = (nullButtonOutBytes[0] & (1 << i)) != 0;
+                ////    }
+                ////    for (int i = 8; i <= 10; i++)
+                ////    {
+                ////        nullOrder.Button_Out[i] = (nullButtonOutBytes[1] & (1 << (i - 8))) != 0;
+                ////    }
+                ////}
 
-                // 读取Maximum_HeartRate数组（0-10），每个Int占2字节，偏移量：35092 + 3124 = 38216
-                for (int i = 0; i <= 10; i++)
-                {
-                    int maxHrOffset = nullOrderOffset + 3124 + i * 2;
-                    nullOrder.Maximum_HeartRate[i] = await ReadIntAsync(plc, dbNumber, maxHrOffset) ?? 0;
-                }
+                //// 读取Maximum_HeartRate数组（0-10），每个Int占2字节，偏移量：35092 + 3124 = 38216
+                //for (int i = 0; i <= 10; i++)
+                //{
+                //    int maxHrOffset = nullOrderOffset + 3124 + i * 2;
+                //    nullOrder.Maximum_HeartRate[i] = await ReadIntAsync(plc, dbNumber, maxHrOffset) ?? 0;
+                //}
 
-                // 读取MInimum_HeartRate数组（0-10），每个Int占2字节，偏移量：35092 + 3146 = 38238
-                for (int i = 0; i <= 10; i++)
-                {
-                    int minHrOffset = nullOrderOffset + 3146 + i * 2;
-                    nullOrder.MInimum_HeartRate[i] = await ReadIntAsync(plc, dbNumber, minHrOffset) ?? 0;
-                }
+                //// 读取MInimum_HeartRate数组（0-10），每个Int占2字节，偏移量：35092 + 3146 = 38238
+                //for (int i = 0; i <= 10; i++)
+                //{
+                //    int minHrOffset = nullOrderOffset + 3146 + i * 2;
+                //    nullOrder.MInimum_HeartRate[i] = await ReadIntAsync(plc, dbNumber, minHrOffset) ?? 0;
+                //}
 
-                // 读取Heart_Rate数组（0-10），每个Int占2字节，偏移量：35092 + 3168 = 38260
-                for (int i = 0; i <= 10; i++)
-                {
-                    int hrOffset = nullOrderOffset + 3168 + i * 2;
-                    nullOrder.Heart_Rate[i] = await ReadIntAsync(plc, dbNumber, hrOffset) ?? 0;
-                }
+                //// 读取Heart_Rate数组（0-10），每个Int占2字节，偏移量：35092 + 3168 = 38260
+                //for (int i = 0; i <= 10; i++)
+                //{
+                //    int hrOffset = nullOrderOffset + 3168 + i * 2;
+                //    nullOrder.Heart_Rate[i] = await ReadIntAsync(plc, dbNumber, hrOffset) ?? 0;
+                //}
 
                 // ============================================
                 // 读取全局状态和传感器数据
@@ -477,39 +474,59 @@ namespace YixiaoAdmin.WebApi.Services
                 var totalElapsed = (DateTime.Now - startTime).TotalMilliseconds;
                 _logger.LogInformation($"[数据读取成功] 成功读取S7数据 - DeviceId: {deviceId}, IP: {data.DeviceIP}, 总耗时: {totalElapsed:F2}ms");
                 
-                // 输出数据读取摘要
+                // 输出数据读取摘要（仅显示实际采集的数据）
                 _logger.LogInformation($"[数据读取成功] ========== 数据读取摘要 ==========");
                 _logger.LogInformation($"[数据读取成功] 设备信息 - DeviceId: {data.DeviceId}, IP: {data.DeviceIP}, 采集时间: {data.CollectTime:yyyy-MM-dd HH:mm:ss.fff}");
-                _logger.LogInformation($"[数据读取成功] 全局控制 - 开始按钮: {data.ConstructionOrder_Start_PB}, 结束按钮: {data.ConstructionOrder_Stop_PB}");
                 
-                // 统计工单数据
-                int activeOrderCount = 0;
+                // 统计工单索引1的数据（使用已读取的order变量）
+                const int summaryOrderIndex = 1;
                 int totalWorkers = 0;
                 int activeWorkers = 0;
-                for (int i = 0; i < 11; i++)
+                int workersWithHeartRate = 0;
+                
+                if (order.Construction_Order_No > 0)
                 {
-                    var order = data.Construction_Order[i];
-                    if (order.Construction_Order_No > 0)
+                    _logger.LogInformation($"[数据读取成功] 工单[{summaryOrderIndex}] - 工单号: {order.Construction_Order_No}, 状态: {order.Construction_Status} (0=未开始,1=工单开始,2=工单结束)");
+                    if (!string.IsNullOrEmpty(order.Construction_Order_Content))
                     {
-                        activeOrderCount++;
-                        _logger.LogInformation($"[数据读取成功] 工单[{i}] - 工单号: {order.Construction_Order_No}, 状态: {order.Construction_Status}, 内容: '{order.Construction_Order_Content}'");
-                        
-                        // 统计工人数据
-                        for (int j = 0; j <= 10; j++)
+                        _logger.LogInformation($"[数据读取成功]   工单内容: '{order.Construction_Order_Content}'");
+                    }
+                    
+                    // 统计工人数据
+                    for (int j = 0; j <= 10; j++)
+                    {
+                        if (!string.IsNullOrEmpty(order.Workers_Name[j]))
                         {
-                            if (!string.IsNullOrEmpty(order.Workers_Name[j]))
+                            totalWorkers++;
+                            if (order.Workers_Status[j] > 0)
                             {
-                                totalWorkers++;
-                                if (order.Workers_Status[j] > 0)
-                                {
-                                    activeWorkers++;
-                                }
-                                _logger.LogInformation($"[数据读取成功]   工人[{j}] - 姓名: '{order.Workers_Name[j]}', 手环号: {order.SmartBand_No[j]}, 状态: {order.Workers_Status[j]}, 心率: {order.Heart_Rate[j]}");
+                                activeWorkers++;
                             }
+                            if (order.Heart_Rate[j] > 0)
+                            {
+                                workersWithHeartRate++;
+                            }
+                            
+                            string statusText = order.Workers_Status[j] switch
+                            {
+                                0 => "未进入",
+                                1 => "申请进入",
+                                2 => "刷卡成功",
+                                3 => "进入",
+                                4 => "申请签出",
+                                5 => "已签出",
+                                _ => $"未知({order.Workers_Status[j]})"
+                            };
+                            
+                            _logger.LogInformation($"[数据读取成功]   工人[{j}] - 姓名: '{order.Workers_Name[j]}', 手环号: {order.SmartBand_No[j]}, 状态: {statusText}, 心率: {order.Heart_Rate[j]}");
                         }
                     }
+                    _logger.LogInformation($"[数据读取成功] 工单[{summaryOrderIndex}]统计 - 总工人数: {totalWorkers}, 活跃工人数: {activeWorkers}, 有心率数据: {workersWithHeartRate}");
                 }
-                _logger.LogInformation($"[数据读取成功] 工单统计 - 活跃工单数: {activeOrderCount}/11, 总工人数: {totalWorkers}, 活跃工人数: {activeWorkers}");
+                else
+                {
+                    _logger.LogInformation($"[数据读取成功] 工单[{summaryOrderIndex}] - 工单号: {order.Construction_Order_No} (工单未激活)");
+                }
                 
                 // 传感器数据
                 int gasAlarmCount = data.Gas_Alarm.Count(g => g > 0);
@@ -525,13 +542,22 @@ namespace YixiaoAdmin.WebApi.Services
                         }
                     }
                 }
+                else
+                {
+                    _logger.LogInformation($"[数据读取成功] 气体报警数据 - 无报警数据");
+                }
+                
                 if (data.GPS_lon != 0 || data.GPS_lat != 0)
                 {
                     _logger.LogInformation($"[数据读取成功] GPS位置 - 经度: {data.GPS_lon:F6}, 纬度: {data.GPS_lat:F6}");
                 }
+                else
+                {
+                    _logger.LogInformation($"[数据读取成功] GPS位置 - 无GPS数据");
+                }
                 
                 _logger.LogInformation($"[数据读取成功] ========================================");
-                _logger.LogDebug($"[数据读取成功] 数据统计 - 工单数: 11, 空工单: 1, 传感器数据: Gas({gasAlarmCount}个非零), GPS: ({data.GPS_lon:F6}, {data.GPS_lat:F6})");
+                _logger.LogDebug($"[数据读取成功] 数据统计 - 工单索引: {summaryOrderIndex}, 传感器数据: Gas({gasAlarmCount}个非零), GPS: ({data.GPS_lon:F6}, {data.GPS_lat:F6})");
             }
             catch (Exception ex)
             {

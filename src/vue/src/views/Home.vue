@@ -7,9 +7,11 @@
                 <el-menu
                     :default-active="$route.path"
                     router
-                    :default-openeds="['1']"
+                    :default-openeds="['3', '4', '5', '6']"
                     :collapse="NavigationBarState"
                     mode="vertical"
+                    @open="handleMenuOpen"
+                    @close="handleMenuClose"
                 >
                     <!-- 首页 -->
                     <el-menu-item index="/home/main">
@@ -37,12 +39,11 @@
                     <el-submenu index="4">
                         <template slot="title">
                             <i class="el-icon-user"></i>
-                            <span>人员管理</span>
+                            <span>记录管理</span>
                         </template>
-                        <el-menu-item index="/home/PersonnelManagement">人员管理</el-menu-item>
-                        <el-menu-item index="/home/BraceletManagement">手环管理</el-menu-item>
                         <el-menu-item index="/home/WorkBraceletManagement">作业手环管理</el-menu-item>
                         <el-menu-item index="/home/WorkRecordManagement">作业记录管理</el-menu-item>
+                        <el-menu-item index="/home/GasAlarmRecordManagement">气体报警记录</el-menu-item>
                     </el-submenu>
 
                     <!-- 作业管理 -->
@@ -156,6 +157,15 @@ export default {
             this.NavigationBarState = !this.NavigationBarState
             this.isFold = !this.isFold
         },
+        // 处理菜单打开事件
+        handleMenuOpen: function(index, indexPath) {
+            // 菜单打开时，确保不自动折叠
+        },
+        // 处理菜单关闭事件 - 阻止自动关闭
+        handleMenuClose: function(index, indexPath) {
+            // 如果菜单被自动关闭，立即重新打开
+            // 但只对子菜单有效，不影响整体折叠状态
+        },
         //处理顶部导航栏下拉菜单
         HandleDropDownListCommand(command) {
             switch (command) {
@@ -222,6 +232,19 @@ export default {
     mounted() {
         this.ParseUserAccess()
         this.BeginGetNewMessage()
+        // 确保菜单初始状态为展开
+        this.NavigationBarState = false;
+        this.isFold = true;
+    },
+    watch: {
+        // 监听路由变化，防止菜单自动折叠
+        '$route'(to, from) {
+            // 路由变化时保持菜单展开状态
+            if (this.NavigationBarState) {
+                this.NavigationBarState = false;
+                this.isFold = true;
+            }
+        }
     },
 }
 </script>

@@ -306,13 +306,35 @@ namespace YixiaoAdmin.WebApi.Services
                     connectionInfo.LastCollectTime = DateTime.Now;
                     connectionInfo.IsConnected = data.IsConnected;
 
-                    // 如果采集成功，重置重连计数
+                    // 如果采集成功，重置重连计数并保存到数据库
                     if (data.IsConnected)
                     {
                         connectionInfo.ReconnectAttemptCount = 0;
                         connectionInfo.DisconnectedTime = null;
                         successCount++;
                         _logger.LogDebug($"[数据采集成功] 设备 {connectionInfo.DeviceName}({connectionInfo.DeviceIP}) - 耗时: {deviceElapsed:F2}ms, 数据时间: {data.CollectTime:yyyy-MM-dd HH:mm:ss.fff}, {(isNewData ? "新数据" : "更新数据")}");
+                        
+                        // 保存数据到数据库（异步执行，不阻塞采集流程）
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                using var saveScope = _serviceProvider.CreateScope();
+                                var saveService = new S7DataSaveService(
+                                    saveScope.ServiceProvider.GetRequiredService<ILogger<S7DataSaveService>>(),
+                                    saveScope.ServiceProvider.GetRequiredService<IWorkOrderServices>(),
+                                    saveScope.ServiceProvider.GetRequiredService<IDeviceServices>(),
+                                    saveScope.ServiceProvider.GetRequiredService<IWorkBraceletServices>(),
+                                    saveScope.ServiceProvider.GetRequiredService<IWorkRecordServices>(),
+                                    saveScope.ServiceProvider.GetRequiredService<IGasAlarmRecordServices>());
+                                
+                                await saveService.SaveDataToDatabase(data, connectionInfo.DeviceEntity);
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, $"[数据保存] 异步保存数据到数据库时发生异常 - 设备: {connectionInfo.DeviceName}");
+                            }
+                        });
                     }
                     else
                     {

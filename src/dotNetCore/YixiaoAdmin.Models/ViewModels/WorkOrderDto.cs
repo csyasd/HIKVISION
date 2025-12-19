@@ -39,8 +39,8 @@ namespace YixiaoAdmin.Models.ViewModels
     public string Content { get; set; }
     
 
-    [Description("气体警报")]
-    public bool GasAlarm { get; set; }
+    [Description("工单状态")]
+    public int Status { get; set; }
     
 
     [Description("有毒气体报警在线状态")]

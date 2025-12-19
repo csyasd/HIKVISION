@@ -1,11 +1,11 @@
 /***********************************************************************
  * 本文件由T4模板生成，请将本文件复制到前端YixiaoAdmin/views文件夹中使用
-    * 文件名：WorkBraceletManagement.vue
+    * 文件名：GasAlarmRecordManagement.vue
 ************************************************************************/
 <template>
     <div class="container" >
         <el-col :span="24" class="toolbar">
-            <el-input style="width: 200px" placeholder="搜索工人姓名" v-model="Query[0].QueryStr"></el-input>&nbsp;&nbsp;
+            <el-input style="width: 200px" placeholder="搜索工单编号" v-model="Query[0].QueryStr"></el-input>&nbsp;&nbsp;
             <el-button @click="queryData()">查询</el-button>
             <el-button  @click="clearQuery()">清空</el-button>
             <el-button type="danger" @click="refreshTable()">刷新列表</el-button>
@@ -27,27 +27,73 @@
             <el-table-column type="selection" width="55"></el-table-column>
             <el-table-column :show-overflow-tooltip="true" prop="Id" label="Id" width="220"></el-table-column>
             
-            <el-table-column :show-overflow-tooltip="true" prop="WorkerName" label="工人姓名" width="220" ></el-table-column>
+            <el-table-column :show-overflow-tooltip="true" prop="WorkOrderId" label="所属工单id" width="220" ></el-table-column>
     
-            <el-table-column :show-overflow-tooltip="true" prop="HeartRate" label="心率" width="120" ></el-table-column>
-    
-            <el-table-column :show-overflow-tooltip="true" prop="WorkOrder.Code" label="所属工单" width="220" >
+            <el-table-column :show-overflow-tooltip="true" prop="WorkOrder" label="所属工单" width="220" >
                 <template slot-scope="scope">
                     <div>{{ WorkOrderList[WorkOrderList.findIndex((x) => x.Id == scope.row.WorkOrderId)]?.Code || '未分配' }}</div>
                 </template>
             </el-table-column>
     
-            <el-table-column :show-overflow-tooltip="true" prop="EntryExitStatus" label="进离场状态" width="150" >
+            <el-table-column :show-overflow-tooltip="true" prop="Gas1" label="第一种气体含量" width="150" >
                 <template slot-scope="scope">
-                    <el-tag :type="scope.row.EntryExitStatus === '1' ? 'success' : 'info'">
-                        {{ scope.row.EntryExitStatus === '1' ? '进场' : '离场' }}
-                    </el-tag>
+                    {{ scope.row.Gas1 ? scope.row.Gas1.toFixed(2) : '0.00' }}
                 </template>
             </el-table-column>
     
-            <el-table-column :show-overflow-tooltip="true" prop="EntryTime" label="进场时间" width="220" ></el-table-column>
+            <el-table-column :show-overflow-tooltip="true" prop="Gas2" label="第二种气体含量" width="150" >
+                <template slot-scope="scope">
+                    {{ scope.row.Gas2 ? scope.row.Gas2.toFixed(2) : '0.00' }}
+                </template>
+            </el-table-column>
     
-            <el-table-column :show-overflow-tooltip="true" prop="ExitTime" label="离场时间" width="220" ></el-table-column>
+            <el-table-column :show-overflow-tooltip="true" prop="Gas3" label="第三种气体含量" width="150" >
+                <template slot-scope="scope">
+                    {{ scope.row.Gas3 ? scope.row.Gas3.toFixed(2) : '0.00' }}
+                </template>
+            </el-table-column>
+    
+            <el-table-column :show-overflow-tooltip="true" prop="Gas4" label="第四种气体含量" width="150" >
+                <template slot-scope="scope">
+                    {{ scope.row.Gas4 ? scope.row.Gas4.toFixed(2) : '0.00' }}
+                </template>
+            </el-table-column>
+    
+            <el-table-column :show-overflow-tooltip="true" prop="Gas5" label="第五种气体含量" width="150" >
+                <template slot-scope="scope">
+                    {{ scope.row.Gas5 ? scope.row.Gas5.toFixed(2) : '0.00' }}
+                </template>
+            </el-table-column>
+    
+            <el-table-column :show-overflow-tooltip="true" prop="Gas6" label="第六种气体含量" width="150" >
+                <template slot-scope="scope">
+                    {{ scope.row.Gas6 ? scope.row.Gas6.toFixed(2) : '0.00' }}
+                </template>
+            </el-table-column>
+    
+            <el-table-column :show-overflow-tooltip="true" prop="Gas7" label="第七种气体含量" width="150" >
+                <template slot-scope="scope">
+                    {{ scope.row.Gas7 ? scope.row.Gas7.toFixed(2) : '0.00' }}
+                </template>
+            </el-table-column>
+    
+            <el-table-column :show-overflow-tooltip="true" prop="Gas8" label="第八种气体含量" width="150" >
+                <template slot-scope="scope">
+                    {{ scope.row.Gas8 ? scope.row.Gas8.toFixed(2) : '0.00' }}
+                </template>
+            </el-table-column>
+    
+            <el-table-column :show-overflow-tooltip="true" prop="Gas9" label="第九种气体含量" width="150" >
+                <template slot-scope="scope">
+                    {{ scope.row.Gas9 ? scope.row.Gas9.toFixed(2) : '0.00' }}
+                </template>
+            </el-table-column>
+    
+            <el-table-column :show-overflow-tooltip="true" prop="Gas10" label="第十种气体含量" width="150" >
+                <template slot-scope="scope">
+                    {{ scope.row.Gas10 ? scope.row.Gas10.toFixed(2) : '0.00' }}
+                </template>
+            </el-table-column>
     
             <el-table-column
                 :show-overflow-tooltip="true"
@@ -74,54 +120,59 @@
                 :total="totalNumber"
             ></el-pagination>
         </div>
-        <el-dialog title="添加" :visible.sync="addDialogFormVisible">
+        <el-dialog title="添加" :visible.sync="addDialogFormVisible" width="600px">
             <el-form :model="addForm">
-
-            <el-form-item label="工人姓名" :label-width="formLabelWidth">
-                <el-input v-model="addForm.WorkerName" autocomplete="off" placeholder="请输入工人姓名"></el-input>
-            </el-form-item>
-
-            <el-form-item label="心率" :label-width="formLabelWidth">
-                <el-input v-model="addForm.HeartRate" autocomplete="off" placeholder="请输入心率"></el-input>
-            </el-form-item>
 
             <el-form-item label="所属工单" :label-width="formLabelWidth">
                 <el-select v-model="addForm.WorkOrderId" placeholder="请选择工单" filterable>
                     <el-option
-                        v-for="item in WorkOrderList"
-                        :key="item.Id"
-                        :label="item.Code"
-                        :value="item.Id">
-                    </el-option>
+						v-for="(item, i) in WorkOrderList"
+						:label="item.Code"
+						:value="item.Id"
+						:key="i"
+					></el-option>
                 </el-select>
             </el-form-item>
 
-            <el-form-item label="进离场状态" :label-width="formLabelWidth">
-                <el-select v-model="addForm.EntryExitStatus" placeholder="请选择状态">
-                    <el-option label="离场" value="0"></el-option>
-                    <el-option label="进场" value="1"></el-option>
-                </el-select>
+            <el-form-item label="第一种气体含量" :label-width="formLabelWidth">
+                <el-input-number v-model="addForm.Gas1" :precision="2" :step="0.01" :min="0" placeholder="请输入第一种气体含量"></el-input-number>
             </el-form-item>
 
-            <el-form-item label="进场时间" :label-width="formLabelWidth">
-                <el-date-picker
-                    v-model="addForm.EntryTime"
-                    type="datetime"
-                    placeholder="选择进场时间"
-                    value-format="yyyy-MM-dd HH:mm:ss"
-                    >
-                </el-date-picker>
-             </el-form-item>
+            <el-form-item label="第二种气体含量" :label-width="formLabelWidth">
+                <el-input-number v-model="addForm.Gas2" :precision="2" :step="0.01" :min="0" placeholder="请输入第二种气体含量"></el-input-number>
+            </el-form-item>
 
-            <el-form-item label="离场时间" :label-width="formLabelWidth">
-                <el-date-picker
-                    v-model="addForm.ExitTime"
-                    type="datetime"
-                    placeholder="选择离场时间"
-                    value-format="yyyy-MM-dd HH:mm:ss"
-                    >
-                </el-date-picker>
-             </el-form-item>
+            <el-form-item label="第三种气体含量" :label-width="formLabelWidth">
+                <el-input-number v-model="addForm.Gas3" :precision="2" :step="0.01" :min="0" placeholder="请输入第三种气体含量"></el-input-number>
+            </el-form-item>
+
+            <el-form-item label="第四种气体含量" :label-width="formLabelWidth">
+                <el-input-number v-model="addForm.Gas4" :precision="2" :step="0.01" :min="0" placeholder="请输入第四种气体含量"></el-input-number>
+            </el-form-item>
+
+            <el-form-item label="第五种气体含量" :label-width="formLabelWidth">
+                <el-input-number v-model="addForm.Gas5" :precision="2" :step="0.01" :min="0" placeholder="请输入第五种气体含量"></el-input-number>
+            </el-form-item>
+
+            <el-form-item label="第六种气体含量" :label-width="formLabelWidth">
+                <el-input-number v-model="addForm.Gas6" :precision="2" :step="0.01" :min="0" placeholder="请输入第六种气体含量"></el-input-number>
+            </el-form-item>
+
+            <el-form-item label="第七种气体含量" :label-width="formLabelWidth">
+                <el-input-number v-model="addForm.Gas7" :precision="2" :step="0.01" :min="0" placeholder="请输入第七种气体含量"></el-input-number>
+            </el-form-item>
+
+            <el-form-item label="第八种气体含量" :label-width="formLabelWidth">
+                <el-input-number v-model="addForm.Gas8" :precision="2" :step="0.01" :min="0" placeholder="请输入第八种气体含量"></el-input-number>
+            </el-form-item>
+
+            <el-form-item label="第九种气体含量" :label-width="formLabelWidth">
+                <el-input-number v-model="addForm.Gas9" :precision="2" :step="0.01" :min="0" placeholder="请输入第九种气体含量"></el-input-number>
+            </el-form-item>
+
+            <el-form-item label="第十种气体含量" :label-width="formLabelWidth">
+                <el-input-number v-model="addForm.Gas10" :precision="2" :step="0.01" :min="0" placeholder="请输入第十种气体含量"></el-input-number>
+            </el-form-item>
 
             </el-form>
             <div slot="footer" class="dialog-footer">
@@ -130,54 +181,59 @@
             </div>
         </el-dialog>
 
-        <el-dialog title="编辑" :visible.sync="editDialogFormVisible">
+        <el-dialog title="编辑" :visible.sync="editDialogFormVisible" width="600px">
             <el-form :model="editForm">
-
-            <el-form-item label="工人姓名" :label-width="formLabelWidth">
-                <el-input v-model="editForm.WorkerName" autocomplete="off" placeholder="请输入工人姓名"></el-input>
-            </el-form-item>
-
-            <el-form-item label="心率" :label-width="formLabelWidth">
-                <el-input v-model="editForm.HeartRate" autocomplete="off" placeholder="请输入心率"></el-input>
-            </el-form-item>
 
             <el-form-item label="所属工单" :label-width="formLabelWidth">
                 <el-select v-model="editForm.WorkOrderId" placeholder="请选择工单" filterable>
                     <el-option
-                        v-for="item in WorkOrderList"
-                        :key="item.Id"
-                        :label="item.Code"
-                        :value="item.Id">
-                    </el-option>
+						v-for="(item, i) in WorkOrderList"
+						:label="item.Code"
+						:value="item.Id"
+						:key="i"
+					></el-option>
                 </el-select>
             </el-form-item>
 
-            <el-form-item label="进离场状态" :label-width="formLabelWidth">
-                <el-select v-model="editForm.EntryExitStatus" placeholder="请选择状态">
-                    <el-option label="离场" value="0"></el-option>
-                    <el-option label="进场" value="1"></el-option>
-                </el-select>
+            <el-form-item label="第一种气体含量" :label-width="formLabelWidth">
+                <el-input-number v-model="editForm.Gas1" :precision="2" :step="0.01" :min="0" placeholder="请输入第一种气体含量"></el-input-number>
             </el-form-item>
 
-            <el-form-item label="进场时间" :label-width="formLabelWidth">
-                <el-date-picker
-                    v-model="editForm.EntryTime"
-                    type="datetime"
-                    placeholder="选择进场时间"
-                    value-format="yyyy-MM-dd HH:mm:ss"
-                    >
-                </el-date-picker>
-             </el-form-item>
+            <el-form-item label="第二种气体含量" :label-width="formLabelWidth">
+                <el-input-number v-model="editForm.Gas2" :precision="2" :step="0.01" :min="0" placeholder="请输入第二种气体含量"></el-input-number>
+            </el-form-item>
 
-            <el-form-item label="离场时间" :label-width="formLabelWidth">
-                <el-date-picker
-                    v-model="editForm.ExitTime"
-                    type="datetime"
-                    placeholder="选择离场时间"
-                    value-format="yyyy-MM-dd HH:mm:ss"
-                    >
-                </el-date-picker>
-             </el-form-item>
+            <el-form-item label="第三种气体含量" :label-width="formLabelWidth">
+                <el-input-number v-model="editForm.Gas3" :precision="2" :step="0.01" :min="0" placeholder="请输入第三种气体含量"></el-input-number>
+            </el-form-item>
+
+            <el-form-item label="第四种气体含量" :label-width="formLabelWidth">
+                <el-input-number v-model="editForm.Gas4" :precision="2" :step="0.01" :min="0" placeholder="请输入第四种气体含量"></el-input-number>
+            </el-form-item>
+
+            <el-form-item label="第五种气体含量" :label-width="formLabelWidth">
+                <el-input-number v-model="editForm.Gas5" :precision="2" :step="0.01" :min="0" placeholder="请输入第五种气体含量"></el-input-number>
+            </el-form-item>
+
+            <el-form-item label="第六种气体含量" :label-width="formLabelWidth">
+                <el-input-number v-model="editForm.Gas6" :precision="2" :step="0.01" :min="0" placeholder="请输入第六种气体含量"></el-input-number>
+            </el-form-item>
+
+            <el-form-item label="第七种气体含量" :label-width="formLabelWidth">
+                <el-input-number v-model="editForm.Gas7" :precision="2" :step="0.01" :min="0" placeholder="请输入第七种气体含量"></el-input-number>
+            </el-form-item>
+
+            <el-form-item label="第八种气体含量" :label-width="formLabelWidth">
+                <el-input-number v-model="editForm.Gas8" :precision="2" :step="0.01" :min="0" placeholder="请输入第八种气体含量"></el-input-number>
+            </el-form-item>
+
+            <el-form-item label="第九种气体含量" :label-width="formLabelWidth">
+                <el-input-number v-model="editForm.Gas9" :precision="2" :step="0.01" :min="0" placeholder="请输入第九种气体含量"></el-input-number>
+            </el-form-item>
+
+            <el-form-item label="第十种气体含量" :label-width="formLabelWidth">
+                <el-input-number v-model="editForm.Gas10" :precision="2" :step="0.01" :min="0" placeholder="请输入第十种气体含量"></el-input-number>
+            </el-form-item>
 
             </el-form>
             <div slot="footer" class="dialog-footer">
@@ -188,7 +244,8 @@
     </div>
 </template>
 <script>
-import { SelectWorkBracelet, AddWorkBracelet, EditWorkBracelet, DeleteWorkBracelet, SelectWorkBraceletById, SelectWorkOrder } from "../api/api";
+import { SelectGasAlarmRecord, AddGasAlarmRecord, EditGasAlarmRecord, DeleteGasAlarmRecord, SelectGasAlarmRecordById } from "../api/api";
+import { SelectWorkOrder } from "../api/api";
 
 export default {
     data() {
@@ -204,28 +261,38 @@ export default {
             addDialogFormVisible: false,
             editDialogFormVisible: false,
             addForm: {
-               WorkerName: null,
-               HeartRate: null,
                WorkOrderId: null,
-               EntryExitStatus: null,
-               EntryTime: null,
-               ExitTime: null,
+               Gas1: 0,
+               Gas2: 0,
+               Gas3: 0,
+               Gas4: 0,
+               Gas5: 0,
+               Gas6: 0,
+               Gas7: 0,
+               Gas8: 0,
+               Gas9: 0,
+               Gas10: 0,
             },
             editForm: {
             Id:"",
-               WorkerName: null,
-               HeartRate: null,
                WorkOrderId: null,
-               EntryExitStatus: null,
-               EntryTime: null,
-               ExitTime: null,
+               Gas1: 0,
+               Gas2: 0,
+               Gas3: 0,
+               Gas4: 0,
+               Gas5: 0,
+               Gas6: 0,
+               Gas7: 0,
+               Gas8: 0,
+               Gas9: 0,
+               Gas10: 0,
             },
             operationDisabled: false,
-            formLabelWidth: "120px",
+            formLabelWidth: "150px",
             WorkOrderList: [],
             Query: [
                 {
-                    QueryField: "WorkerName",
+                    QueryField: "WorkOrderId",
                     QueryStr: this.queryStr,
                 },
             ],
@@ -255,7 +322,7 @@ export default {
                 CurrentPage: this.currentPage - 1,
                 PageNumber: this.pageSize,
             };
-            SelectWorkBracelet(pageData).then(res => {
+            SelectGasAlarmRecord(pageData).then(res => {
                 this.tableData = res.data;
                 this.totalNumber = res.count;
 
@@ -306,13 +373,28 @@ export default {
         //点击确认添加按钮
         AddConfirm() {
             this.operationDisabled = true;
-            AddWorkBracelet(this.addForm).then(res => {
+            AddGasAlarmRecord(this.addForm).then(res => {
                 if (res) {
                     this.$message({
                         message: "创建成功！",
                         type: "success",
                     });
                     this.getTableData();
+                    this.addDialogFormVisible = false;
+                    // 重置表单
+                    this.addForm = {
+                        WorkOrderId: null,
+                        Gas1: 0,
+                        Gas2: 0,
+                        Gas3: 0,
+                        Gas4: 0,
+                        Gas5: 0,
+                        Gas6: 0,
+                        Gas7: 0,
+                        Gas8: 0,
+                        Gas9: 0,
+                        Gas10: 0,
+                    };
                 } else {
                     this.$message.error("创建失败！");
                 }
@@ -326,19 +408,24 @@ export default {
         //点击修改按钮
         handleEdit(row) {
                this.editForm.Id = row.Id;
-               this.editForm.WorkerName = row.WorkerName;
-               this.editForm.HeartRate = row.HeartRate;
                this.editForm.WorkOrderId = row.WorkOrderId;
-               this.editForm.EntryExitStatus = row.EntryExitStatus;
-               this.editForm.EntryTime = row.EntryTime;
-               this.editForm.ExitTime = row.ExitTime;
+               this.editForm.Gas1 = row.Gas1 || 0;
+               this.editForm.Gas2 = row.Gas2 || 0;
+               this.editForm.Gas3 = row.Gas3 || 0;
+               this.editForm.Gas4 = row.Gas4 || 0;
+               this.editForm.Gas5 = row.Gas5 || 0;
+               this.editForm.Gas6 = row.Gas6 || 0;
+               this.editForm.Gas7 = row.Gas7 || 0;
+               this.editForm.Gas8 = row.Gas8 || 0;
+               this.editForm.Gas9 = row.Gas9 || 0;
+               this.editForm.Gas10 = row.Gas10 || 0;
             
             this.editDialogFormVisible = true;
         },
         //点击确认修改按钮
         EditConfirm() {
             this.operationDisabled = true;
-            EditWorkBracelet(this.editForm).then(res => {
+            EditGasAlarmRecord(this.editForm).then(res => {
                     if (res) {
                         this.$message({
                             message: "编辑成功！",
@@ -368,7 +455,7 @@ export default {
                 type: "warning",
             })
                 .then(() => {
-                    DeleteWorkBracelet(Data).then((res) => {
+                    DeleteGasAlarmRecord(Data).then((res) => {
                         if (res) {
                             this.$message({
                                 type: "success",
@@ -511,3 +598,4 @@ export default {
     }
 };
 </script>
+

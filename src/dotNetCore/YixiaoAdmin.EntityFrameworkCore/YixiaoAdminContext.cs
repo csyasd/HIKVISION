@@ -78,6 +78,11 @@ namespace YixiaoAdmin.EntityFrameworkCore
         /// </summary>
         public DbSet<WorkRecord> WorkRecord { get; set; }
 
+        /// <summary>
+        /// 气体报警记录
+        /// </summary>
+        public DbSet<GasAlarmRecord> GasAlarmRecord { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

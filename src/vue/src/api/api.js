@@ -650,6 +650,59 @@ export const DeleteWorkRecord = (params) => {
 		params: params
 	}).then(res => res.data).catch(error => console.log(error));
 }
+
+// 气体报警记录相关API
+export const SelectGasAlarmRecord = (params) => {
+	console.log(params)
+	return axios({
+		method: 'Post',
+		url: BaseUrl + 'GasAlarmRecord/Pages',
+		data: params
+	}).then(res => res.data).catch(error => console.log(error));
+}
+export const SelectALLGasAlarmRecord = () => {
+    return axios({
+        method: 'Get',
+        url: BaseUrl + 'GasAlarmRecord/All',
+    })
+        .then((res) => res.data)
+        .catch((error) => console.log(error));
+};
+export const SelectGasAlarmRecordById = (params) => {
+	console.log(params)
+	return axios({
+		method: 'Get',
+		url: BaseUrl + 'GasAlarmRecord',
+		params: params
+	}).then(res => res.data).catch(error => console.log(error));
+}
+
+export const AddGasAlarmRecord = (params) => {
+	console.log(params)
+	return axios({
+		method: 'Post',
+		url: BaseUrl + 'GasAlarmRecord',
+		data: params
+	}).then(res => res.data).catch(error => console.log(error));
+}
+
+export const EditGasAlarmRecord = (params) => {
+	console.log(params)
+	return axios({
+		method: 'Put',
+		url: BaseUrl + 'GasAlarmRecord',
+		data: params
+	}).then(res => res.data).catch(error => console.log(error));
+}
+
+export const DeleteGasAlarmRecord = (params) => {
+	console.log(params)
+	return axios({
+		method: 'Delete',
+		url: BaseUrl + 'GasAlarmRecord',
+		params: params
+	}).then(res => res.data).catch(error => console.log(error));
+}
 //T4模板生成结束
 
 // 云台控制相关API

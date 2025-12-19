@@ -33,16 +33,6 @@ namespace YixiaoAdmin.Models.ViewModels
         public string EntryExitStatusText { get; set; }
 
         /// <summary>
-        /// 紧急呼叫状态 (0-正常, 1-紧急呼叫)
-        /// </summary>
-        public string EmergencyCallStatus { get; set; }
-
-        /// <summary>
-        /// 紧急呼叫状态描述
-        /// </summary>
-        public string EmergencyCallStatusText { get; set; }
-
-        /// <summary>
         /// 进场时间
         /// </summary>
         public string EntryTime { get; set; }
@@ -58,14 +48,14 @@ namespace YixiaoAdmin.Models.ViewModels
         public string HeartRate { get; set; }
 
         /// <summary>
-        /// 所属手环id
+        /// 所属工单id
         /// </summary>
-        public string BraceletId { get; set; }
+        public string WorkOrderId { get; set; }
 
         /// <summary>
-        /// 所属手环
+        /// 所属工单
         /// </summary>
-        public BraceletDto Bracelet { get; set; }
+        public WorkOrderDto WorkOrder { get; set; }
 
         /// <summary>
         /// 创建用户名

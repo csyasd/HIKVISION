@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using YixiaoAdmin.EntityFrameworkCore;
 
@@ -11,9 +12,10 @@ using YixiaoAdmin.EntityFrameworkCore;
 namespace YixiaoAdmin.EntityFrameworkCore.Migrations
 {
     [DbContext(typeof(YixiaoAdminContext))]
-    partial class YixiaoAdminContextModelSnapshot : ModelSnapshot
+    [Migration("20251219042119_UpdateTablesAndAddGasAlarmRecord")]
+    partial class UpdateTablesAndAddGasAlarmRecord
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -675,9 +677,6 @@ namespace YixiaoAdmin.EntityFrameworkCore.Migrations
 
                     b.Property<string>("WorkOrderId")
                         .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("WorkerName")
-                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 

@@ -51,13 +51,13 @@ namespace YixiaoAdmin.Services
                     {
                         whereExpression = PredicateBuilder.And<WorkBracelet>(whereExpression, (x) => x.WorkerName.Contains(item.QueryStr));
                     }
+                    else if (item.QueryField == "WorkOrderId")
+                    {
+                        whereExpression = PredicateBuilder.And<WorkBracelet>(whereExpression, (x) => x.WorkOrderId.Contains(item.QueryStr));
+                    }
                     else if (item.QueryField == "EntryExitStatus")
                     {
                         whereExpression = PredicateBuilder.And<WorkBracelet>(whereExpression, (x) => x.EntryExitStatus.Contains(item.QueryStr));
-                    }
-                    else if (item.QueryField == "EmergencyCallStatus")
-                    {
-                        whereExpression = PredicateBuilder.And<WorkBracelet>(whereExpression, (x) => x.EmergencyCallStatus.Contains(item.QueryStr));
                     }
                     else if (item.QueryField == "CreateTime")
                     {

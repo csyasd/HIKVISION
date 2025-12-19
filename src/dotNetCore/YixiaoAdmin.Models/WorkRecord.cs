@@ -16,16 +16,6 @@ namespace YixiaoAdmin.Models
         public WorkOrder WorkOrder { get; set; }
 
         /// <summary>
-        /// 所属作业手环id
-        /// </summary>
-        public string WorkBraceletId { get; set; }
-
-        /// <summary>
-        /// 所属作业手环
-        /// </summary>
-        public WorkBracelet WorkBracelet { get; set; }
-
-        /// <summary>
         /// 心率
         /// </summary>
         public string HeartRate { get; set; }
@@ -36,8 +26,8 @@ namespace YixiaoAdmin.Models
         public string EntryExitStatus { get; set; }
 
         /// <summary>
-        /// 紧急呼叫状态 (0-正常, 1-紧急呼叫)
+        /// 工人姓名
         /// </summary>
-        public string EmergencyCallStatus { get; set; }
+        public string WorkerName { get; set; }
     }
 }

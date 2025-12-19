@@ -39,9 +39,9 @@ namespace YixiaoAdmin.Models
         public string Content { get; set; }
 
         /// <summary>
-        /// 气体警报
+        /// 工单状态 (0-未开始, 1-工单开始, 2-工单结束)
         /// </summary>
-        public bool GasAlarm { get; set; }
+        public int Status { get; set; }
 
         /// <summary>
         /// 有毒气体报警在线状态

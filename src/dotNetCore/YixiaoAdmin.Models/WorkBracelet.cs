@@ -18,11 +18,6 @@ namespace YixiaoAdmin.Models
         public string EntryExitStatus { get; set; }
 
         /// <summary>
-        /// 紧急呼叫状态 (0-正常, 1-紧急呼叫)
-        /// </summary>
-        public string EmergencyCallStatus { get; set; }
-
-        /// <summary>
         /// 进场时间
         /// </summary>
         public string EntryTime { get; set; }
@@ -38,13 +33,13 @@ namespace YixiaoAdmin.Models
         public string HeartRate { get; set; }
 
         /// <summary>
-        /// 所属手环id
+        /// 所属工单id
         /// </summary>
-        public string BraceletId { get; set; }
+        public string WorkOrderId { get; set; }
 
         /// <summary>
-        /// 所属手环
+        /// 所属工单
         /// </summary>
-        public Bracelet Bracelet { get; set; }
+        public WorkOrder WorkOrder { get; set; }
     }
 }

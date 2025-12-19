@@ -14,10 +14,9 @@ import DeviceManagement from '../views/DeviceManagement.vue'
 import WorkOrderManagement from '../views/WorkOrderManagement.vue'
 
 import CameraDetail from '../views/CameraDetail.vue'
-import PersonnelManagement from '../views/PersonnelManagement.vue'
-import BraceletManagement from '../views/BraceletManagement.vue'
 import WorkBraceletManagement from '../views/WorkBraceletManagement.vue'
 import WorkRecordManagement from '../views/WorkRecordManagement.vue'
+import GasAlarmRecordManagement from '../views/GasAlarmRecordManagement.vue'
 Vue.use(VueRouter)
 
 const routes = [
@@ -63,18 +62,6 @@ const routes = [
                 name: '摄像头记录'
             },
             {
-                // 人员管理
-                path: 'PersonnelManagement',
-                component: PersonnelManagement,
-                name: '人员管理'
-            },
-            {
-                // 手环管理
-                path: 'BraceletManagement',
-                component: BraceletManagement,
-                name: '手环管理'
-            },
-            {
                 // 作业手环管理
                 path: 'WorkBraceletManagement',
                 component: WorkBraceletManagement,
@@ -85,6 +72,12 @@ const routes = [
                 path: 'WorkRecordManagement',
                 component: WorkRecordManagement,
                 name: '作业记录管理'
+            },
+            {
+                // 气体报警记录
+                path: 'GasAlarmRecordManagement',
+                component: GasAlarmRecordManagement,
+                name: '气体报警记录'
             },
             {
                 // 用户管理

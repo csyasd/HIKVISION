@@ -5,7 +5,7 @@
 <template>
     <div class="container" >
         <el-col :span="24" class="toolbar">
-            <el-input style="width: 200px" placeholder="搜索心率" v-model="Query[0].QueryStr"></el-input>&nbsp;&nbsp;
+            <el-input style="width: 200px" placeholder="搜索工人姓名" v-model="Query[0].QueryStr"></el-input>&nbsp;&nbsp;
             <el-button @click="queryData()">查询</el-button>
             <el-button  @click="clearQuery()">清空</el-button>
             <el-button type="danger" @click="refreshTable()">刷新列表</el-button>
@@ -35,13 +35,7 @@
                 </template>
             </el-table-column>
     
-            <el-table-column :show-overflow-tooltip="true" prop="WorkBraceletId" label="所属作业手环id" width="220" ></el-table-column>
-    
-            <el-table-column :show-overflow-tooltip="true" prop="WorkBracelet" label="所属作业手环" width="220" >
-                <template slot-scope="scope">
-                    <div>{{ WorkBraceletList[WorkBraceletList.findIndex((x) => x.Id == scope.row.WorkBraceletId)]?.WorkerName}}</div>
-                </template>
-            </el-table-column>
+            <el-table-column :show-overflow-tooltip="true" prop="WorkerName" label="工人姓名" width="150" ></el-table-column>
     
             <el-table-column :show-overflow-tooltip="true" prop="HeartRate" label="心率" width="120" ></el-table-column>
     
@@ -49,14 +43,6 @@
                 <template slot-scope="scope">
                     <el-tag :type="scope.row.EntryExitStatus === '1' ? 'success' : 'info'">
                         {{ scope.row.EntryExitStatus === '1' ? '进场' : '离场' }}
-                    </el-tag>
-                </template>
-            </el-table-column>
-    
-            <el-table-column :show-overflow-tooltip="true" prop="EmergencyCallStatus" label="紧急呼叫状态" width="150" >
-                <template slot-scope="scope">
-                    <el-tag :type="scope.row.EmergencyCallStatus === '1' ? 'danger' : 'success'">
-                        {{ scope.row.EmergencyCallStatus === '1' ? '紧急呼叫' : '正常' }}
                     </el-tag>
                 </template>
             </el-table-column>
@@ -100,15 +86,8 @@
                 </el-select>
             </el-form-item>
 
-            <el-form-item label="所属作业手环" :label-width="formLabelWidth">
-                <el-select v-model="addForm.WorkBraceletId" placeholder="请选择作业手环">
-                    <el-option
-						v-for="(item, i) in WorkBraceletList"
-						:label="item.WorkerName"
-						:value="item.Id"
-						:key="i"
-					></el-option>
-                </el-select>
+            <el-form-item label="工人姓名" :label-width="formLabelWidth">
+                <el-input v-model="addForm.WorkerName" autocomplete="off" placeholder="请输入工人姓名"></el-input>
             </el-form-item>
 
             <el-form-item label="心率" :label-width="formLabelWidth">
@@ -119,13 +98,6 @@
                 <el-select v-model="addForm.EntryExitStatus" placeholder="请选择状态">
                     <el-option label="离场" value="0"></el-option>
                     <el-option label="进场" value="1"></el-option>
-                </el-select>
-            </el-form-item>
-
-            <el-form-item label="紧急呼叫状态" :label-width="formLabelWidth">
-                <el-select v-model="addForm.EmergencyCallStatus" placeholder="请选择状态">
-                    <el-option label="正常" value="0"></el-option>
-                    <el-option label="紧急呼叫" value="1"></el-option>
                 </el-select>
             </el-form-item>
 
@@ -150,15 +122,8 @@
                 </el-select>
             </el-form-item>
 
-            <el-form-item label="所属作业手环" :label-width="formLabelWidth">
-                <el-select v-model="editForm.WorkBraceletId" placeholder="请选择作业手环">
-                    <el-option
-						v-for="(item, i) in WorkBraceletList"
-						:label="item.WorkerName"
-						:value="item.Id"
-						:key="i"
-					></el-option>
-                </el-select>
+            <el-form-item label="工人姓名" :label-width="formLabelWidth">
+                <el-input v-model="editForm.WorkerName" autocomplete="off" placeholder="请输入工人姓名"></el-input>
             </el-form-item>
 
             <el-form-item label="心率" :label-width="formLabelWidth">
@@ -169,13 +134,6 @@
                 <el-select v-model="editForm.EntryExitStatus" placeholder="请选择状态">
                     <el-option label="离场" value="0"></el-option>
                     <el-option label="进场" value="1"></el-option>
-                </el-select>
-            </el-form-item>
-
-            <el-form-item label="紧急呼叫状态" :label-width="formLabelWidth">
-                <el-select v-model="editForm.EmergencyCallStatus" placeholder="请选择状态">
-                    <el-option label="正常" value="0"></el-option>
-                    <el-option label="紧急呼叫" value="1"></el-option>
                 </el-select>
             </el-form-item>
 
@@ -191,7 +149,6 @@
 import { SelectWorkRecord, AddWorkRecord, EditWorkRecord, DeleteWorkRecord, SelectWorkRecordById } from "../api/api";
 import{
            SelectALLWorkOrder,
-           SelectALLWorkBracelet,
 } from "../api/api";
 export default {
     data() {
@@ -208,24 +165,22 @@ export default {
             editDialogFormVisible: false,
             addForm: {
                WorkOrderId: null,
-               WorkBraceletId: null,
+               WorkerName: null,
                HeartRate: null,
                EntryExitStatus: null,
-               EmergencyCallStatus: null,
             },
             editForm: {
             Id:"",
                WorkOrderId: null,
-               WorkBraceletId: null,
+               WorkerName: null,
                HeartRate: null,
                EntryExitStatus: null,
-               EmergencyCallStatus: null,
             },
             operationDisabled: false,
             formLabelWidth: "120px",
             Query: [
                 {
-                    QueryField: "HeartRate",
+                    QueryField: "WorkerName",
                     QueryStr: this.queryStr,
                 },
             ],
@@ -238,18 +193,13 @@ export default {
             selectDataArrL: [], //跨页多选所有的项
 
             WorkOrderList:[],
-            WorkBraceletList:[],
 
         };
     },
     mounted() {
        (async () => {
- 
-            this.WorkOrderList = await SelectALLWorkOrder();
- 
-            this.WorkBraceletList = await SelectALLWorkBracelet();
-       
             this.getTableData();
+            this.loadWorkOrderList();
         })();
     },
     methods: {
@@ -320,6 +270,14 @@ export default {
                         type: "success",
                     });
                     this.getTableData();
+                    this.addDialogFormVisible = false;
+                    // 重置表单
+                    this.addForm = {
+                        WorkOrderId: null,
+                        WorkerName: null,
+                        HeartRate: null,
+                        EntryExitStatus: null,
+                    };
                 } else {
                     this.$message.error("创建失败！");
                 }
@@ -334,10 +292,9 @@ export default {
         handleEdit(row) {
                this.editForm.Id = row.Id;
                this.editForm.WorkOrderId = row.WorkOrderId;
-               this.editForm.WorkBraceletId = row.WorkBraceletId;
+               this.editForm.WorkerName = row.WorkerName;
                this.editForm.HeartRate = row.HeartRate;
                this.editForm.EntryExitStatus = row.EntryExitStatus;
-               this.editForm.EmergencyCallStatus = row.EmergencyCallStatus;
             
             this.editDialogFormVisible = true;
         },
@@ -504,6 +461,16 @@ export default {
         /*行多选结束*/
 
         /*请将自定义函数写在我的下面*/
+        
+        //加载工单列表
+        loadWorkOrderList() {
+            SelectALLWorkOrder().then(res => {
+                this.WorkOrderList = res || [];
+            }).catch(error => {
+                console.log(error);
+                this.$message.error("加载工单列表失败！");
+            });
+        },
     }
 };
 </script>

@@ -46,10 +46,10 @@
     
             <el-table-column :show-overflow-tooltip="true" prop="Content" label="内容" width="220" ></el-table-column>
     
-            <el-table-column :show-overflow-tooltip="true" prop="GasAlarm" label="气体警报" width="220" >
+            <el-table-column :show-overflow-tooltip="true" prop="Status" label="工单状态" width="150" >
                 <template slot-scope="scope">
-                    <el-tag :type="scope.row.GasAlarm ? 'danger' : 'success'">
-                        {{ scope.row.GasAlarm ? '是' : '否' }}
+                    <el-tag :type="scope.row.Status === 0 ? 'info' : scope.row.Status === 1 ? 'success' : 'warning'">
+                        {{ scope.row.Status === 0 ? '未开始' : scope.row.Status === 1 ? '工单开始' : '工单结束' }}
                     </el-tag>
                 </template>
             </el-table-column>
@@ -143,14 +143,17 @@
                 <el-input v-model="addForm.Content" autocomplete="off" placeholder="请输入内容"></el-input>
             </el-form-item>
 
-            <el-form-item label="气体警报" :label-width="formLabelWidth">
-                <el-switch v-model="addForm.GasAlarm" active-text="是" inactive-text="否"></el-switch>
+            <el-form-item label="工单状态" :label-width="formLabelWidth">
+                <el-select v-model="addForm.Status" placeholder="请选择工单状态">
+                    <el-option label="未开始" :value="0"></el-option>
+                    <el-option label="工单开始" :value="1"></el-option>
+                    <el-option label="工单结束" :value="2"></el-option>
+                </el-select>
             </el-form-item>
 
             <el-form-item label="有毒气体报警在线状态" :label-width="formLabelWidth">
                 <el-switch v-model="addForm.ToxicGasAlarmOnlineStatus" active-text="在线" inactive-text="离线"></el-switch>
             </el-form-item>
-
     
     
             </el-form>
@@ -213,8 +216,12 @@
                 <el-input v-model="editForm.Content" autocomplete="off" placeholder="请输入内容"></el-input>
             </el-form-item>
 
-            <el-form-item label="气体警报" :label-width="formLabelWidth">
-                <el-switch v-model="editForm.GasAlarm" active-text="是" inactive-text="否"></el-switch>
+            <el-form-item label="工单状态" :label-width="formLabelWidth">
+                <el-select v-model="editForm.Status" placeholder="请选择工单状态">
+                    <el-option label="未开始" :value="0"></el-option>
+                    <el-option label="工单开始" :value="1"></el-option>
+                    <el-option label="工单结束" :value="2"></el-option>
+                </el-select>
             </el-form-item>
 
             <el-form-item label="有毒气体报警在线状态" :label-width="formLabelWidth">
@@ -266,7 +273,7 @@ export default {
     
                Content: null,
     
-               GasAlarm: false,
+               Status: 0,
     
                ToxicGasAlarmOnlineStatus: false,
     
@@ -286,7 +293,7 @@ export default {
     
                Content: null,
     
-               GasAlarm: false,
+               Status: 0,
     
                ToxicGasAlarmOnlineStatus: false,
     

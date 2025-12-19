@@ -51,9 +51,9 @@ namespace YixiaoAdmin.Services
                     {
                         whereExpression = PredicateBuilder.And<WorkRecord>(whereExpression, (x) => x.WorkOrderId.Contains(item.QueryStr));
                     }
-                    else if (item.QueryField == "WorkBraceletId")
+                    else if (item.QueryField == "WorkerName")
                     {
-                        whereExpression = PredicateBuilder.And<WorkRecord>(whereExpression, (x) => x.WorkBraceletId.Contains(item.QueryStr));
+                        whereExpression = PredicateBuilder.And<WorkRecord>(whereExpression, (x) => x.WorkerName.Contains(item.QueryStr));
                     }
                     else if (item.QueryField == "HeartRate")
                     {
@@ -62,10 +62,6 @@ namespace YixiaoAdmin.Services
                     else if (item.QueryField == "EntryExitStatus")
                     {
                         whereExpression = PredicateBuilder.And<WorkRecord>(whereExpression, (x) => x.EntryExitStatus.Contains(item.QueryStr));
-                    }
-                    else if (item.QueryField == "EmergencyCallStatus")
-                    {
-                        whereExpression = PredicateBuilder.And<WorkRecord>(whereExpression, (x) => x.EmergencyCallStatus.Contains(item.QueryStr));
                     }
                     else if (item.QueryField == "CreateTime")
                     {
