@@ -703,6 +703,32 @@ export const DeleteGasAlarmRecord = (params) => {
 		params: params
 	}).then(res => res.data).catch(error => console.log(error));
 }
+
+// 获取在线设备的最新气体监测实时数据
+export const GetRealtimeGasData = () => {
+    return axios({
+        method: 'Get',
+        url: BaseUrl + 'GasAlarmRecord/GetRealtimeGasData',
+    })
+        .then((res) => res.data)
+        .catch((error) => {
+            console.error('获取气体监测数据失败:', error);
+            return [];
+        });
+}
+
+// 获取实时手环信息（在线设备的工单开始状态的作业手环）
+export const GetRealtimeBraceletInfo = () => {
+    return axios({
+        method: 'Get',
+        url: BaseUrl + 'WorkBracelet/GetRealtimeBraceletInfo',
+    })
+        .then((res) => res.data)
+        .catch((error) => {
+            console.error('获取手环信息失败:', error);
+            return [];
+        });
+}
 //T4模板生成结束
 
 // 云台控制相关API

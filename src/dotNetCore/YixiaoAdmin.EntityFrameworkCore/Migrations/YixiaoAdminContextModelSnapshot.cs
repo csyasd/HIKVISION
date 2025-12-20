@@ -196,6 +196,9 @@ namespace YixiaoAdmin.EntityFrameworkCore.Migrations
                     b.Property<string>("ManufactureDate")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("OnlineStatus")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Model")
                         .HasColumnType("nvarchar(max)");
 

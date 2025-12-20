@@ -5,7 +5,42 @@
 <template>
     <div class="container" >
         <el-col :span="24" class="toolbar">
-            <el-input style="width: 200px" placeholder="搜索工人姓名" v-model="Query[0].QueryStr"></el-input>&nbsp;&nbsp;
+            <el-select 
+                v-model="filterDeviceId" 
+                placeholder="选择设备" 
+                style="width: 200px; margin-right: 10px;"
+                clearable
+                filterable
+                @change="handleDeviceChange">
+                <el-option
+                    v-for="(item, i) in DeviceList"
+                    :key="i"
+                    :label="`${item.Name} (${item.OnlineStatus || '离线'})`"
+                    :value="item.Id">
+                    <span style="float: left">{{ item.Name }}</span>
+                    <span style="float: right; color: #8492a6; font-size: 13px">
+                        <el-tag :type="item.OnlineStatus === '在线' ? 'success' : 'danger'" size="mini">
+                            {{ item.OnlineStatus || '离线' }}
+                        </el-tag>
+                    </span>
+                </el-option>
+            </el-select>
+            <el-autocomplete
+                style="width: 200px; margin-right: 10px;"
+                v-model="filterWorkOrderCode"
+                :fetch-suggestions="queryWorkOrderCode"
+                placeholder="搜索工单编号"
+                clearable
+                @select="handleWorkOrderCodeSelect">
+            </el-autocomplete>
+            <el-autocomplete
+                style="width: 200px; margin-right: 10px;"
+                v-model="filterWorkOrderContent"
+                :fetch-suggestions="queryWorkOrderContent"
+                placeholder="搜索工单内容"
+                clearable
+                @select="handleWorkOrderContentSelect">
+            </el-autocomplete>
             <el-button @click="queryData()">查询</el-button>
             <el-button  @click="clearQuery()">清空</el-button>
             <el-button type="danger" @click="refreshTable()">刷新列表</el-button>
@@ -151,10 +186,7 @@
     </div>
 </template>
 <script>
-import { SelectWorkRecord, AddWorkRecord, EditWorkRecord, DeleteWorkRecord, SelectWorkRecordById } from "../api/api";
-import{
-           SelectALLWorkOrder,
-} from "../api/api";
+import { SelectWorkRecord, AddWorkRecord, EditWorkRecord, DeleteWorkRecord, SelectWorkRecordById, SelectWorkOrder, SelectALLDevice } from "../api/api";
 export default {
     data() {
         return {
@@ -183,34 +215,81 @@ export default {
             },
             operationDisabled: false,
             formLabelWidth: "120px",
-            Query: [
-                {
-                    QueryField: "WorkerName",
-                    QueryStr: this.queryStr,
-                },
-            ],
+            Query: [],
             Orderby: [
                 {
                     SortField: "CreateTime",
-                    IsDesc: false,
+                    IsDesc: true,
                 },
             ],
             selectDataArrL: [], //跨页多选所有的项
-
-            WorkOrderList:[],
+            WorkOrderList: [],
+            DeviceList: [],
+            filterDeviceId: null,
+            filterWorkOrderCode: "",
+            filterWorkOrderContent: "",
 
         };
     },
     mounted() {
        (async () => {
+            this.DeviceList = await SelectALLDevice();
+            
+            // 默认选择在线设备的第一个
+            const onlineDevices = this.DeviceList.filter(d => d.OnlineStatus === '在线');
+            if (onlineDevices.length > 0) {
+                this.filterDeviceId = onlineDevices[0].Id;
+            }
+            
+            await this.loadWorkOrderList();
+            this.setDefaultWorkOrder();
             this.getTableData();
-            this.loadWorkOrderList();
         })();
     },
     methods: {
         //获取表格数据
         getTableData() {
             this.operationDisabled = true;
+            
+            // 构建查询条件：先筛选符合条件的工单，然后获取工单ID列表
+            let filteredWorkOrders = [...this.WorkOrderList];
+            
+            // 设备筛选
+            if (this.filterDeviceId) {
+                filteredWorkOrders = filteredWorkOrders.filter(wo => wo.DeviceId === this.filterDeviceId);
+            }
+            
+            // 工单编号筛选
+            if (this.filterWorkOrderCode && this.filterWorkOrderCode.trim()) {
+                filteredWorkOrders = filteredWorkOrders.filter(wo => 
+                    wo.Code && wo.Code.includes(this.filterWorkOrderCode.trim())
+                );
+            }
+            
+            // 工单内容筛选
+            if (this.filterWorkOrderContent && this.filterWorkOrderContent.trim()) {
+                filteredWorkOrders = filteredWorkOrders.filter(wo => 
+                    wo.Content && wo.Content.includes(this.filterWorkOrderContent.trim())
+                );
+            }
+            
+            // 构建查询条件
+            this.Query = [];
+            
+            if (filteredWorkOrders.length > 0) {
+                const workOrderIds = filteredWorkOrders.map(wo => wo.Id);
+                this.Query.push({
+                    QueryField: "WorkOrderId",
+                    QueryStr: workOrderIds.join(","),
+                });
+            } else {
+                // 如果没有匹配的工单，返回空结果
+                this.Query.push({
+                    QueryField: "WorkOrderId",
+                    QueryStr: "__NO_MATCH__",
+                });
+            }
+            
             var pageData = {
                 Query: this.Query,
                 Orderby: this.Orderby,
@@ -247,10 +326,24 @@ export default {
         },
         //清空查询条件
         clearQuery(){
-            for(var item in this.Query){
-                this.Query[item].QueryStr = "";
+            // 重新设置默认设备
+            const onlineDevices = this.DeviceList.filter(d => d.OnlineStatus === '在线');
+            if (onlineDevices.length > 0) {
+                this.filterDeviceId = onlineDevices[0].Id;
+            } else {
+                this.filterDeviceId = null;
             }
+            
+            // 重新设置默认工单
+            this.setDefaultWorkOrder();
+            
             this.queryData();
+        },
+        
+        // 设备选择改变事件
+        handleDeviceChange() {
+            // 当设备改变时，重新设置默认工单
+            this.setDefaultWorkOrder();
         },
         //刷新表格
         refreshTable() {
@@ -495,12 +588,74 @@ export default {
         
         //加载工单列表
         loadWorkOrderList() {
-            SelectALLWorkOrder().then(res => {
-                this.WorkOrderList = res || [];
+            return SelectWorkOrder({ Query: [], Orderby: [], CurrentPage: 0, PageNumber: 1000 }).then(res => {
+                this.WorkOrderList = res.data || [];
             }).catch(error => {
                 console.log(error);
                 this.$message.error("加载工单列表失败！");
             });
+        },
+        
+        // 设置默认工单（工单状态为开始的第一个）
+        setDefaultWorkOrder() {
+            const filteredWorkOrders = this.getFilteredWorkOrders();
+            // 找到工单状态为1（工单开始）的第一个工单
+            const startedWorkOrder = filteredWorkOrders.find(wo => wo.Status === 1);
+            if (startedWorkOrder) {
+                this.filterWorkOrderCode = startedWorkOrder.Code || "";
+                this.filterWorkOrderContent = startedWorkOrder.Content || "";
+            } else {
+                this.filterWorkOrderCode = "";
+                this.filterWorkOrderContent = "";
+            }
+        },
+        
+        // 获取当前设备对应的工单列表
+        getFilteredWorkOrders() {
+            if (this.filterDeviceId) {
+                return this.WorkOrderList.filter(wo => wo.DeviceId === this.filterDeviceId);
+            }
+            return this.WorkOrderList;
+        },
+        
+        // 工单编号自动完成查询
+        queryWorkOrderCode(queryString, cb) {
+            const filteredWorkOrders = this.getFilteredWorkOrders();
+            const results = filteredWorkOrders
+                .filter(wo => {
+                    if (!queryString) return true;
+                    return wo.Code && wo.Code.toLowerCase().includes(queryString.toLowerCase());
+                })
+                .map(wo => ({
+                    value: wo.Code,
+                    workOrder: wo
+                }));
+            cb(results);
+        },
+        
+        // 工单内容自动完成查询
+        queryWorkOrderContent(queryString, cb) {
+            const filteredWorkOrders = this.getFilteredWorkOrders();
+            const results = filteredWorkOrders
+                .filter(wo => {
+                    if (!queryString) return true;
+                    return wo.Content && wo.Content.toLowerCase().includes(queryString.toLowerCase());
+                })
+                .map(wo => ({
+                    value: wo.Content,
+                    workOrder: wo
+                }));
+            cb(results);
+        },
+        
+        // 工单编号选择事件
+        handleWorkOrderCodeSelect(item) {
+            this.filterWorkOrderCode = item.value;
+        },
+        
+        // 工单内容选择事件
+        handleWorkOrderContentSelect(item) {
+            this.filterWorkOrderContent = item.value;
         },
     }
 };

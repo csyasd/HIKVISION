@@ -195,7 +195,7 @@ namespace YixiaoAdmin.WebApi.Services
 
                 // 读取Workers_Name数组（0-10），每个String占256字节
                 _logger.LogDebug($"[工单{orderIndex}] 读取Workers_Name数组 (11个String, 每个256字节)...");
-                for (int i = 0; i <= 10; i++)
+                for (int i = 1; i <= 10; i++)
                 {
                     int nameOffset = orderBaseOffset + i * 256;
                     order.Workers_Name[i] = await ReadStringAsync(plc, dbNumber, nameOffset, 256) ?? string.Empty;
@@ -211,7 +211,7 @@ namespace YixiaoAdmin.WebApi.Services
 
                 // 读取SmartBand_No数组（0-10），每个Int占2字节，偏移量：2818
                 _logger.LogDebug($"[工单{orderIndex}] 读取SmartBand_No数组 (11个Int, 每个2字节)...");
-                for (int i = 0; i <= 10; i++)
+                for (int i = 1; i <= 10; i++)
                 {
                     int bandOffset = orderBaseOffset + 2818 + i * 2;
                     order.SmartBand_No[i] = await ReadIntAsync(plc, dbNumber, bandOffset) ?? 0;
@@ -230,7 +230,7 @@ namespace YixiaoAdmin.WebApi.Services
 
                 // 读取Workers_Status数组（0-10），每个Int占2字节，偏移量：3096
                 _logger.LogDebug($"[工单{orderIndex}] 读取Workers_Status数组 (11个Int, 每个2字节)...");
-                for (int i = 0; i <= 10; i++)
+                for (int i = 1; i <= 10; i++)
                 {
                     int statusOffset = orderBaseOffset + 3096 + i * 2;
                     order.Workers_Status[i] = await ReadIntAsync(plc, dbNumber, statusOffset) ?? 0;
@@ -304,7 +304,7 @@ namespace YixiaoAdmin.WebApi.Services
 
                 //// 读取Maximum_HeartRate数组（0-10），每个Int占2字节，偏移量：3124
                 //_logger.LogDebug($"[工单{orderIndex}] 读取Maximum_HeartRate数组 (11个Int, 每个2字节)...");
-                //for (int i = 0; i <= 10; i++)
+                //for (int i = 1; i <= 10; i++)
                 //{
                 //    int maxHrOffset = orderBaseOffset + 3124 + i * 2;
                 //    order.Maximum_HeartRate[i] = await ReadIntAsync(plc, dbNumber, maxHrOffset) ?? 0;
@@ -316,7 +316,7 @@ namespace YixiaoAdmin.WebApi.Services
 
                 //// 读取MInimum_HeartRate数组（0-10），每个Int占2字节，偏移量：3146
                 //_logger.LogDebug($"[工单{orderIndex}] 读取MInimum_HeartRate数组 (11个Int, 每个2字节)...");
-                //for (int i = 0; i <= 10; i++)
+                //for (int i = 1; i <= 10; i++)
                 //{
                 //    int minHrOffset = orderBaseOffset + 3146 + i * 2;
                 //    order.MInimum_HeartRate[i] = await ReadIntAsync(plc, dbNumber, minHrOffset) ?? 0;
@@ -328,7 +328,7 @@ namespace YixiaoAdmin.WebApi.Services
 
                 // 读取Heart_Rate数组（0-10），每个Int占2字节，偏移量：3168
                 _logger.LogDebug($"[工单{orderIndex}] 读取Heart_Rate数组 (11个Int, 每个2字节)...");
-                for (int i = 0; i <= 10; i++)
+                for (int i = 1; i <= 10; i++)
                 {
                     int hrOffset = orderBaseOffset + 3168 + i * 2;
                     order.Heart_Rate[i] = await ReadIntAsync(plc, dbNumber, hrOffset) ?? 0;
@@ -361,7 +361,7 @@ namespace YixiaoAdmin.WebApi.Services
                 //var nullOrder = data.Construction_Order_Null;
 
                 //// 读取Workers_Name数组（0-10），每个String占256字节
-                //for (int i = 0; i <= 10; i++)
+                //for (int i = 1; i <= 10; i++)
                 //{
                 //    int nameOffset = nullOrderOffset + i * 256;
                 //    nullOrder.Workers_Name[i] = await ReadStringAsync(plc, dbNumber, nameOffset, 256) ?? string.Empty;
@@ -371,7 +371,7 @@ namespace YixiaoAdmin.WebApi.Services
                 //nullOrder.Construction_Order_No = await ReadIntAsync(plc, dbNumber, nullOrderOffset + 2816) ?? 0;
 
                 //// 读取SmartBand_No数组（0-10），每个Int占2字节，偏移量：35092 + 2818 = 37910
-                //for (int i = 0; i <= 10; i++)
+                //for (int i = 1; i <= 10; i++)
                 //{
                 //    int bandOffset = nullOrderOffset + 2818 + i * 2;
                 //    nullOrder.SmartBand_No[i] = await ReadIntAsync(plc, dbNumber, bandOffset) ?? 0;
@@ -381,7 +381,7 @@ namespace YixiaoAdmin.WebApi.Services
                 //nullOrder.Construction_Order_Content = await ReadStringAsync(plc, dbNumber, nullOrderOffset + 2840, 256) ?? string.Empty;
 
                 //// 读取Workers_Status数组（0-10），每个Int占2字节，偏移量：35092 + 3096 = 38188
-                //for (int i = 0; i <= 10; i++)
+                //for (int i = 1; i <= 10; i++)
                 //{
                 //    int statusOffset = nullOrderOffset + 3096 + i * 2;
                 //    nullOrder.Workers_Status[i] = await ReadIntAsync(plc, dbNumber, statusOffset) ?? 0;
@@ -419,21 +419,21 @@ namespace YixiaoAdmin.WebApi.Services
                 ////}
 
                 //// 读取Maximum_HeartRate数组（0-10），每个Int占2字节，偏移量：35092 + 3124 = 38216
-                //for (int i = 0; i <= 10; i++)
+                //for (int i = 1; i <= 10; i++)
                 //{
                 //    int maxHrOffset = nullOrderOffset + 3124 + i * 2;
                 //    nullOrder.Maximum_HeartRate[i] = await ReadIntAsync(plc, dbNumber, maxHrOffset) ?? 0;
                 //}
 
                 //// 读取MInimum_HeartRate数组（0-10），每个Int占2字节，偏移量：35092 + 3146 = 38238
-                //for (int i = 0; i <= 10; i++)
+                //for (int i = 1; i <= 10; i++)
                 //{
                 //    int minHrOffset = nullOrderOffset + 3146 + i * 2;
                 //    nullOrder.MInimum_HeartRate[i] = await ReadIntAsync(plc, dbNumber, minHrOffset) ?? 0;
                 //}
 
                 //// 读取Heart_Rate数组（0-10），每个Int占2字节，偏移量：35092 + 3168 = 38260
-                //for (int i = 0; i <= 10; i++)
+                //for (int i = 1; i <= 10; i++)
                 //{
                 //    int hrOffset = nullOrderOffset + 3168 + i * 2;
                 //    nullOrder.Heart_Rate[i] = await ReadIntAsync(plc, dbNumber, hrOffset) ?? 0;
@@ -453,7 +453,7 @@ namespace YixiaoAdmin.WebApi.Services
 
                 // 读取Gas_Alarm数组（0-10），每个Real占4字节，偏移量：38284
                 _logger.LogDebug("[传感器] 读取Gas_Alarm数组 (11个Real, 每个4字节)...");
-                for (int i = 0; i <= 10; i++)
+                for (int i = 1; i <= 10; i++)
                 {
                     int gasOffset = 38284 + i * 4;
                     data.Gas_Alarm[i] = await ReadRealAsync(plc, dbNumber, gasOffset) ?? 0f;
@@ -493,7 +493,7 @@ namespace YixiaoAdmin.WebApi.Services
                     }
                     
                     // 统计工人数据
-                    for (int j = 0; j <= 10; j++)
+                    for (int j = 1; j <= 10; j++)
                     {
                         if (!string.IsNullOrEmpty(order.Workers_Name[j]))
                         {
@@ -534,7 +534,7 @@ namespace YixiaoAdmin.WebApi.Services
                 if (gasAlarmCount > 0)
                 {
                     _logger.LogInformation($"[数据读取成功] 气体报警数据 - 非零数据: {gasAlarmCount}个");
-                    for (int i = 0; i <= 10; i++)
+                    for (int i = 1; i <= 10; i++)
                     {
                         if (data.Gas_Alarm[i] > 0)
                         {

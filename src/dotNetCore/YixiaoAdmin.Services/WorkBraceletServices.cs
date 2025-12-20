@@ -53,7 +53,35 @@ namespace YixiaoAdmin.Services
                     }
                     else if (item.QueryField == "WorkOrderId")
                     {
-                        whereExpression = PredicateBuilder.And<WorkBracelet>(whereExpression, (x) => x.WorkOrderId.Contains(item.QueryStr));
+                        // 支持多个工单ID查询（用逗号分隔）
+                        if (item.QueryStr.Contains(","))
+                        {
+                            var workOrderIds = item.QueryStr.Split(',', StringSplitOptions.RemoveEmptyEntries);
+                            if (workOrderIds.Length > 0)
+                            {
+                                // 如果包含特殊标记，表示无匹配结果
+                                if (workOrderIds[0] == "__NO_MATCH__")
+                                {
+                                    whereExpression = PredicateBuilder.And(whereExpression, (x) => false);
+                                }
+                                else
+                                {
+                                    whereExpression = PredicateBuilder.And(whereExpression, (x) => workOrderIds.Contains(x.WorkOrderId));
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // 单个工单ID查询
+                            if (item.QueryStr == "__NO_MATCH__")
+                            {
+                                whereExpression = PredicateBuilder.And(whereExpression, (x) => false);
+                            }
+                            else
+                            {
+                                whereExpression = PredicateBuilder.And(whereExpression, (x) => x.WorkOrderId == item.QueryStr);
+                            }
+                        }
                     }
                     else if (item.QueryField == "EntryExitStatus")
                     {

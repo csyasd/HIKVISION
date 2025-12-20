@@ -63,6 +63,21 @@ namespace YixiaoAdmin.Services
                         whereExpression = PredicateBuilder.And(whereExpression, (x) => x.Id.Contains(item.QueryStr));
                     }
 
+                    else if (item.QueryField == "DeviceId")
+                    {
+                        whereExpression = PredicateBuilder.And(whereExpression, (x) => x.DeviceId == item.QueryStr);
+                    }
+
+                    else if (item.QueryField == "Code")
+                    {
+                        whereExpression = PredicateBuilder.And(whereExpression, (x) => x.Code != null && x.Code.Contains(item.QueryStr));
+                    }
+
+                    else if (item.QueryField == "Content")
+                    {
+                        whereExpression = PredicateBuilder.And(whereExpression, (x) => x.Content != null && x.Content.Contains(item.QueryStr));
+                    }
+
                 }
             }
             pagesResponse.Success((await _WorkRecordRepository.Query(whereExpression, queryPageModel.Orderby, queryPageModel.CurrentPage, queryPageModel.PageNumber)).ToList());

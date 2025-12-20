@@ -201,8 +201,11 @@ namespace YixiaoAdmin.WebApi.Services
                 bool hasGasAlarm = data.Gas_Alarm.Any(g => g > 0);
                 device.ToxicGasAlarmOnlineStatus = hasGasAlarm ? "报警" : (data.Hazardous_Gas_Alarm_Online ? "在线" : "离线");
 
+                // 更新在线状态
+                device.OnlineStatus = data.IsConnected ? "在线" : "离线";
+
                 await _deviceService.Update(device);
-                _logger.LogDebug($"[设备更新] 设备数据更新成功 - 设备: {device.Name}");
+                _logger.LogDebug($"[设备更新] 设备数据更新成功 - 设备: {device.Name}, 在线状态: {device.OnlineStatus}");
             }
             catch (Exception ex)
             {
@@ -219,23 +222,28 @@ namespace YixiaoAdmin.WebApi.Services
             {
                 var currentTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
-                for (int i = 0; i <= 10; i++)
+                // 获取当前工单的所有手环记录，避免在循环中重复查询
+                var braceletQuery = await _workBraceletService.Query(b => b.WorkOrderId == workOrder.Id);
+                var currentBracelets = braceletQuery.ToList();
+
+                for (int i = 1; i <= 10; i++)
                 {
-                    var workerName = order.Workers_Name[i];
+                    var rawWorkerName = order.Workers_Name[i];
                     // 跳过无效的工人姓名（null、空字符串或"?"）
-                    if (!IsValidString(workerName))
+                    if (!IsValidString(rawWorkerName))
                     {
-                        _logger.LogTrace($"[手环处理] 跳过无效工人姓名 - 索引: {i}, 值: '{workerName}'");
+                        _logger.LogTrace($"[手环处理] 跳过无效工人姓名 - 索引: {i}, 值: '{rawWorkerName}'");
                         continue; // 跳过无效工人
                     }
+                    
+                    // 去除首尾空格，确保匹配准确
+                    var workerName = rawWorkerName.Trim();
 
                     var workerStatus = order.Workers_Status[i];
                     var heartRate = order.Heart_Rate[i];
 
-                    // 查询是否存在该工人的手环记录（根据工人姓名和工单ID）
-                    var existingBracelets = await _workBraceletService.Query();
-                    var existingBracelet = existingBracelets.FirstOrDefault(b => 
-                        b.WorkerName == workerName && b.WorkOrderId == workOrder.Id);
+                    // 在已加载的列表中查找
+                    var existingBracelet = currentBracelets.FirstOrDefault(b => b.WorkerName == workerName);
 
                     WorkBracelet bracelet;
                     bool isNewBracelet = existingBracelet == null;
@@ -306,7 +314,7 @@ namespace YixiaoAdmin.WebApi.Services
                 // 如果工单状态是2（工单结束），则所有记录的状态都是5（已签出）
                 var recordStatus = workOrder.Status == 2 ? "5" : null;
 
-                for (int i = 0; i <= 10; i++)
+                for (int i = 1; i <= 10; i++)
                 {
                     var workerName = order.Workers_Name[i];
                     // 跳过无效的工人姓名（null、空字符串或"?"）
@@ -350,16 +358,16 @@ namespace YixiaoAdmin.WebApi.Services
                 var gasRecord = new GasAlarmRecord
                 {
                     WorkOrderId = workOrder.Id,
-                    Gas1 = data.Gas_Alarm[0],
-                    Gas2 = data.Gas_Alarm[1],
-                    Gas3 = data.Gas_Alarm[2],
-                    Gas4 = data.Gas_Alarm[3],
-                    Gas5 = data.Gas_Alarm[4],
-                    Gas6 = data.Gas_Alarm[5],
-                    Gas7 = data.Gas_Alarm[6],
-                    Gas8 = data.Gas_Alarm[7],
-                    Gas9 = data.Gas_Alarm[8],
-                    Gas10 = data.Gas_Alarm[9]
+                    Gas1 = data.Gas_Alarm[1],
+                    Gas2 = data.Gas_Alarm[2],
+                    Gas3 = data.Gas_Alarm[3],
+                    Gas4 = data.Gas_Alarm[4],
+                    Gas5 = data.Gas_Alarm[5],
+                    Gas6 = data.Gas_Alarm[6],
+                    Gas7 = data.Gas_Alarm[7],
+                    Gas8 = data.Gas_Alarm[8],
+                    Gas9 = data.Gas_Alarm[9],
+                    Gas10 = data.Gas_Alarm[10]
                 };
 
                 await _gasAlarmRecordService.Add(gasRecord);

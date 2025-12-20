@@ -19,57 +19,17 @@
                     <!-- 设备总数卡片 -->
                     <div class="device-summary-card">
                         <div class="card-title">设备总数</div>
-                        <div class="device-count">97</div>
+                        <div class="device-count">{{ deviceTotal }}</div>
                         <div class="device-types">
                             <div class="device-type">
-                                <span class="type-name">便携式</span>
-                                <span class="type-count">58</span>
+                                <span class="type-name">在线</span>
+                                <span class="type-count online">{{ onlineCount }}</span>
                             </div>
                             <div class="device-type">
-                                <span class="type-name">移动式</span>
-                                <span class="type-count">37</span>
-                            </div>
-                            <div class="device-type">
-                                <span class="type-name">布控球</span>
-                                <span class="type-count">2</span>
+                                <span class="type-name">离线</span>
+                                <span class="type-count offline">{{ offlineCount }}</span>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- 场景名称表格 -->
-                    <div class="scene-table-card">
-                        <div class="card-title">场景名称</div>
-                        <table class="scene-table">
-                            <thead>
-                                <tr>
-                                    <th>便携式</th>
-                                    <th>移动式</th>
-                                    <th>报警</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>4</td>
-                                    <td>28</td>
-                                    <td>0</td>
-                                </tr>
-                                <tr>
-                                    <td>0</td>
-                                    <td>0</td>
-                                    <td>0</td>
-                                </tr>
-                                <tr>
-                                    <td>0</td>
-                                    <td>0</td>
-                                    <td>0</td>
-                                </tr>
-                                <tr>
-                                    <td>1</td>
-                                    <td>0</td>
-                                    <td>0</td>
-                                </tr>
-                            </tbody>
-                        </table>
                     </div>
 
                     <!-- 设备视频区域 -->
@@ -110,71 +70,59 @@
                         <table class="data-table">
                             <thead>
                                 <tr>
-                                    <th>设备名称及编号</th>
+                                    <th>设备名称及型号</th>
+                                    <th>工单编号</th>
                                     <th>气体名称</th>
                                     <th>检测数值</th>
                                     <th>状态</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr>
-                                    <td>试流13/920210074</td>
-                                    <td>O2</td>
-                                    <td>20.9%VOL</td>
-                                    <td class="status-online">在线</td>
+                                <tr v-if="gasMonitoringData.length === 0">
+                                    <td colspan="5" style="text-align: center; color: #909399; padding: 15px;">
+                                        暂无数据
+                                    </td>
                                 </tr>
-                                <tr>
-                                    <td>ZJ测试3333/913813</td>
-                                    <td>CH4</td>
-                                    <td>0%LEL</td>
-                                    <td class="status-online">在线</td>
-                                </tr>
-                                <tr>
-                                    <td>ZJ测试3333/913813</td>
-                                    <td>H2S</td>
-                                    <td>0ppm</td>
-                                    <td class="status-online">在线</td>
-                                </tr>
-                                <tr>
-                                    <td>ZJ测试3333/913813</td>
-                                    <td>CO</td>
-                                    <td>7ppm</td>
-                                    <td class="status-online">在线</td>
+                                <tr v-for="(item, index) in gasMonitoringData" :key="index">
+                                    <td>{{ item.DeviceName }}</td>
+                                    <td>{{ item.WorkOrderCode }}</td>
+                                    <td>{{ item.GasName }}</td>
+                                    <td>{{ item.GasValue }}</td>
+                                    <td class="status-online">{{ item.Status }}</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
 
-                    <!-- 报警信息表格 -->
+                    <!-- 手环信息表格 -->
                     <div class="alarm-table">
-                        <div class="table-header">报警信息</div>
+                        <div class="table-header">手环信息</div>
                         <table class="data-table">
                             <thead>
                                 <tr>
-                                    <th>设备名称及编号</th>
-                                    <th>报警类型</th>
-                                    <th>报警时间</th>
-                                    <th>操作</th>
+                                    <th>设备名称及型号</th>
+                                    <th>工单编号</th>
+                                    <th>工人姓名</th>
+                                    <th>心率</th>
+                                    <th>进离场状态</th>
+                                    <th>进场时间</th>
+                                    <th>出场时间</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr>
-                                    <td>ZJ测试-6366/913813</td>
-                                    <td class="alarm-type">跌倒报警</td>
-                                    <td>2024-07-01 11:15:23</td>
-                                    <td><button class="handle-btn">处理</button></td>
+                                <tr v-if="braceletInfoData.length === 0">
+                                    <td colspan="7" style="text-align: center; color: #909399; padding: 15px;">
+                                        暂无数据
+                                    </td>
                                 </tr>
-                                <tr>
-                                    <td>ZJ测试-6360/913813</td>
-                                    <td class="alarm-type">跌倒报警</td>
-                                    <td>2024-07-01 11:12:45</td>
-                                    <td><button class="handle-btn">处理</button></td>
-                                </tr>
-                                <tr>
-                                    <td>ZJ测试-6362/913813</td>
-                                    <td class="alarm-type">SOS求救</td>
-                                    <td>2024-07-01 11:08:12</td>
-                                    <td><button class="handle-btn">处理</button></td>
+                                <tr v-for="(item, index) in braceletInfoData" :key="index">
+                                    <td>{{ item.DeviceName }}</td>
+                                    <td>{{ item.WorkOrderCode }}</td>
+                                    <td>{{ item.WorkerName }}</td>
+                                    <td>{{ item.HeartRate || '-' }}</td>
+                                    <td :class="{'status-entry': item.EntryExitStatus === '进入' || item.EntryExitStatus === '刷卡成功', 'status-exit': item.EntryExitStatus === '已签出'}">{{ item.EntryExitStatus }}</td>
+                                    <td>{{ item.EntryTime || '-' }}</td>
+                                    <td>{{ item.ExitTime || '-' }}</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -185,27 +133,42 @@
 </template>
 
 <script>
+import { SelectALLDevice, GetRealtimeGasData, GetRealtimeBraceletInfo, SelectALLCamera } from '@/api/api.js';
+
 export default {
     name: 'MonitoringDashboard',
     data() {
         return {
             currentTime: '',
             currentDate: '',
-            cameras: [
-                { id: 1, name: 'ZJ测试-6366', ip: '192.168.100.101' },
-                { id: 2, name: 'ZJ测试-6360', ip: '192.168.100.102' },
-                { id: 3, name: 'ZJ测试-6362', ip: '192.168.100.103' },
-                { id: 4, name: 'ZJ测试3332', ip: '192.168.100.104' }
-            ],
+            cameras: [],
             map: null,
-            markers: []
+            markers: [],
+            devices: [],
+            deviceTotal: 0,
+            onlineCount: 0,
+            offlineCount: 0,
+            gasMonitoringData: [],
+            braceletInfoData: []
         }
     },
     mounted() {
         this.updateTime();
         this.initMap();
-        this.loadCameras();
+        (async () => {
+            await this.loadDevices();
+            await this.loadCameras();
+            this.loadGasMonitoringData();
+            this.loadBraceletInfo();
+        })();
         setInterval(this.updateTime, 1000);
+        // 每5秒更新一次设备位置、气体数据、手环信息和摄像头
+        setInterval(async () => {
+            await this.loadDevices();
+            await this.loadCameras();
+            this.loadGasMonitoringData();
+            this.loadBraceletInfo();
+        }, 5000);
     },
     methods: {
         updateTime() {
@@ -238,36 +201,77 @@ export default {
             this.map = new AMap.Map('map', {
                 viewMode: '3D',
                 zoom: 12,
-                center: [116.4074, 39.9042], // 北京坐标
+                center: [116.4074, 39.9042], // 默认北京坐标，后续会自动调整到设备位置
                 mapStyle: 'amap://styles/dark',
                 pitch: 45,
                 rotation: 0
             });
-
-            // 添加摄像头位置标记
-            this.addCameraMarkers();
+            
+            // 如果已经加载了设备数据，则添加标记
+            if (this.devices.length > 0) {
+                this.updateMapMarkers();
+            }
         },
         
-        addCameraMarkers() {
+        async loadDevices() {
+            try {
+                const res = await SelectALLDevice();
+                console.log('获取到的设备列表:', res);
+                if (res) {
+                    this.devices = res;
+                    
+                    // 更新设备统计信息
+                    this.deviceTotal = this.devices.length;
+                    this.onlineCount = this.devices.filter(d => d.OnlineStatus === '在线').length;
+                    this.offlineCount = this.deviceTotal - this.onlineCount;
+                    
+                    this.updateMapMarkers();
+                }
+            } catch (error) {
+                console.error('加载设备列表失败:', error);
+            }
+        },
+        
+        updateMapMarkers() {
             if (!this.map) return;
             
-            // 模拟摄像头GPS坐标（实际应该从后端获取）
-            const cameraPositions = [
-                { id: 1, name: 'ZJ测试-6366', lng: 116.4074, lat: 39.9042 },
-                { id: 2, name: 'ZJ测试-6360', lng: 116.4174, lat: 39.9142 },
-                { id: 3, name: 'ZJ测试-6362', lng: 116.3974, lat: 39.8942 },
-                { id: 4, name: 'ZJ测试3332', lng: 116.4274, lat: 39.9242 }
-            ];
+            // 清除旧的标记
+            this.map.remove(this.markers);
+            this.markers = [];
+            
+            // 过滤出有有效GPS坐标的设备
+            // 后端字段名首字母大写
+            const validDevices = this.devices.filter(d => 
+                d.GpsLongitude && d.GpsLatitude && 
+                !isNaN(parseFloat(d.GpsLongitude)) && !isNaN(parseFloat(d.GpsLatitude))
+            );
+            
+            console.log(`有效GPS设备数量: ${validDevices.length}/${this.devices.length}`);
+            
+            if (validDevices.length === 0) return;
 
-            cameraPositions.forEach(camera => {
+            validDevices.forEach(device => {
+                const lng = parseFloat(device.GpsLongitude);
+                const lat = parseFloat(device.GpsLatitude);
+                
+                // 格式化设备显示名称：设备名称/设备型号
+                const deviceDisplayName = device.Model && device.Model.trim() 
+                    ? `${device.Name}/${device.Model}` 
+                    : device.Name;
+                
+                // 简单的坐标有效性检查（中国范围内）
+                if (lng < 70 || lng > 140 || lat < 0 || lat > 60) {
+                    console.warn(`设备 ${deviceDisplayName} 坐标可能异常: ${lng}, ${lat}`);
+                }
+                
                 const marker = new AMap.Marker({
-                    position: [camera.lng, camera.lat],
-                    title: camera.name,
+                    position: [lng, lat],
+                    title: deviceDisplayName,
                     icon: new AMap.Icon({
                         size: new AMap.Size(32, 32),
                         image: 'data:image/svg+xml;base64,' + btoa(`
                             <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-                                <circle cx="16" cy="16" r="12" fill="#ff4444" stroke="#fff" stroke-width="2"/>
+                                <circle cx="16" cy="16" r="12" fill="${device.ToxicGasAlarmOnlineStatus === '报警' ? '#ff0000' : '#409eff'}" stroke="#fff" stroke-width="2"/>
                                 <circle cx="16" cy="16" r="6" fill="#fff"/>
                             </svg>
                         `)
@@ -276,36 +280,120 @@ export default {
 
                 // 添加点击事件
                 marker.on('click', () => {
-                    this.showCameraInfo(camera);
+                    this.showDeviceInfo(device, lng, lat);
                 });
 
                 this.map.add(marker);
                 this.markers.push(marker);
             });
+            
+            // 自动调整地图视野以包含所有标记
+            if (this.markers.length > 0) {
+                this.map.setFitView();
+            }
         },
         
-        showCameraInfo(camera) {
+        showDeviceInfo(device, lng, lat) {
+            const onlineStatus = device.OnlineStatus || '离线';
+            const onlineStatusColor = onlineStatus === '在线' ? '#67c23a' : '#f56c6c';
+            // 格式化设备显示名称：设备名称/设备型号
+            const deviceDisplayName = device.Model && device.Model.trim() 
+                ? `${device.Name}/${device.Model}` 
+                : device.Name;
+            
             const infoWindow = new AMap.InfoWindow({
                 content: `
-                    <div style="color: white; padding: 10px;">
-                        <h4>${camera.name}</h4>
-                        <p>经度: ${camera.lng}</p>
-                        <p>纬度: ${camera.lat}</p>
-                        <button onclick="this.playCamera(${camera.id})" style="background: #409eff; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer;">播放视频</button>
+                    <div style="color: black; padding: 12px; background-color: white; border-radius: 6px; min-width: 220px; box-shadow: 0 2px 12px rgba(0,0,0,0.15);">
+                        <h4 style="margin: 0 0 10px 0; border-bottom: 2px solid #eee; padding-bottom: 8px; color: #333; font-size: 16px;">${deviceDisplayName}</h4>
+                        <p style="margin: 6px 0; font-size: 13px; color: #666;"><b>在线状态:</b> <span style="color: ${onlineStatusColor}; font-weight: bold;">${onlineStatus}</span></p>
+                        <p style="margin: 6px 0; font-size: 13px; color: #666;"><b>IP地址:</b> ${device.IP || '未知'}</p>
+                        <p style="margin: 6px 0; font-size: 13px; color: #666;"><b>经度:</b> ${lng.toFixed(6)}</p>
+                        <p style="margin: 6px 0; font-size: 13px; color: #666;"><b>纬度:</b> ${lat.toFixed(6)}</p>
+                        <button onclick="window.playCameraFromMap('${device.Id}')" style="background: #409eff; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin-top: 10px; width: 100%; font-size: 13px; transition: background 0.3s;">查看视频</button>
                     </div>
                 `,
                 offset: new AMap.Pixel(0, -30)
             });
             
-            infoWindow.open(this.map, [camera.lng, camera.lat]);
+            // 将Vue组件方法暴露给全局
+            window.playCameraFromMap = (id) => {
+                // 注意：这里传入的id可能是字符串，需要与cameras中的id类型匹配
+                const targetCamera = this.cameras.find(c => c.id == id);
+                if (targetCamera) {
+                    this.playCamera(targetCamera);
+                } else {
+                    console.warn(`未找到ID为 ${id} 的设备视频信息`);
+                }
+            };
+            
+            infoWindow.open(this.map, [lng, lat]);
         },
         
         async loadCameras() {
             try {
-                // 这里应该从后端API加载摄像头列表
-                console.log('加载摄像头列表...');
+                // 获取所有摄像头
+                const camerasRes = await SelectALLCamera();
+                console.log('获取到的摄像头列表:', camerasRes);
+                
+                if (!camerasRes || !Array.isArray(camerasRes)) {
+                    this.cameras = [];
+                    return;
+                }
+                
+                // 获取在线设备的ID列表
+                const onlineDeviceIds = this.devices
+                    .filter(d => d.OnlineStatus === '在线')
+                    .map(d => d.Id);
+                
+                // 筛选出在线设备的摄像头
+                // 注意：后端返回的字段名是PascalCase（首字母大写）
+                this.cameras = camerasRes
+                    .filter(camera => {
+                        // 如果摄像头有DeviceId，检查该设备是否在线
+                        if (camera.DeviceId) {
+                            return onlineDeviceIds.includes(camera.DeviceId);
+                        }
+                        return false;
+                    })
+                    .map(camera => ({
+                        id: camera.Id,
+                        name: camera.Name || (camera.Device ? camera.Device.Name : '未知摄像头'),
+                        ip: camera.IP,
+                        deviceId: camera.DeviceId
+                    }));
+                
+                console.log('在线设备的摄像头列表:', this.cameras);
             } catch (error) {
-                console.error('加载摄像头失败:', error);
+                console.error('加载摄像头列表失败:', error);
+                this.cameras = [];
+            }
+        },
+        
+        async loadGasMonitoringData() {
+            try {
+                const res = await GetRealtimeGasData();
+                if (res && Array.isArray(res)) {
+                    this.gasMonitoringData = res;
+                } else {
+                    this.gasMonitoringData = [];
+                }
+            } catch (error) {
+                console.error('加载气体监测数据失败:', error);
+                this.gasMonitoringData = [];
+            }
+        },
+        
+        async loadBraceletInfo() {
+            try {
+                const res = await GetRealtimeBraceletInfo();
+                if (res && Array.isArray(res)) {
+                    this.braceletInfoData = res;
+                } else {
+                    this.braceletInfoData = [];
+                }
+            } catch (error) {
+                console.error('加载手环信息失败:', error);
+                this.braceletInfoData = [];
             }
         },
         
@@ -330,82 +418,53 @@ export default {
 .monitoring-dashboard {
     width: 100%;
     height: 100vh;
-    background: linear-gradient(135deg, #0c1426 0%, #1a2332 100%);
+    background: linear-gradient(135deg, #0a0e1a 0%, #1a2332 50%, #0f1419 100%);
     color: #ffffff;
-    font-family: 'Microsoft YaHei', sans-serif;
+    font-family: 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
     overflow: hidden;
     position: relative;
+    zoom: 0.8;
+    transform-origin: top left;
+}
+
+/* 添加背景装饰 */
+.monitoring-dashboard::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        radial-gradient(circle at 20% 50%, rgba(64, 158, 255, 0.05) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(103, 194, 58, 0.05) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
 }
 
 .header {
-    height: 60px;
-    background: rgba(0, 0, 0, 0.8);
+    height: 70px;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.9) 0%, rgba(26, 35, 50, 0.9) 100%);
+    backdrop-filter: blur(10px);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 20px;
-    border-bottom: 1px solid #2a3441;
+    padding: 0 30px;
+    border-bottom: 2px solid rgba(64, 158, 255, 0.2);
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+    position: relative;
+    z-index: 10;
 }
 
 .header h1 {
     margin: 0;
-    font-size: 24px;
-    font-weight: bold;
-    color: #ffffff;
-}
-
-.header-actions {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-}
-
-.user-info, .app-download {
-    color: #409eff;
-    cursor: pointer;
-    font-size: 14px;
-}
-
-.main-content {
-    display: flex;
-    height: calc(100vh - 60px);
-}
-
-.sidebar {
-    width: 200px;
-    background: rgba(0, 0, 0, 0.6);
-    border-right: 1px solid #2a3441;
-    padding: 20px 0;
-}
-
-.nav-item {
-    display: flex;
-    align-items: center;
-    padding: 15px 20px;
-    cursor: pointer;
-    transition: all 0.3s;
-    border-left: 3px solid transparent;
-}
-
-.nav-item:hover {
-    background: rgba(64, 158, 255, 0.1);
-}
-
-.nav-item.active {
-    background: rgba(64, 158, 255, 0.2);
-    border-left-color: #409eff;
-    color: #409eff;
-}
-
-.nav-item i {
-    width: 20px;
-    height: 20px;
-    margin-right: 10px;
-    background: #666;
-}
-
-.nav-item.active i {
-    background: #409eff;
+    font-size: 26px;
+    font-weight: 600;
+    background: linear-gradient(135deg, #409eff 0%, #66b1ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: 1px;
 }
 
 .content-area {
@@ -414,11 +473,11 @@ export default {
     padding: 0;
     gap: 0;
     position: relative;
-    height: calc(100vh - 60px);
+    height: calc(100vh - 70px);
 }
 
 .left-panel {
-    width: 400px;
+    width: 420px;
     display: flex;
     flex-direction: column;
     gap: 20px;
@@ -427,6 +486,26 @@ export default {
     left: 20px;
     z-index: 2;
     padding: 0;
+    max-height: calc(100vh - 110px);
+    overflow-y: auto;
+}
+
+.left-panel::-webkit-scrollbar {
+    width: 6px;
+}
+
+.left-panel::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 3px;
+}
+
+.left-panel::-webkit-scrollbar-thumb {
+    background: rgba(64, 158, 255, 0.5);
+    border-radius: 3px;
+}
+
+.left-panel::-webkit-scrollbar-thumb:hover {
+    background: rgba(64, 158, 255, 0.7);
 }
 
 .right-panel {
@@ -435,130 +514,209 @@ export default {
     height: 100%;
 }
 
+/* 时间显示卡片 */
 .time-display {
-    background: rgba(0, 0, 0, 0.6);
-    padding: 20px;
-    border-radius: 8px;
-    border: 1px solid #2a3441;
+    background: linear-gradient(135deg, rgba(64, 158, 255, 0.1) 0%, rgba(0, 0, 0, 0.7) 100%);
+    padding: 18px;
+    border-radius: 12px;
+    border: 1px solid rgba(64, 158, 255, 0.2);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.time-display:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(64, 158, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .current-time {
     font-size: 32px;
-    font-weight: bold;
-    color: #409eff;
-    margin-bottom: 5px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #409eff 0%, #66b1ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 6px;
+    letter-spacing: 2px;
+    text-shadow: 0 0 20px rgba(64, 158, 255, 0.3);
 }
 
 .current-date {
-    font-size: 16px;
-    color: #ccc;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 400;
 }
 
-.device-summary-card, .scene-table-card {
-    background: rgba(0, 0, 0, 0.6);
-    padding: 20px;
-    border-radius: 8px;
-    border: 1px solid #2a3441;
+/* 设备总数卡片 */
+.device-summary-card {
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.7) 0%, rgba(26, 35, 50, 0.7) 100%);
+    padding: 18px;
+    border-radius: 12px;
+    border: 1px solid rgba(64, 158, 255, 0.2);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.device-summary-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(64, 158, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .card-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 18px;
+    color: rgba(255, 255, 255, 0.9);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.card-title::before {
+    content: '📊';
     font-size: 18px;
-    font-weight: bold;
-    margin-bottom: 15px;
-    color: #ffffff;
 }
 
 .device-count {
     font-size: 48px;
-    font-weight: bold;
-    color: #409eff;
+    font-weight: 700;
+    background: linear-gradient(135deg, #409eff 0%, #66b1ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
     text-align: center;
     margin-bottom: 15px;
+    text-shadow: 0 0 20px rgba(64, 158, 255, 0.3);
 }
 
 .device-types {
     display: flex;
-    justify-content: space-between;
+    justify-content: space-around;
+    gap: 15px;
 }
 
 .device-type {
+    flex: 1;
     text-align: center;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+.device-type:hover {
+    background: rgba(64, 158, 255, 0.1);
+    transform: scale(1.05);
 }
 
 .type-name {
     display: block;
-    font-size: 14px;
-    color: #ccc;
-    margin-bottom: 5px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 8px;
+    font-weight: 500;
 }
 
 .type-count {
     display: block;
-    font-size: 20px;
-    font-weight: bold;
+    font-size: 24px;
+    font-weight: 700;
     color: #ffffff;
 }
 
-.scene-table {
-    width: 100%;
-    border-collapse: collapse;
+.type-count.online {
+    color: #67c23a;
+    text-shadow: 0 0 10px rgba(103, 194, 58, 0.5);
 }
 
-.scene-table th,
-.scene-table td {
-    padding: 8px;
-    text-align: center;
-    border: 1px solid #2a3441;
+.type-count.offline {
+    color: #f56c6c;
+    text-shadow: 0 0 10px rgba(245, 108, 108, 0.5);
 }
 
-.scene-table th {
-    background: rgba(64, 158, 255, 0.2);
-    color: #409eff;
-}
-
+/* 视频面板 */
 .video-panel {
-    background: rgba(0, 0, 0, 0.6);
-    padding: 20px;
-    border-radius: 8px;
-    border: 1px solid #2a3441;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.7) 0%, rgba(26, 35, 50, 0.7) 100%);
+    padding: 15px;
+    border-radius: 12px;
+    border: 1px solid rgba(64, 158, 255, 0.2);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
     flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 .panel-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 15px;
+    margin-bottom: 18px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(64, 158, 255, 0.2);
 }
 
 .panel-title {
     font-size: 18px;
-    font-weight: bold;
+    font-weight: 600;
     color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.panel-title::before {
+    content: '📹';
+    font-size: 20px;
 }
 
 .more-videos {
     color: #409eff;
     cursor: pointer;
     font-size: 14px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+}
+
+.more-videos:hover {
+    background: rgba(64, 158, 255, 0.1);
+    border-color: rgba(64, 158, 255, 0.3);
 }
 
 .video-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 15px;
+    flex: 1;
 }
 
 .video-item {
     background: #000;
-    border-radius: 6px;
+    border-radius: 8px;
     overflow: hidden;
+    border: 1px solid rgba(64, 158, 255, 0.2);
+    transition: all 0.3s ease;
+}
+
+.video-item:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 15px rgba(64, 158, 255, 0.3);
 }
 
 .video-container {
     position: relative;
     width: 100%;
-    height: 120px;
+    height: 130px;
+    background: #000;
 }
 
 .video-stream {
@@ -569,29 +727,45 @@ export default {
 
 .video-controls {
     position: absolute;
-    bottom: 5px;
-    left: 5px;
+    bottom: 8px;
+    left: 8px;
     display: flex;
-    gap: 5px;
+    gap: 6px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.video-item:hover .video-controls {
+    opacity: 1;
 }
 
 .control-btn {
-    background: rgba(64, 158, 255, 0.8);
+    background: rgba(64, 158, 255, 0.9);
     color: white;
     border: none;
-    padding: 3px 8px;
-    border-radius: 3px;
+    padding: 6px 12px;
+    border-radius: 4px;
     font-size: 12px;
     cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(5px);
+}
+
+.control-btn:hover {
+    background: rgba(64, 158, 255, 1);
+    transform: scale(1.05);
 }
 
 .video-info {
-    padding: 8px;
-    font-size: 12px;
-    color: #ccc;
+    padding: 10px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.8);
     text-align: center;
+    background: rgba(0, 0, 0, 0.5);
+    font-weight: 500;
 }
 
+/* 地图容器 */
 .map-container {
     position: absolute;
     top: 0;
@@ -603,83 +777,184 @@ export default {
     z-index: 1;
 }
 
+/* 表格样式优化 */
 .gas-monitoring-table, .alarm-table {
     position: absolute;
-    background: rgba(0, 0, 0, 0.8);
-    border-radius: 6px;
-    border: 1px solid #2a3441;
-    max-width: 400px;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.9) 0%, rgba(26, 35, 50, 0.9) 100%);
+    backdrop-filter: blur(15px);
+    border-radius: 12px;
+    border: 1px solid rgba(64, 158, 255, 0.3);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    max-width: 480px;
+    width: 480px;
     z-index: 3;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.gas-monitoring-table:hover, .alarm-table:hover {
+    box-shadow: 0 10px 40px rgba(64, 158, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .gas-monitoring-table {
-    top: 20px;
-    right: 20px;
-    max-height: 45vh;
-    overflow-y: auto;
+    top: 15px;
+    right: 15px;
+    min-height: 120px;
+    max-height: calc(50vh - 25px);
+    height: auto;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 .alarm-table {
-    bottom: 20px;
-    right: 20px;
-    max-height: 45vh;
-    overflow-y: auto;
+    bottom: 15px;
+    right: 15px;
+    min-height: 120px;
+    max-height: calc(50vh - 25px);
+    height: auto;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.gas-monitoring-table::-webkit-scrollbar,
+.alarm-table::-webkit-scrollbar {
+    width: 6px;
+}
+
+.gas-monitoring-table::-webkit-scrollbar-track,
+.alarm-table::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 3px;
+}
+
+.gas-monitoring-table::-webkit-scrollbar-thumb,
+.alarm-table::-webkit-scrollbar-thumb {
+    background: rgba(64, 158, 255, 0.5);
+    border-radius: 3px;
+}
+
+.gas-monitoring-table::-webkit-scrollbar-thumb:hover,
+.alarm-table::-webkit-scrollbar-thumb:hover {
+    background: rgba(64, 158, 255, 0.7);
 }
 
 .table-header {
-    padding: 10px 15px;
-    background: rgba(64, 158, 255, 0.2);
+    padding: 12px 16px;
+    background: linear-gradient(135deg, rgba(64, 158, 255, 0.25) 0%, rgba(64, 158, 255, 0.1) 100%);
     color: #409eff;
-    font-weight: bold;
-    border-bottom: 1px solid #2a3441;
+    font-weight: 600;
+    font-size: 16px;
+    border-bottom: 2px solid rgba(64, 158, 255, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+}
+
+.gas-monitoring-table .table-header::before {
+    content: '💨';
+    font-size: 18px;
+}
+
+.alarm-table .table-header::before {
+    content: '⌚';
+    font-size: 18px;
 }
 
 .data-table {
     width: 100%;
     border-collapse: collapse;
+    flex: 0 1 auto;
+    display: table;
+    overflow: visible;
+}
+
+.data-table thead {
+    display: table-header-group;
+}
+
+.data-table tbody {
+    display: table-row-group;
+}
+
+.data-table thead tr,
+.data-table tbody tr {
+    display: table-row;
 }
 
 .data-table th,
 .data-table td {
-    padding: 8px 12px;
+    padding: 8px 10px;
     text-align: left;
-    border-bottom: 1px solid #2a3441;
-    font-size: 12px;
+    border-bottom: 1px solid rgba(64, 158, 255, 0.1);
+    font-size: 13px;
+    word-wrap: break-word;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.5;
 }
 
 .data-table th {
-    background: rgba(0, 0, 0, 0.5);
-    color: #409eff;
-    font-weight: bold;
+    background: rgba(0, 0, 0, 0.4);
+    color: rgba(64, 158, 255, 0.9);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    padding: 10px;
+}
+
+.data-table tbody tr {
+    transition: all 0.2s ease;
+}
+
+.data-table tbody tr:hover {
+    background: rgba(64, 158, 255, 0.1);
 }
 
 .data-table td {
-    color: #ffffff;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 400;
 }
+
 
 .status-online {
     color: #67c23a !important;
+    font-weight: 600;
 }
 
 .alarm-type {
     color: #f56c6c !important;
+    font-weight: 600;
 }
 
-.handle-btn {
-    background: #409eff;
-    color: white;
-    border: none;
-    padding: 4px 8px;
-    border-radius: 3px;
-    font-size: 12px;
-    cursor: pointer;
+.status-entry {
+    color: #67c23a !important;
+    font-weight: 600;
+    text-shadow: 0 0 8px rgba(103, 194, 58, 0.5);
 }
 
-.handle-btn:hover {
-    background: #66b1ff;
+.status-exit {
+    color: #909399 !important;
+    font-weight: 600;
 }
 
 /* 响应式设计 */
+@media (max-width: 1400px) {
+    .left-panel {
+        width: 380px;
+    }
+    
+    .gas-monitoring-table, .alarm-table {
+        max-width: 400px;
+    }
+}
+
 @media (max-width: 1200px) {
     .content-area {
         flex-direction: column;
@@ -687,12 +962,25 @@ export default {
     
     .left-panel {
         width: 100%;
+        position: relative;
+        top: 0;
+        left: 0;
         flex-direction: row;
         overflow-x: auto;
+        max-height: auto;
+        padding: 15px;
     }
     
     .right-panel {
-        height: 400px;
+        height: 500px;
+    }
+    
+    .gas-monitoring-table, .alarm-table {
+        max-width: 100%;
+        position: relative;
+        top: auto;
+        right: auto;
+        margin: 10px;
     }
 }
 </style>

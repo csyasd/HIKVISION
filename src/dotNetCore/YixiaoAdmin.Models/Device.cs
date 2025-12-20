@@ -47,5 +47,10 @@ namespace YixiaoAdmin.Models
         /// IP地址
         /// </summary>
         public string IP { get; set; }
+
+        /// <summary>
+        /// 在线状态 (在线/离线)
+        /// </summary>
+        public string OnlineStatus { get; set; }
     }
 }

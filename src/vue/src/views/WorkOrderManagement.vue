@@ -6,7 +6,41 @@
 <template>
     <div class="container" >
         <el-col :span="24" class="toolbar">
-            <el-input style="width: 200px" placeholder="搜索名称" v-model="Query[0].QueryStr"></el-input>&nbsp;&nbsp;
+            <el-select 
+                v-model="filterDeviceId" 
+                placeholder="选择设备" 
+                style="width: 200px; margin-right: 10px;"
+                clearable
+                filterable>
+                <el-option
+                    v-for="(item, i) in DeviceList"
+                    :key="i"
+                    :label="`${item.Name} (${item.OnlineStatus || '离线'})`"
+                    :value="item.Id">
+                    <span style="float: left">{{ item.Name }}</span>
+                    <span style="float: right; color: #8492a6; font-size: 13px">
+                        <el-tag :type="item.OnlineStatus === '在线' ? 'success' : 'danger'" size="mini">
+                            {{ item.OnlineStatus || '离线' }}
+                        </el-tag>
+                    </span>
+                </el-option>
+            </el-select>
+            <el-autocomplete
+                style="width: 200px; margin-right: 10px;"
+                v-model="filterCode"
+                :fetch-suggestions="queryWorkOrderCode"
+                placeholder="搜索编号"
+                clearable
+                @select="handleWorkOrderCodeSelect">
+            </el-autocomplete>
+            <el-autocomplete
+                style="width: 200px; margin-right: 10px;"
+                v-model="filterContent"
+                :fetch-suggestions="queryWorkOrderContent"
+                placeholder="搜索内容"
+                clearable
+                @select="handleWorkOrderContentSelect">
+            </el-autocomplete>
             <el-button @click="queryData()">查询</el-button>
             <el-button  @click="clearQuery()">清空</el-button>
             <el-button type="danger" @click="refreshTable()">刷新列表</el-button>
@@ -79,13 +113,19 @@
 
 
             <el-form-item label="所属设备" :label-width="formLabelWidth">
-                <el-select v-model="addForm.DeviceId" placeholder="请选择">
+                <el-select v-model="addForm.DeviceId" placeholder="请选择" filterable>
                     <el-option
 						v-for="(item, i) in DeviceList"
-						:label="item.Name"
-						:value="item.Id"
 						:key="i"
-					></el-option>
+						:label="`${item.Name} (${item.OnlineStatus || '离线'})`"
+						:value="item.Id">
+                        <span style="float: left">{{ item.Name }}</span>
+                        <span style="float: right; color: #8492a6; font-size: 13px">
+                            <el-tag :type="item.OnlineStatus === '在线' ? 'success' : 'danger'" size="mini">
+                                {{ item.OnlineStatus || '离线' }}
+                            </el-tag>
+                        </span>
+					</el-option>
                 </el-select>
             </el-form-item>
 
@@ -144,13 +184,19 @@
 
 
             <el-form-item label="所属设备" :label-width="formLabelWidth">
-                <el-select v-model="editForm.DeviceId" placeholder="请选择">
+                <el-select v-model="editForm.DeviceId" placeholder="请选择" filterable>
                     <el-option
 						v-for="(item, i) in DeviceList"
-						:label="item.Name"
-						:value="item.Id"
 						:key="i"
-					></el-option>
+						:label="`${item.Name} (${item.OnlineStatus || '离线'})`"
+						:value="item.Id">
+                        <span style="float: left">{{ item.Name }}</span>
+                        <span style="float: right; color: #8492a6; font-size: 13px">
+                            <el-tag :type="item.OnlineStatus === '在线' ? 'success' : 'danger'" size="mini">
+                                {{ item.OnlineStatus || '离线' }}
+                            </el-tag>
+                        </span>
+					</el-option>
                 </el-select>
             </el-form-item>
 
@@ -258,31 +304,34 @@ export default {
             },
             operationDisabled: false,
             formLabelWidth: "120px",
-            Query: [
-                {
-                    QueryField: "Name",
-                    QueryStr: this.queryStr,
-                },
-            ],
+            Query: [],
             Orderby: [
                 {
                     SortField: "CreateTime",
-                    IsDesc: false,
+                    IsDesc: true,
                 },
             ],
+            filterDeviceId: null,
+            filterCode: "",
+            filterContent: "",
             selectDataArrL: [], //跨页多选所有的项
 
             DeviceList:[],
+            WorkOrderList: [],
 
         };
     },
     mounted() {
        (async () => {
- 
             this.DeviceList = await SelectALLDevice();
-
-       
-           
+            
+            // 默认选择在线设备的第一个
+            const onlineDevices = this.DeviceList.filter(d => d.OnlineStatus === '在线');
+            if (onlineDevices.length > 0) {
+                this.filterDeviceId = onlineDevices[0].Id;
+            }
+            
+            this.loadWorkOrderList();
             this.getTableData();
         })();
     },
@@ -290,6 +339,34 @@ export default {
         //获取表格数据
         getTableData() {
             this.operationDisabled = true;
+            
+            // 构建查询条件
+            this.Query = [];
+            
+            // 设备筛选
+            if (this.filterDeviceId) {
+                this.Query.push({
+                    QueryField: "DeviceId",
+                    QueryStr: this.filterDeviceId,
+                });
+            }
+            
+            // 编号筛选
+            if (this.filterCode && this.filterCode.trim()) {
+                this.Query.push({
+                    QueryField: "Code",
+                    QueryStr: this.filterCode.trim(),
+                });
+            }
+            
+            // 内容筛选
+            if (this.filterContent && this.filterContent.trim()) {
+                this.Query.push({
+                    QueryField: "Content",
+                    QueryStr: this.filterContent.trim(),
+                });
+            }
+            
             var pageData = {
                 Query: this.Query,
                 Orderby: this.Orderby,
@@ -326,9 +403,17 @@ export default {
         },
         //清空查询条件
         clearQuery(){
-            for(var item in Query){
-                item.queryStr = "";
+            this.filterCode = "";
+            this.filterContent = "";
+            
+            // 重新设置默认设备
+            const onlineDevices = this.DeviceList.filter(d => d.OnlineStatus === '在线');
+            if (onlineDevices.length > 0) {
+                this.filterDeviceId = onlineDevices[0].Id;
+            } else {
+                this.filterDeviceId = null;
             }
+            
             this.queryData();
         },
         //刷新表格
@@ -549,6 +634,64 @@ export default {
         /*行多选结束*/
 
         /*请将自定义函数写在我的下面*/
+        
+        //加载工单列表
+        loadWorkOrderList() {
+            SelectWorkOrder({ Query: [], Orderby: [], CurrentPage: 0, PageNumber: 1000 }).then(res => {
+                this.WorkOrderList = res.data || [];
+            }).catch(error => {
+                console.log(error);
+                this.$message.error("加载工单列表失败！");
+            });
+        },
+        
+        // 获取当前设备对应的工单列表
+        getFilteredWorkOrders() {
+            if (this.filterDeviceId) {
+                return this.WorkOrderList.filter(wo => wo.DeviceId === this.filterDeviceId);
+            }
+            return this.WorkOrderList;
+        },
+        
+        // 工单编号自动完成查询
+        queryWorkOrderCode(queryString, cb) {
+            const filteredWorkOrders = this.getFilteredWorkOrders();
+            const results = filteredWorkOrders
+                .filter(wo => {
+                    if (!queryString) return true;
+                    return wo.Code && wo.Code.toLowerCase().includes(queryString.toLowerCase());
+                })
+                .map(wo => ({
+                    value: wo.Code,
+                    workOrder: wo
+                }));
+            cb(results);
+        },
+        
+        // 工单内容自动完成查询
+        queryWorkOrderContent(queryString, cb) {
+            const filteredWorkOrders = this.getFilteredWorkOrders();
+            const results = filteredWorkOrders
+                .filter(wo => {
+                    if (!queryString) return true;
+                    return wo.Content && wo.Content.toLowerCase().includes(queryString.toLowerCase());
+                })
+                .map(wo => ({
+                    value: wo.Content,
+                    workOrder: wo
+                }));
+            cb(results);
+        },
+        
+        // 工单编号选择事件
+        handleWorkOrderCodeSelect(item) {
+            this.filterCode = item.value;
+        },
+        
+        // 工单内容选择事件
+        handleWorkOrderContentSelect(item) {
+            this.filterContent = item.value;
+        },
     }
 };
 </script>

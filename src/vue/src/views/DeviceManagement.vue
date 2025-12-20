@@ -41,6 +41,14 @@
     
             <el-table-column :show-overflow-tooltip="true" prop="Name" label="名称" width="220" ></el-table-column>
     
+            <el-table-column :show-overflow-tooltip="true" prop="OnlineStatus" label="在线状态" width="120" >
+                <template slot-scope="scope">
+                    <el-tag :type="scope.row.OnlineStatus === '在线' ? 'success' : 'danger'" size="small">
+                        {{ scope.row.OnlineStatus || '离线' }}
+                    </el-tag>
+                </template>
+            </el-table-column>
+    
             <el-table-column
                 :show-overflow-tooltip="true"
                 prop="CreateTime"
@@ -161,6 +169,12 @@
                 <el-input v-model="editForm.Name" autocomplete="off" placeholder="请输入名称"></el-input>
             </el-form-item>
 
+            <el-form-item label="在线状态" :label-width="formLabelWidth">
+                <el-select v-model="editForm.OnlineStatus" placeholder="请选择在线状态" style="width: 100%;">
+                    <el-option label="在线" value="在线"></el-option>
+                    <el-option label="离线" value="离线"></el-option>
+                </el-select>
+            </el-form-item>
 
             </el-form>
             <div slot="footer" class="dialog-footer">
@@ -223,6 +237,8 @@ export default {
                IP: null,
     
                Name: null,
+    
+               OnlineStatus: null,
     
             },
             operationDisabled: false,
@@ -346,6 +362,8 @@ export default {
                this.editForm.IP = row.IP;
     
                this.editForm.Name = row.Name;
+    
+               this.editForm.OnlineStatus = row.OnlineStatus;
     
             
             this.editDialogFormVisible = true;

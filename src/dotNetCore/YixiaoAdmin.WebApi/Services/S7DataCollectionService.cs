@@ -138,6 +138,10 @@ namespace YixiaoAdmin.WebApi.Services
                     try
                     {
                         _logger.LogDebug($"[设备加载] 开始连接设备 - 名称: {device.Name}, IP: {device.IP}, ID: {device.Id}");
+                        
+                        // 初始化设备在线状态（如果为空则设置为离线）
+                        await InitializeDeviceOnlineStatus(device.Id, false);
+                        
                         await ConnectDevice(device);
                         
                         if (_deviceConnections.TryGetValue(device.Id, out var connInfo) && connInfo.IsConnected)
@@ -221,11 +225,17 @@ namespace YixiaoAdmin.WebApi.Services
                     connectionService.Dispose();
                     connectionInfo.DisconnectedTime = DateTime.Now;
                     _logger.LogDebug($"[设备连接失败] 连接信息已保存，将在重连间隔后自动重试");
+                    
+                    // 更新数据库状态为离线
+                    await UpdateDeviceOnlineStatus(device.Id, false);
                 }
                 else
                 {
                     _logger.LogInformation($"[设备连接成功] 设备 {device.Name}({device.IP}) 连接成功 - 耗时: {elapsed:F2}ms");
                     _logger.LogDebug($"[设备连接成功] 连接状态 - IsConnected: {connectionService.IsConnected}, DeviceId: {device.Id}");
+                    
+                    // 更新数据库状态为在线
+                    await UpdateDeviceOnlineStatus(device.Id, true);
                 }
 
                 // 保存连接信息（无论连接成功与否）
@@ -286,6 +296,10 @@ namespace YixiaoAdmin.WebApi.Services
                         _logger.LogWarning($"[数据采集] 设备 {connectionInfo.DeviceName}({connectionInfo.DeviceIP}) 连接已断开");
                         connectionInfo.IsConnected = false;
                         connectionInfo.DisconnectedTime = DateTime.Now;
+                        
+                        // 标记设备为离线并更新数据库
+                        await UpdateDeviceOnlineStatus(connectionInfo.DeviceId, false);
+                        
                         skipCount++;
                         continue;
                     }
@@ -354,11 +368,64 @@ namespace YixiaoAdmin.WebApi.Services
                         connectionInfo.DisconnectedTime = DateTime.Now;
                         _logger.LogDebug($"[数据采集异常] 记录设备断开时间: {connectionInfo.DisconnectedTime:yyyy-MM-dd HH:mm:ss}");
                     }
+                    
+                    // 采集异常时也更新为离线
+                    await UpdateDeviceOnlineStatus(connectionInfo.DeviceId, false);
                 }
             }
 
             var cycleElapsed = (DateTime.Now - cycleStartTime).TotalMilliseconds;
             _logger.LogDebug($"[数据采集] 数据采集循环完成 - 成功: {successCount}, 失败: {failCount}, 跳过: {skipCount}, 总耗时: {cycleElapsed:F2}ms");
+        }
+
+        /// <summary>
+        /// 更新设备在线状态到数据库
+        /// </summary>
+        private async Task UpdateDeviceOnlineStatus(string deviceId, bool isOnline)
+        {
+            try
+            {
+                using var scope = _serviceProvider.CreateScope();
+                var deviceService = scope.ServiceProvider.GetRequiredService<IDeviceServices>();
+                var device = await deviceService.QueryById(deviceId);
+                
+                if (device != null)
+                {
+                    // 确保状态只有"在线"或"离线"两种
+                    device.OnlineStatus = isOnline ? "在线" : "离线";
+                    await deviceService.Update(device);
+                    _logger.LogDebug($"[状态更新] 设备 {device.Name} 在线状态更新为: {device.OnlineStatus}");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"[状态更新异常] 更新设备 {deviceId} 在线状态时出错");
+            }
+        }
+
+        /// <summary>
+        /// 初始化设备在线状态（加载设备时调用，确保所有设备都有初始状态）
+        /// </summary>
+        private async Task InitializeDeviceOnlineStatus(string deviceId, bool isOnline)
+        {
+            try
+            {
+                using var scope = _serviceProvider.CreateScope();
+                var deviceService = scope.ServiceProvider.GetRequiredService<IDeviceServices>();
+                var device = await deviceService.QueryById(deviceId);
+                
+                if (device != null && string.IsNullOrWhiteSpace(device.OnlineStatus))
+                {
+                    // 如果设备没有在线状态，初始化为离线
+                    device.OnlineStatus = isOnline ? "在线" : "离线";
+                    await deviceService.Update(device);
+                    _logger.LogDebug($"[状态初始化] 设备 {device.Name} 在线状态初始化为: {device.OnlineStatus}");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"[状态初始化异常] 初始化设备 {deviceId} 在线状态时出错");
+            }
         }
 
         /// <summary>
@@ -526,6 +593,9 @@ namespace YixiaoAdmin.WebApi.Services
                     connectionInfo.ReconnectAttemptCount = 0;
                     _logger.LogInformation($"[设备重连成功] 设备 {connectionInfo.DeviceName}({connectionInfo.DeviceIP}) 重连成功 - 耗时: {elapsed:F2}ms, 重连次数: {connectionInfo.ReconnectAttemptCount + 1}");
                     _logger.LogDebug($"[设备重连成功] 连接状态 - IsConnected: {newConnectionService.IsConnected}, DeviceId: {connectionInfo.DeviceId}");
+                    
+                    // 更新数据库状态为在线
+                    await UpdateDeviceOnlineStatus(connectionInfo.DeviceId, true);
                 }
                 else
                 {
@@ -534,6 +604,9 @@ namespace YixiaoAdmin.WebApi.Services
                     var nextRetryTime = _configuration.GetValue<int>("S7Plc:ReconnectInterval", 180);
                     _logger.LogWarning($"[设备重连失败] 设备 {connectionInfo.DeviceName}({connectionInfo.DeviceIP}) 重连失败 - 耗时: {elapsed:F2}ms, 将在 {nextRetryTime} 秒后重试");
                     _logger.LogDebug($"[设备重连失败] 连接状态 - IsConnected: false, 下次重连时间: {connectionInfo.LastConnectAttemptTime.AddSeconds(nextRetryTime):yyyy-MM-dd HH:mm:ss}");
+                    
+                    // 确保数据库状态为离线
+                    await UpdateDeviceOnlineStatus(connectionInfo.DeviceId, false);
                 }
             }
             catch (Exception ex)
