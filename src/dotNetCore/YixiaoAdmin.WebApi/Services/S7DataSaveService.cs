@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using YixiaoAdmin.IServices;
 using YixiaoAdmin.Models;
+using YixiaoAdmin.Common;
 using YixiaoAdmin.WebApi.Services;
 
 namespace YixiaoAdmin.WebApi.Services
@@ -19,6 +20,7 @@ namespace YixiaoAdmin.WebApi.Services
         private readonly IWorkBraceletServices _workBraceletService;
         private readonly IWorkRecordServices _workRecordService;
         private readonly IGasAlarmRecordServices _gasAlarmRecordService;
+        private readonly IWorkerStatusRecordServices _workerStatusRecordService;
 
         public S7DataSaveService(
             ILogger<S7DataSaveService> logger,
@@ -26,7 +28,8 @@ namespace YixiaoAdmin.WebApi.Services
             IDeviceServices deviceService,
             IWorkBraceletServices workBraceletService,
             IWorkRecordServices workRecordService,
-            IGasAlarmRecordServices gasAlarmRecordService)
+            IGasAlarmRecordServices gasAlarmRecordService,
+            IWorkerStatusRecordServices workerStatusRecordService)
         {
             _logger = logger;
             _workOrderService = workOrderService;
@@ -34,6 +37,7 @@ namespace YixiaoAdmin.WebApi.Services
             _workBraceletService = workBraceletService;
             _workRecordService = workRecordService;
             _gasAlarmRecordService = gasAlarmRecordService;
+            _workerStatusRecordService = workerStatusRecordService;
         }
 
         /// <summary>
@@ -77,7 +81,7 @@ namespace YixiaoAdmin.WebApi.Services
                 await ProcessWorkBracelets(order, workOrder, data);
 
                 // 4. 处理作业记录管理
-                await ProcessWorkRecords(order, workOrder, data);
+                // await ProcessWorkRecords(order, workOrder, data);
 
                 // 5. 处理气体报警记录
                 await ProcessGasAlarmRecords(workOrder, data, device);
@@ -193,8 +197,8 @@ namespace YixiaoAdmin.WebApi.Services
                 // 更新GPS经纬度
                 if (data.GPS_lon != 0 || data.GPS_lat != 0)
                 {
-                    device.GpsLongitude = data.GPS_lon.ToString("F6");
-                    device.GpsLatitude = data.GPS_lat.ToString("F6");
+                    device.GpsLongitude = data.GPS_lat.ToString("F6");
+                    device.GpsLatitude = data.GPS_lon.ToString("F6");
                 }
 
                 // 更新气体报警状态（如果有报警，更新为"报警"，否则为"正常"）
@@ -264,6 +268,9 @@ namespace YixiaoAdmin.WebApi.Services
 
                         await _workBraceletService.Add(bracelet);
                         _logger.LogDebug($"[手环处理] 新手环记录创建成功 - 工人: {workerName}, 状态: {workerStatus}");
+
+                        // 记录初始状态变更
+                        await SaveWorkerStatusRecord(workOrder.Id, workerName, heartRate, workerStatus);
                     }
                     else
                     {
@@ -295,12 +302,63 @@ namespace YixiaoAdmin.WebApi.Services
 
                         await _workBraceletService.Update(bracelet);
                         _logger.LogDebug($"[手环处理] 手环记录更新成功 - 工人: {workerName}, 状态: {workerStatus}");
+
+                        // 如果状态发生变化，记录到独立的状态变更表
+                        if (oldStatus != workerStatus)
+                        {
+                            await SaveWorkerStatusRecord(workOrder.Id, workerName, heartRate, workerStatus);
+                        }
                     }
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"[手环处理异常] 处理作业手环时发生异常");
+            }
+        }
+
+        /// <summary>
+        /// 记录工人状态变更
+        /// </summary>
+        private async Task SaveWorkerStatusRecord(string workOrderId, string workerName, int heartRate, int workerStatus)
+        {
+            try
+            {
+                // 获取该工人的最新一条状态记录
+                var queryParams = new QueryPageModel
+                {
+                    Query = new QueryFieldModel[]
+                    {
+                        new QueryFieldModel { QueryField = "WorkOrderId", QueryStr = workOrderId },
+                        new QueryFieldModel { QueryField = "WorkerName", QueryStr = workerName }
+                    },
+                    Orderby = new SortFieldModel[] { new SortFieldModel { SortField = "CreateTime", IsDesc = true } },
+                    CurrentPage = 0,
+                    PageNumber = 1
+                };
+
+                var lastRecordResponse = await _workerStatusRecordService.QueryPages(queryParams);
+                var lastRecord = (lastRecordResponse.data as System.Collections.Generic.IEnumerable<WorkerStatusRecord>)?.FirstOrDefault();
+
+                // 如果状态没变，且已经有记录了，就不存
+                if (lastRecord != null && lastRecord.EntryExitStatus == workerStatus.ToString())
+                {
+                    return;
+                }
+
+                var statusRecord = new WorkerStatusRecord
+                {
+                    WorkOrderId = workOrderId,
+                    WorkerName = workerName,
+                    HeartRate = heartRate > 0 ? heartRate.ToString() : null,
+                    EntryExitStatus = workerStatus.ToString()
+                };
+                await _workerStatusRecordService.Add(statusRecord);
+                _logger.LogDebug($"[状态记录] 记录工人状态变更 - 工人: {workerName}, 新状态: {workerStatus}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"[状态记录异常] 保存人员状态记录时发生异常 - 工人: {workerName}");
             }
         }
 

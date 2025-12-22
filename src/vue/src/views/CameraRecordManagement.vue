@@ -27,7 +27,7 @@
         >
             <el-table-column type="selection" width="55"></el-table-column>
             
-            <el-table-column :show-overflow-tooltip="true" prop="Camera" label="所属摄像头" width="220" >
+            <el-table-column :show-overflow-tooltip="true" prop="Camera" label="摄像头" width="220" >
                 <template slot-scope="scope">
                     <div>{{ CameraList[CameraList.findIndex((x) => x.Id == scope.row.CameraId)]?.Name}}</div>
                 </template>
@@ -66,7 +66,7 @@
             <el-form :model="addForm">
 
 
-            <el-form-item label="所属摄像头" :label-width="formLabelWidth">
+            <el-form-item label="摄像头" :label-width="formLabelWidth">
                 <el-select v-model="addForm.CameraId" placeholder="请选择">
                     <el-option
 						v-for="(item, i) in CameraList"
@@ -116,7 +116,7 @@
             <el-form :model="editForm">
 
 
-            <el-form-item label="所属摄像头" :label-width="formLabelWidth">
+            <el-form-item label="摄像头" :label-width="formLabelWidth">
                 <el-select v-model="editForm.CameraId" placeholder="请选择">
                     <el-option
 						v-for="(item, i) in CameraList"

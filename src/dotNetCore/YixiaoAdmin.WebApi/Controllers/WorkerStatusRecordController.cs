@@ -1,4 +1,3 @@
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,21 +9,21 @@ using YixiaoAdmin.IServices;
 using YixiaoAdmin.Models;
 using YixiaoAdmin.Common;
 
-//这是 Device 控制器
-
 namespace YixiaoAdmin.WebApi.Controllers
 {
+    /// <summary>
+    /// 工人进出状态记录控制器
+    /// </summary>
     [Route("[controller]")]
     [ApiController]
-    public class DeviceController : ControllerBase
+    public class WorkerStatusRecordController : ControllerBase
     {
-        private readonly IDeviceServices _DeviceServices;
+        private readonly IWorkerStatusRecordServices _workerStatusRecordServices;
 
-
-        public DeviceController(IDeviceServices DeviceServices)
+        public WorkerStatusRecordController(IWorkerStatusRecordServices workerStatusRecordServices)
         {
-            _DeviceServices = DeviceServices ?? 
-                                       throw new ArgumentNullException(nameof(DeviceServices));
+            _workerStatusRecordServices = workerStatusRecordServices ?? 
+                                               throw new ArgumentNullException(nameof(workerStatusRecordServices));
         }
 
         /// <summary>
@@ -32,48 +31,52 @@ namespace YixiaoAdmin.WebApi.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpGet("[action]")]
-        public async Task<IList<Device>> All()
+        public async Task<IList<WorkerStatusRecord>> All()
         {
-            return await _DeviceServices.Query();
+            return await _workerStatusRecordServices.Query();
         }
+
         /// <summary>
         /// 查询分页数据
         /// </summary>
         /// <param name="queryPageModel">查询模型</param>
         /// <returns></returns>
         [HttpPost("[action]")]
-        public async Task<ActionResult<IEnumerable<Device>>> Pages(QueryPageModel queryPageModel)
+        public async Task<ActionResult<IEnumerable<WorkerStatusRecord>>> Pages(QueryPageModel queryPageModel)
         {
-            return Ok(await _DeviceServices.QueryPagesExpand(queryPageModel));
+            return Ok(await _workerStatusRecordServices.QueryPages(queryPageModel));
         }
+
         /// <summary>
         /// 查找
         /// </summary>
         /// <returns></returns>
         [HttpGet]
-        public async Task<Device> Get(string Id)
+        public async Task<WorkerStatusRecord> Get(string Id)
         {
-            return await _DeviceServices.QueryById(Id);
+            return await _workerStatusRecordServices.QueryById(Id);
         }
+
         /// <summary>
         /// 添加
         /// </summary>
         /// <returns></returns>
         [HttpPost]
-        public async Task<bool> Post(Device viewModel)
+        public async Task<bool> Post(WorkerStatusRecord viewModel)
         {
-
-            return await _DeviceServices.Add(viewModel);
+            return await _workerStatusRecordServices.Add(viewModel);
         }
+
         /// <summary>
         /// 修改
         /// </summary>
         /// <returns></returns>
         [HttpPut]
-        public async Task<bool> Put(Device viewModel)
+        public async Task<bool> Put(WorkerStatusRecord viewModel)
         {
-            return await _DeviceServices.Update(viewModel);
+            return await _workerStatusRecordServices.Update(viewModel);
         }
+
         /// <summary>
         /// 删除
         /// </summary>
@@ -81,7 +84,7 @@ namespace YixiaoAdmin.WebApi.Controllers
         [HttpDelete]
         public async Task<bool> Delete(string Id)
         {
-            return await _DeviceServices.RemoveById(Id);
+            return await _workerStatusRecordServices.RemoveById(Id);
         }
     }
 }

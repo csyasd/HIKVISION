@@ -61,7 +61,7 @@
         >
             <el-table-column type="selection" width="55"></el-table-column>
             
-            <el-table-column :show-overflow-tooltip="true" prop="WorkOrder" label="所属施工工单" width="220" >
+            <el-table-column :show-overflow-tooltip="true" prop="WorkOrder" label="施工工单" width="220" >
                 <template slot-scope="scope">
                     <div>{{ WorkOrderList[WorkOrderList.findIndex((x) => x.Id == scope.row.WorkOrderId)]?.Code}}</div>
                 </template>
@@ -107,7 +107,7 @@
         <el-dialog title="添加" :visible.sync="addDialogFormVisible">
             <el-form :model="addForm">
 
-            <el-form-item label="所属施工工单" :label-width="formLabelWidth">
+            <el-form-item label="施工工单" :label-width="formLabelWidth">
                 <el-select v-model="addForm.WorkOrderId" placeholder="请选择施工工单">
                     <el-option
 						v-for="(item, i) in WorkOrderList"
@@ -147,7 +147,7 @@
         <el-dialog title="编辑" :visible.sync="editDialogFormVisible">
             <el-form :model="editForm">
 
-            <el-form-item label="所属施工工单" :label-width="formLabelWidth">
+            <el-form-item label="施工工单" :label-width="formLabelWidth">
                 <el-select v-model="editForm.WorkOrderId" placeholder="请选择施工工单">
                     <el-option
 						v-for="(item, i) in WorkOrderList"

@@ -44,7 +44,7 @@ namespace YixiaoAdmin.WebApi.Controllers
         [HttpPost("[action]")]
         public async Task<ActionResult<IEnumerable<Camera>>> Pages(QueryPageModel queryPageModel)
         {
-            return Ok(await _CameraServices.QueryPages(queryPageModel));
+            return Ok(await _CameraServices.QueryPagesExpand(queryPageModel));
         }
         /// <summary>
         /// 查找

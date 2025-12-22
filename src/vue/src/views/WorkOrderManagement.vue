@@ -19,7 +19,7 @@
                     :value="item.Id">
                     <span style="float: left">{{ item.Name }}</span>
                     <span style="float: right; color: #8492a6; font-size: 13px">
-                        <el-tag :type="item.OnlineStatus === '在线' ? 'success' : 'danger'" size="mini">
+                        <el-tag size="mini">
                             {{ item.OnlineStatus || '离线' }}
                         </el-tag>
                     </span>
@@ -61,7 +61,7 @@
         >
             <el-table-column type="selection" width="55"></el-table-column>
             
-            <el-table-column :show-overflow-tooltip="true" prop="Device" label="所属设备" width="220" >
+            <el-table-column :show-overflow-tooltip="true" prop="Device" label="设备" width="220" >
                 <template slot-scope="scope">
                     <div>{{ DeviceList[DeviceList.findIndex((x) => x.Id == scope.row.DeviceId)]?.Name}}</div>
                 </template>
@@ -77,7 +77,7 @@
     
             <el-table-column :show-overflow-tooltip="true" prop="Status" label="工单状态" width="150" >
                 <template slot-scope="scope">
-                    <el-tag :type="scope.row.Status === 0 ? 'info' : scope.row.Status === 1 ? 'success' : scope.row.Status === 2 ? 'warning' : 'info'">
+                    <el-tag>
                         {{ scope.row.Status === 0 ? '未开始' : scope.row.Status === 1 ? '工单开始' : scope.row.Status === 2 ? '工单结束' : '未知' }}
                     </el-tag>
                 </template>
@@ -112,7 +112,7 @@
             <el-form :model="addForm">
 
 
-            <el-form-item label="所属设备" :label-width="formLabelWidth">
+            <el-form-item label="设备" :label-width="formLabelWidth">
                 <el-select v-model="addForm.DeviceId" placeholder="请选择" filterable>
                     <el-option
 						v-for="(item, i) in DeviceList"
@@ -121,7 +121,7 @@
 						:value="item.Id">
                         <span style="float: left">{{ item.Name }}</span>
                         <span style="float: right; color: #8492a6; font-size: 13px">
-                            <el-tag :type="item.OnlineStatus === '在线' ? 'success' : 'danger'" size="mini">
+                            <el-tag size="mini">
                                 {{ item.OnlineStatus || '离线' }}
                             </el-tag>
                         </span>
@@ -183,7 +183,7 @@
             <el-form :model="editForm">
 
 
-            <el-form-item label="所属设备" :label-width="formLabelWidth">
+            <el-form-item label="设备" :label-width="formLabelWidth">
                 <el-select v-model="editForm.DeviceId" placeholder="请选择" filterable>
                     <el-option
 						v-for="(item, i) in DeviceList"
@@ -192,7 +192,7 @@
 						:value="item.Id">
                         <span style="float: left">{{ item.Name }}</span>
                         <span style="float: right; color: #8492a6; font-size: 13px">
-                            <el-tag :type="item.OnlineStatus === '在线' ? 'success' : 'danger'" size="mini">
+                            <el-tag size="mini">
                                 {{ item.OnlineStatus || '离线' }}
                             </el-tag>
                         </span>

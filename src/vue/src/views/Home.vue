@@ -7,7 +7,7 @@
                 <el-menu
                     :default-active="$route.path"
                     router
-                    :default-openeds="['3', '4', '5', '6']"
+                    unique-opened
                     :collapse="NavigationBarState"
                     mode="vertical"
                     @open="handleMenuOpen"
@@ -42,7 +42,8 @@
                             <span>记录管理</span>
                         </template>
                         <el-menu-item index="/home/WorkBraceletManagement">作业手环管理</el-menu-item>
-                        <el-menu-item index="/home/WorkRecordManagement">作业记录管理</el-menu-item>
+                        <!-- <el-menu-item index="/home/WorkRecordManagement">作业记录管理</el-menu-item> -->
+                        <el-menu-item index="/home/WorkerStatusRecordManagement">工人进出状态记录</el-menu-item>
                         <el-menu-item index="/home/GasAlarmRecordManagement">气体报警记录</el-menu-item>
                     </el-submenu>
 
@@ -53,7 +54,6 @@
                             <span>作业管理</span>
                         </template>
                         <el-menu-item index="/home/WorkOrderManagement">施工工单</el-menu-item>
-                        <el-menu-item index="/home/CameraRecordManagement">摄像头记录</el-menu-item>
                     </el-submenu>
 
                     <!-- 系统管理 -->

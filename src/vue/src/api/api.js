@@ -7,26 +7,26 @@ let BaseUrl = 'http://localhost:5002/';
 
 // 设置请求拦截器
 axios.interceptors.request.use(
-    (config) => {
-        const token = localStorage.getItem("token");
-        if (token) {
-            config.headers.Authorization = 'Bearer ' + token;
-        }
-        return config;
-    },
-    (error) => {
-        return Promise.reject(error);
-    }
+	(config) => {
+		const token = localStorage.getItem("token");
+		if (token) {
+			config.headers.Authorization = 'Bearer ' + token;
+		}
+		return config;
+	},
+	(error) => {
+		return Promise.reject(error);
+	}
 );
 
 export const Login = (params) => {
-    return axios({
-        method: 'Get',
-        url: BaseUrl + 'Auth',
-        params: params,
-    })
-        .then((res) => res)
-        .catch((error) => console.log(error));
+	return axios({
+		method: 'Get',
+		url: BaseUrl + 'Auth',
+		params: params,
+	})
+		.then((res) => res)
+		.catch((error) => console.log(error));
 };
 
 //以下代码由T4模板生成
@@ -39,12 +39,12 @@ export const SelectCamera = (params) => {
 	}).then(res => res.data).catch(error => console.log(error));
 }
 export const SelectALLCamera = () => {
-    return axios({
-        method: 'Get',
-        url: BaseUrl + 'Camera/All',
-    })
-        .then((res) => res.data)
-        .catch((error) => console.log(error));
+	return axios({
+		method: 'Get',
+		url: BaseUrl + 'Camera/All',
+	})
+		.then((res) => res.data)
+		.catch((error) => console.log(error));
 };
 export const SelectCameraById = (params) => {
 	console.log(params)
@@ -90,12 +90,12 @@ export const SelectCameraRecord = (params) => {
 	}).then(res => res.data).catch(error => console.log(error));
 }
 export const SelectALLCameraRecord = () => {
-    return axios({
-        method: 'Get',
-        url: BaseUrl + 'CameraRecord/All',
-    })
-        .then((res) => res.data)
-        .catch((error) => console.log(error));
+	return axios({
+		method: 'Get',
+		url: BaseUrl + 'CameraRecord/All',
+	})
+		.then((res) => res.data)
+		.catch((error) => console.log(error));
 };
 export const SelectCameraRecordById = (params) => {
 	console.log(params)
@@ -141,12 +141,12 @@ export const SelectDevice = (params) => {
 	}).then(res => res.data).catch(error => console.log(error));
 }
 export const SelectALLDevice = () => {
-    return axios({
-        method: 'Get',
-        url: BaseUrl + 'Device/All',
-    })
-        .then((res) => res.data)
-        .catch((error) => console.log(error));
+	return axios({
+		method: 'Get',
+		url: BaseUrl + 'Device/All',
+	})
+		.then((res) => res.data)
+		.catch((error) => console.log(error));
 };
 export const SelectDeviceById = (params) => {
 	console.log(params)
@@ -192,12 +192,12 @@ export const SelectRight = (params) => {
 	}).then(res => res.data).catch(error => console.log(error));
 }
 export const SelectALLRight = () => {
-    return axios({
-        method: 'Get',
-        url: BaseUrl + 'Right/All',
-    })
-        .then((res) => res.data)
-        .catch((error) => console.log(error));
+	return axios({
+		method: 'Get',
+		url: BaseUrl + 'Right/All',
+	})
+		.then((res) => res.data)
+		.catch((error) => console.log(error));
 };
 export const SelectRightById = (params) => {
 	console.log(params)
@@ -243,12 +243,12 @@ export const SelectRole = (params) => {
 	}).then(res => res.data).catch(error => console.log(error));
 }
 export const SelectALLRole = () => {
-    return axios({
-        method: 'Get',
-        url: BaseUrl + 'Role/All',
-    })
-        .then((res) => res.data)
-        .catch((error) => console.log(error));
+	return axios({
+		method: 'Get',
+		url: BaseUrl + 'Role/All',
+	})
+		.then((res) => res.data)
+		.catch((error) => console.log(error));
 };
 export const SelectRoleById = (params) => {
 	console.log(params)
@@ -294,12 +294,12 @@ export const SelectRoleRight = (params) => {
 	}).then(res => res.data).catch(error => console.log(error));
 }
 export const SelectALLRoleRight = () => {
-    return axios({
-        method: 'Get',
-        url: BaseUrl + 'RoleRight/All',
-    })
-        .then((res) => res.data)
-        .catch((error) => console.log(error));
+	return axios({
+		method: 'Get',
+		url: BaseUrl + 'RoleRight/All',
+	})
+		.then((res) => res.data)
+		.catch((error) => console.log(error));
 };
 export const SelectRoleRightById = (params) => {
 	console.log(params)
@@ -345,12 +345,12 @@ export const SelectUser = (params) => {
 	}).then(res => res.data).catch(error => console.log(error));
 }
 export const SelectALLUser = () => {
-    return axios({
-        method: 'Get',
-        url: BaseUrl + 'User/All',
-    })
-        .then((res) => res.data)
-        .catch((error) => console.log(error));
+	return axios({
+		method: 'Get',
+		url: BaseUrl + 'User/All',
+	})
+		.then((res) => res.data)
+		.catch((error) => console.log(error));
 };
 export const SelectUserById = (params) => {
 	console.log(params)
@@ -396,12 +396,12 @@ export const SelectWorkOrder = (params) => {
 	}).then(res => res.data).catch(error => console.log(error));
 }
 export const SelectALLWorkOrder = () => {
-    return axios({
-        method: 'Get',
-        url: BaseUrl + 'WorkOrder/All',
-    })
-        .then((res) => res.data)
-        .catch((error) => console.log(error));
+	return axios({
+		method: 'Get',
+		url: BaseUrl + 'WorkOrder/All',
+	})
+		.then((res) => res.data)
+		.catch((error) => console.log(error));
 };
 export const SelectWorkOrderById = (params) => {
 	console.log(params)
@@ -449,12 +449,12 @@ export const SelectPersonnel = (params) => {
 	}).then(res => res.data).catch(error => console.log(error));
 }
 export const SelectALLPersonnel = () => {
-    return axios({
-        method: 'Get',
-        url: BaseUrl + 'Personnel/All',
-    })
-        .then((res) => res.data)
-        .catch((error) => console.log(error));
+	return axios({
+		method: 'Get',
+		url: BaseUrl + 'Personnel/All',
+	})
+		.then((res) => res.data)
+		.catch((error) => console.log(error));
 };
 export const SelectPersonnelById = (params) => {
 	console.log(params)
@@ -502,12 +502,12 @@ export const SelectBracelet = (params) => {
 	}).then(res => res.data).catch(error => console.log(error));
 }
 export const SelectALLBracelet = () => {
-    return axios({
-        method: 'Get',
-        url: BaseUrl + 'Bracelet/All',
-    })
-        .then((res) => res.data)
-        .catch((error) => console.log(error));
+	return axios({
+		method: 'Get',
+		url: BaseUrl + 'Bracelet/All',
+	})
+		.then((res) => res.data)
+		.catch((error) => console.log(error));
 };
 export const SelectBraceletById = (params) => {
 	console.log(params)
@@ -555,12 +555,12 @@ export const SelectWorkBracelet = (params) => {
 	}).then(res => res.data).catch(error => console.log(error));
 }
 export const SelectALLWorkBracelet = () => {
-    return axios({
-        method: 'Get',
-        url: BaseUrl + 'WorkBracelet/All',
-    })
-        .then((res) => res.data)
-        .catch((error) => console.log(error));
+	return axios({
+		method: 'Get',
+		url: BaseUrl + 'WorkBracelet/All',
+	})
+		.then((res) => res.data)
+		.catch((error) => console.log(error));
 };
 export const SelectWorkBraceletById = (params) => {
 	console.log(params)
@@ -608,12 +608,12 @@ export const SelectWorkRecord = (params) => {
 	}).then(res => res.data).catch(error => console.log(error));
 }
 export const SelectALLWorkRecord = () => {
-    return axios({
-        method: 'Get',
-        url: BaseUrl + 'WorkRecord/All',
-    })
-        .then((res) => res.data)
-        .catch((error) => console.log(error));
+	return axios({
+		method: 'Get',
+		url: BaseUrl + 'WorkRecord/All',
+	})
+		.then((res) => res.data)
+		.catch((error) => console.log(error));
 };
 export const SelectWorkRecordById = (params) => {
 	console.log(params)
@@ -661,12 +661,12 @@ export const SelectGasAlarmRecord = (params) => {
 	}).then(res => res.data).catch(error => console.log(error));
 }
 export const SelectALLGasAlarmRecord = () => {
-    return axios({
-        method: 'Get',
-        url: BaseUrl + 'GasAlarmRecord/All',
-    })
-        .then((res) => res.data)
-        .catch((error) => console.log(error));
+	return axios({
+		method: 'Get',
+		url: BaseUrl + 'GasAlarmRecord/All',
+	})
+		.then((res) => res.data)
+		.catch((error) => console.log(error));
 };
 export const SelectGasAlarmRecordById = (params) => {
 	console.log(params)
@@ -706,28 +706,41 @@ export const DeleteGasAlarmRecord = (params) => {
 
 // 获取在线设备的最新气体监测实时数据
 export const GetRealtimeGasData = () => {
-    return axios({
-        method: 'Get',
-        url: BaseUrl + 'GasAlarmRecord/GetRealtimeGasData',
-    })
-        .then((res) => res.data)
-        .catch((error) => {
-            console.error('获取气体监测数据失败:', error);
-            return [];
-        });
+	return axios({
+		method: 'Get',
+		url: BaseUrl + 'GasAlarmRecord/GetRealtimeGasData',
+	})
+		.then((res) => res.data)
+		.catch((error) => {
+			console.error('获取气体监测数据失败:', error);
+			return [];
+		});
 }
 
 // 获取实时手环信息（在线设备的工单开始状态的作业手环）
 export const GetRealtimeBraceletInfo = () => {
-    return axios({
-        method: 'Get',
-        url: BaseUrl + 'WorkBracelet/GetRealtimeBraceletInfo',
-    })
-        .then((res) => res.data)
-        .catch((error) => {
-            console.error('获取手环信息失败:', error);
-            return [];
-        });
+	return axios({
+		method: 'Get',
+		url: BaseUrl + 'WorkBracelet/GetRealtimeBraceletInfo',
+	})
+		.then((res) => res.data)
+		.catch((error) => {
+			console.error('获取手环信息失败:', error);
+			return [];
+		});
+}
+
+// 获取在线设备的在线工单
+export const GetRealtimeWorkOrders = () => {
+	return axios({
+		method: 'Get',
+		url: BaseUrl + 'WorkOrder/GetRealtimeWorkOrders',
+	})
+		.then((res) => res.data)
+		.catch((error) => {
+			console.error('获取实时工单失败:', error);
+			return [];
+		});
 }
 //T4模板生成结束
 
@@ -743,3 +756,9 @@ export const PTZControl = (params) => {
 		return { success: false, message: error.message || '控制失败' };
 	});
 }
+
+//工人进出状态记录
+export const SelectWorkerStatusRecord = params => { return axios.post(`${BaseUrl}WorkerStatusRecord/Pages`, params).then(res => res.data); };
+export const AddWorkerStatusRecord = params => { return axios.post(`${BaseUrl}WorkerStatusRecord`, params).then(res => res.data); };
+export const EditWorkerStatusRecord = params => { return axios.put(`${BaseUrl}WorkerStatusRecord`, params).then(res => res.data); };
+export const DeleteWorkerStatusRecord = params => { return axios.delete(`${BaseUrl}WorkerStatusRecord?Id=` + params.Id).then(res => res.data); };

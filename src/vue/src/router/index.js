@@ -80,6 +80,12 @@ const routes = [
                 name: '气体报警记录'
             },
             {
+                // 工人进出状态记录
+                path: 'WorkerStatusRecordManagement',
+                component: () => import('../views/WorkerStatusRecordManagement.vue'),
+                name: '工人进出状态记录'
+            },
+            {
                 // 用户管理
                 path: 'UserManagement',
                 component: UserManagement,

@@ -340,7 +340,8 @@ namespace YixiaoAdmin.WebApi.Services
                                     saveScope.ServiceProvider.GetRequiredService<IDeviceServices>(),
                                     saveScope.ServiceProvider.GetRequiredService<IWorkBraceletServices>(),
                                     saveScope.ServiceProvider.GetRequiredService<IWorkRecordServices>(),
-                                    saveScope.ServiceProvider.GetRequiredService<IGasAlarmRecordServices>());
+                                    saveScope.ServiceProvider.GetRequiredService<IGasAlarmRecordServices>(),
+                                    saveScope.ServiceProvider.GetRequiredService<IWorkerStatusRecordServices>());
                                 
                                 await saveService.SaveDataToDatabase(data, connectionInfo.DeviceEntity);
                             }

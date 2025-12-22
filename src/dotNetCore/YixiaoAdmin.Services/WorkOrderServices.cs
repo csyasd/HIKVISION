@@ -63,5 +63,20 @@ namespace YixiaoAdmin.Services
             return pagesResponse;
            
         }
+
+        public async Task<List<WorkOrder>> GetRealtimeWorkOrders(List<string> onlineDeviceIds)
+        {
+            if (onlineDeviceIds == null || onlineDeviceIds.Count == 0)
+            {
+                return new List<WorkOrder>();
+            }
+
+            // 获取状态为 1 (工单开始) 且属于在线设备的工单
+            Expression<Func<WorkOrder, bool>> whereExpression = (x) => 
+                x.Status == 1 && onlineDeviceIds.Contains(x.DeviceId);
+
+            var query = await _WorkRecordRepository.Query(whereExpression);
+            return query.ToList();
+        }
     }
 }

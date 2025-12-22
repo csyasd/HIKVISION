@@ -19,7 +19,7 @@
                     :value="item.Id">
                     <span style="float: left">{{ item.Name }}</span>
                     <span style="float: right; color: #8492a6; font-size: 13px">
-                        <el-tag :type="item.OnlineStatus === '在线' ? 'success' : 'danger'" size="mini">
+                        <el-tag size="mini">
                             {{ item.OnlineStatus || '离线' }}
                         </el-tag>
                     </span>
@@ -45,6 +45,7 @@
             <el-button  @click="clearQuery()">清空</el-button>
             <el-button type="danger" @click="refreshTable()">刷新列表</el-button>
             <el-button type="primary" @click="changeDialogFormVisible()" :disabled = "operationDisabled">添加</el-button>
+            <el-button type="success" @click="showHeartRateCurve()" icon="el-icon-data-line" :disabled="operationDisabled">心率曲线</el-button>
         </el-col>
         <el-table 
             :data="tableData" 
@@ -61,19 +62,19 @@
         >
             <el-table-column type="selection" width="55"></el-table-column>
             
-            <el-table-column :show-overflow-tooltip="true" prop="WorkerName" label="工人姓名" width="220" ></el-table-column>
-    
-            <el-table-column :show-overflow-tooltip="true" prop="HeartRate" label="心率" width="120" ></el-table-column>
-    
-            <el-table-column :show-overflow-tooltip="true" prop="WorkOrder.Code" label="所属工单" width="220" >
+            <el-table-column :show-overflow-tooltip="true" prop="WorkOrder.Code" label="工单" width="220" >
                 <template slot-scope="scope">
                     <div>{{ WorkOrderList[WorkOrderList.findIndex((x) => x.Id == scope.row.WorkOrderId)]?.Code || '未分配' }}</div>
                 </template>
             </el-table-column>
+
+            <el-table-column :show-overflow-tooltip="true" prop="WorkerName" label="工人姓名" width="220" ></el-table-column>
+    
+            <el-table-column :show-overflow-tooltip="true" prop="HeartRate" label="心率" width="120" ></el-table-column>
     
             <el-table-column :show-overflow-tooltip="true" prop="EntryExitStatus" label="进离场状态" width="150" >
                 <template slot-scope="scope">
-                    <el-tag :type="getEntryExitStatusType(scope.row.EntryExitStatus)">
+                    <el-tag>
                         {{ getEntryExitStatusText(scope.row.EntryExitStatus) }}
                     </el-tag>
                 </template>
@@ -119,7 +120,7 @@
                 <el-input v-model="addForm.HeartRate" autocomplete="off" placeholder="请输入心率"></el-input>
             </el-form-item>
 
-            <el-form-item label="所属工单" :label-width="formLabelWidth">
+            <el-form-item label="工单" :label-width="formLabelWidth">
                 <el-select v-model="addForm.WorkOrderId" placeholder="请选择工单" filterable>
                     <el-option
                         v-for="item in WorkOrderList"
@@ -179,7 +180,7 @@
                 <el-input v-model="editForm.HeartRate" autocomplete="off" placeholder="请输入心率"></el-input>
             </el-form-item>
 
-            <el-form-item label="所属工单" :label-width="formLabelWidth">
+            <el-form-item label="工单" :label-width="formLabelWidth">
                 <el-select v-model="editForm.WorkOrderId" placeholder="请选择工单" filterable>
                     <el-option
                         v-for="item in WorkOrderList"
@@ -227,12 +228,24 @@
                 <el-button type="primary" @click="EditConfirm()" :disabled = "operationDisabled">确 定</el-button>
             </div>
         </el-dialog>
+
+        <!-- 心率曲线对话框 -->
+        <el-dialog title="心率变化趋势图" :visible.sync="curveDialogVisible" width="80%" @opened="onCurveDialogOpened">
+            <div v-loading="chartLoading">
+                <div ref="heartRateChart" style="width: 100%; height: 500px;"></div>
+            </div>
+            <div slot="footer" class="dialog-footer">
+                <el-button @click="curveDialogVisible = false">关 闭</el-button>
+            </div>
+        </el-dialog>
     </div>
 </template>
 <script>
-import { SelectWorkBracelet, AddWorkBracelet, EditWorkBracelet, DeleteWorkBracelet, SelectWorkBraceletById, SelectWorkOrder, SelectALLDevice } from "../api/api";
+import { SelectWorkBracelet, AddWorkBracelet, EditWorkBracelet, DeleteWorkBracelet, SelectWorkBraceletById, SelectWorkOrder, SelectALLDevice, SelectWorkRecord } from "../api/api";
+import echarts from 'echarts';
 
 export default {
+ Broadway: true,
     data() {
         return {
             tableData: [], //表数据
@@ -277,7 +290,12 @@ export default {
             filterDeviceId: null,
             filterWorkOrderCode: "",
             filterWorkOrderContent: "",
-
+            
+            // 曲线相关
+            curveDialogVisible: false,
+            chartLoading: false,
+            chartInstance: null,
+            allCurveData: [], // 存储心率记录数据
         };
     },
     mounted() {
@@ -375,17 +393,9 @@ export default {
         },
         //清空查询条件
         clearQuery(){
-            // 重新设置默认设备
-            const onlineDevices = this.DeviceList.filter(d => d.OnlineStatus === '在线');
-            if (onlineDevices.length > 0) {
-                this.filterDeviceId = onlineDevices[0].Id;
-            } else {
-                this.filterDeviceId = null;
-            }
-            
-            // 重新设置默认工单
-            this.setDefaultWorkOrder();
-            
+            this.filterDeviceId = null;
+            this.filterWorkOrderCode = "";
+            this.filterWorkOrderContent = "";
             this.queryData();
         },
         
@@ -700,6 +710,137 @@ export default {
         handleWorkOrderContentSelect(item) {
             this.filterWorkOrderContent = item.value;
         },
+
+        // 显示心率曲线
+        showHeartRateCurve() {
+            this.curveDialogVisible = true;
+            this.chartLoading = true;
+            this.fetchHeartRateData();
+        },
+
+        // 获取用于绘图的完整心率数据（从作业记录接口获取）
+        fetchHeartRateData() {
+            // 使用当前的查询条件，获取作业记录（包含心率）
+            var pageData = {
+                Query: this.Query,
+                Orderby: [{ SortField: "CreateTime", IsDesc: false }], // 正序
+                CurrentPage: 0,
+                PageNumber: 500, // 获取最近500条记录
+            };
+
+            SelectWorkRecord(pageData).then(res => {
+                this.allCurveData = res.data || [];
+                this.chartLoading = false;
+                if (this.curveDialogVisible) {
+                    this.$nextTick(() => {
+                        this.updateChart();
+                    });
+                }
+            }).catch(err => {
+                console.error("加载心率曲线数据失败:", err);
+                this.chartLoading = false;
+                this.$message.error("加载心率曲线数据失败");
+            });
+        },
+
+        // 当对话框打开时初始化图表
+        onCurveDialogOpened() {
+            if (!this.chartInstance) {
+                this.chartInstance = echarts.init(this.$refs.heartRateChart);
+            }
+            this.updateChart();
+
+            // 响应窗口大小变化
+            window.addEventListener('resize', this.handleResize);
+        },
+
+        handleResize() {
+            if (this.chartInstance) {
+                this.chartInstance.resize();
+            }
+        },
+
+        // 更新图表内容
+        updateChart() {
+            if (!this.chartInstance || !this.allCurveData.length) return;
+
+            // 按工姓名人分组
+            const workerGroups = {};
+            this.allCurveData.forEach(item => {
+                const name = item.WorkerName || '未知工人';
+                if (!workerGroups[name]) {
+                    workerGroups[name] = [];
+                }
+                workerGroups[name].push({
+                    time: item.CreateTime,
+                    heartRate: parseInt(item.HeartRate) || 0
+                });
+            });
+
+            // 获取所有唯一的时间点作为X轴（或者只取最大集合）
+            const allTimes = [...new Set(this.allCurveData.map(item => item.CreateTime))].sort();
+
+            const series = Object.keys(workerGroups).map(name => {
+                return {
+                    name: name,
+                    type: 'line',
+                    smooth: true,
+                    showSymbol: false,
+                    // 映射数据到时间轴
+                    data: workerGroups[name].map(d => [d.time, d.heartRate])
+                };
+            });
+
+            const option = {
+                title: {
+                    text: '作业心率变化趋势'
+                },
+                tooltip: {
+                    trigger: 'axis'
+                },
+                legend: {
+                    type: 'scroll',
+                    bottom: 0
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '10%',
+                    containLabel: true
+                },
+                toolbox: {
+                    feature: {
+                        saveAsImage: {}
+                    }
+                },
+                xAxis: {
+                    type: 'time', // 使用时间轴
+                    boundaryGap: false,
+                    axisLabel: {
+                        formatter: function(value) {
+                            const date = new Date(value);
+                            return date.getHours() + ':' + String(date.getMinutes()).padStart(2, '0');
+                        }
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    name: '心率 (bpm)',
+                    min: 0,
+                    max: 'dataMax'
+                },
+                series: series
+            };
+
+            this.chartInstance.setOption(option, true);
+        },
+
+        beforeDestroy() {
+            window.removeEventListener('resize', this.handleResize);
+            if (this.chartInstance) {
+                this.chartInstance.dispose();
+            }
+        }
     }
 };
 </script>

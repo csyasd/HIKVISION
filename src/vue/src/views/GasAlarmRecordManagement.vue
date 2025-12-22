@@ -19,7 +19,7 @@
                     :value="item.Id">
                     <span style="float: left">{{ item.Name }}</span>
                     <span style="float: right; color: #8492a6; font-size: 13px">
-                        <el-tag :type="item.OnlineStatus === '在线' ? 'success' : 'danger'" size="mini">
+                        <el-tag size="mini">
                             {{ item.OnlineStatus || '离线' }}
                         </el-tag>
                     </span>
@@ -31,7 +31,8 @@
                 :fetch-suggestions="queryWorkOrderCode"
                 placeholder="搜索工单编号"
                 clearable
-                @select="handleWorkOrderCodeSelect">
+                @select="handleWorkOrderCodeSelect"
+                @clear="queryData">
             </el-autocomplete>
             <el-autocomplete
                 style="width: 200px; margin-right: 10px;"
@@ -39,12 +40,14 @@
                 :fetch-suggestions="queryWorkOrderContent"
                 placeholder="搜索工单内容"
                 clearable
-                @select="handleWorkOrderContentSelect">
+                @select="handleWorkOrderContentSelect"
+                @clear="queryData">
             </el-autocomplete>
             <el-button @click="queryData()">查询</el-button>
             <el-button  @click="clearQuery()">清空</el-button>
             <el-button type="danger" @click="refreshTable()">刷新列表</el-button>
             <el-button type="primary" @click="changeDialogFormVisible()" :disabled = "operationDisabled">添加</el-button>
+            <el-button type="success" @click="showGasCurve()" icon="el-icon-data-line" :disabled="operationDisabled">气体曲线</el-button>
         </el-col>
         <el-table 
             :data="tableData" 
@@ -61,7 +64,7 @@
         >
             <el-table-column type="selection" width="55"></el-table-column>
             
-            <el-table-column :show-overflow-tooltip="true" prop="WorkOrder" label="所属工单" width="220" >
+            <el-table-column :show-overflow-tooltip="true" prop="WorkOrder" label="工单" width="220" >
                 <template slot-scope="scope">
                     <div>{{ WorkOrderList[WorkOrderList.findIndex((x) => x.Id == scope.row.WorkOrderId)]?.Code || '未分配' }}</div>
                 </template>
@@ -88,42 +91,6 @@
             <el-table-column :show-overflow-tooltip="true" prop="Gas4" label="第四种气体含量" width="150" >
                 <template slot-scope="scope">
                     {{ scope.row.Gas4 ? scope.row.Gas4.toFixed(2) : '0.00' }}
-                </template>
-            </el-table-column>
-    
-            <el-table-column :show-overflow-tooltip="true" prop="Gas5" label="第五种气体含量" width="150" >
-                <template slot-scope="scope">
-                    {{ scope.row.Gas5 ? scope.row.Gas5.toFixed(2) : '0.00' }}
-                </template>
-            </el-table-column>
-    
-            <el-table-column :show-overflow-tooltip="true" prop="Gas6" label="第六种气体含量" width="150" >
-                <template slot-scope="scope">
-                    {{ scope.row.Gas6 ? scope.row.Gas6.toFixed(2) : '0.00' }}
-                </template>
-            </el-table-column>
-    
-            <el-table-column :show-overflow-tooltip="true" prop="Gas7" label="第七种气体含量" width="150" >
-                <template slot-scope="scope">
-                    {{ scope.row.Gas7 ? scope.row.Gas7.toFixed(2) : '0.00' }}
-                </template>
-            </el-table-column>
-    
-            <el-table-column :show-overflow-tooltip="true" prop="Gas8" label="第八种气体含量" width="150" >
-                <template slot-scope="scope">
-                    {{ scope.row.Gas8 ? scope.row.Gas8.toFixed(2) : '0.00' }}
-                </template>
-            </el-table-column>
-    
-            <el-table-column :show-overflow-tooltip="true" prop="Gas9" label="第九种气体含量" width="150" >
-                <template slot-scope="scope">
-                    {{ scope.row.Gas9 ? scope.row.Gas9.toFixed(2) : '0.00' }}
-                </template>
-            </el-table-column>
-    
-            <el-table-column :show-overflow-tooltip="true" prop="Gas10" label="第十种气体含量" width="150" >
-                <template slot-scope="scope">
-                    {{ scope.row.Gas10 ? scope.row.Gas10.toFixed(2) : '0.00' }}
                 </template>
             </el-table-column>
     
@@ -155,7 +122,7 @@
         <el-dialog title="添加" :visible.sync="addDialogFormVisible" width="600px">
             <el-form :model="addForm">
 
-            <el-form-item label="所属工单" :label-width="formLabelWidth">
+            <el-form-item label="工单" :label-width="formLabelWidth">
                 <el-select v-model="addForm.WorkOrderId" placeholder="请选择工单" filterable>
                     <el-option
 						v-for="(item, i) in WorkOrderList"
@@ -182,28 +149,8 @@
                 <el-input-number v-model="addForm.Gas4" :precision="2" :step="0.01" :min="0" placeholder="请输入第四种气体含量"></el-input-number>
             </el-form-item>
 
-            <el-form-item label="第五种气体含量" :label-width="formLabelWidth">
-                <el-input-number v-model="addForm.Gas5" :precision="2" :step="0.01" :min="0" placeholder="请输入第五种气体含量"></el-input-number>
-            </el-form-item>
-
-            <el-form-item label="第六种气体含量" :label-width="formLabelWidth">
-                <el-input-number v-model="addForm.Gas6" :precision="2" :step="0.01" :min="0" placeholder="请输入第六种气体含量"></el-input-number>
-            </el-form-item>
-
-            <el-form-item label="第七种气体含量" :label-width="formLabelWidth">
-                <el-input-number v-model="addForm.Gas7" :precision="2" :step="0.01" :min="0" placeholder="请输入第七种气体含量"></el-input-number>
-            </el-form-item>
-
-            <el-form-item label="第八种气体含量" :label-width="formLabelWidth">
-                <el-input-number v-model="addForm.Gas8" :precision="2" :step="0.01" :min="0" placeholder="请输入第八种气体含量"></el-input-number>
-            </el-form-item>
-
-            <el-form-item label="第九种气体含量" :label-width="formLabelWidth">
-                <el-input-number v-model="addForm.Gas9" :precision="2" :step="0.01" :min="0" placeholder="请输入第九种气体含量"></el-input-number>
-            </el-form-item>
-
-            <el-form-item label="第十种气体含量" :label-width="formLabelWidth">
-                <el-input-number v-model="addForm.Gas10" :precision="2" :step="0.01" :min="0" placeholder="请输入第十种气体含量"></el-input-number>
+            <el-form-item label="第四种气体含量" :label-width="formLabelWidth">
+                <el-input-number v-model="addForm.Gas4" :precision="2" :step="0.01" :min="0" placeholder="请输入第四种气体含量"></el-input-number>
             </el-form-item>
 
             </el-form>
@@ -216,7 +163,7 @@
         <el-dialog title="编辑" :visible.sync="editDialogFormVisible" width="600px">
             <el-form :model="editForm">
 
-            <el-form-item label="所属工单" :label-width="formLabelWidth">
+            <el-form-item label="工单" :label-width="formLabelWidth">
                 <el-select v-model="editForm.WorkOrderId" placeholder="请选择工单" filterable>
                     <el-option
 						v-for="(item, i) in WorkOrderList"
@@ -243,28 +190,8 @@
                 <el-input-number v-model="editForm.Gas4" :precision="2" :step="0.01" :min="0" placeholder="请输入第四种气体含量"></el-input-number>
             </el-form-item>
 
-            <el-form-item label="第五种气体含量" :label-width="formLabelWidth">
-                <el-input-number v-model="editForm.Gas5" :precision="2" :step="0.01" :min="0" placeholder="请输入第五种气体含量"></el-input-number>
-            </el-form-item>
-
-            <el-form-item label="第六种气体含量" :label-width="formLabelWidth">
-                <el-input-number v-model="editForm.Gas6" :precision="2" :step="0.01" :min="0" placeholder="请输入第六种气体含量"></el-input-number>
-            </el-form-item>
-
-            <el-form-item label="第七种气体含量" :label-width="formLabelWidth">
-                <el-input-number v-model="editForm.Gas7" :precision="2" :step="0.01" :min="0" placeholder="请输入第七种气体含量"></el-input-number>
-            </el-form-item>
-
-            <el-form-item label="第八种气体含量" :label-width="formLabelWidth">
-                <el-input-number v-model="editForm.Gas8" :precision="2" :step="0.01" :min="0" placeholder="请输入第八种气体含量"></el-input-number>
-            </el-form-item>
-
-            <el-form-item label="第九种气体含量" :label-width="formLabelWidth">
-                <el-input-number v-model="editForm.Gas9" :precision="2" :step="0.01" :min="0" placeholder="请输入第九种气体含量"></el-input-number>
-            </el-form-item>
-
-            <el-form-item label="第十种气体含量" :label-width="formLabelWidth">
-                <el-input-number v-model="editForm.Gas10" :precision="2" :step="0.01" :min="0" placeholder="请输入第十种气体含量"></el-input-number>
+            <el-form-item label="第四种气体含量" :label-width="formLabelWidth">
+                <el-input-number v-model="editForm.Gas4" :precision="2" :step="0.01" :min="0" placeholder="请输入第四种气体含量"></el-input-number>
             </el-form-item>
 
             </el-form>
@@ -273,11 +200,27 @@
                 <el-button type="primary" @click="EditConfirm()" :disabled = "operationDisabled">确 定</el-button>
             </div>
         </el-dialog>
+        
+        <!-- 气体曲线对话框 -->
+        <el-dialog title="气体浓度趋势图" :visible.sync="curveDialogVisible" width="80%" @opened="onCurveDialogOpened">
+            <div v-loading="chartLoading">
+                <div style="margin-bottom: 20px; text-align: center;">
+                    <el-checkbox-group v-model="selectedGases" @change="updateChart">
+                        <el-checkbox v-for="i in 4" :key="i" :label="i">Gas {{i}}</el-checkbox>
+                    </el-checkbox-group>
+                </div>
+                <div ref="gasChart" style="width: 100%; height: 500px;"></div>
+            </div>
+            <div slot="footer" class="dialog-footer">
+                <el-button @click="curveDialogVisible = false">关 闭</el-button>
+            </div>
+        </el-dialog>
     </div>
 </template>
 <script>
 import { SelectGasAlarmRecord, AddGasAlarmRecord, EditGasAlarmRecord, DeleteGasAlarmRecord, SelectGasAlarmRecordById } from "../api/api";
 import { SelectWorkOrder, SelectALLDevice } from "../api/api";
+import echarts from 'echarts';
 
 export default {
     data() {
@@ -298,12 +241,6 @@ export default {
                Gas2: 0,
                Gas3: 0,
                Gas4: 0,
-               Gas5: 0,
-               Gas6: 0,
-               Gas7: 0,
-               Gas8: 0,
-               Gas9: 0,
-               Gas10: 0,
             },
             editForm: {
             Id:"",
@@ -312,12 +249,6 @@ export default {
                Gas2: 0,
                Gas3: 0,
                Gas4: 0,
-               Gas5: 0,
-               Gas6: 0,
-               Gas7: 0,
-               Gas8: 0,
-               Gas9: 0,
-               Gas10: 0,
             },
             operationDisabled: false,
             formLabelWidth: "150px",
@@ -334,7 +265,13 @@ export default {
             filterWorkOrderCode: "",
             filterWorkOrderContent: "",
             selectDataArrL: [], //跨页多选所有的项
-
+            
+            // 曲线相关
+            curveDialogVisible: false,
+            chartLoading: false,
+            chartInstance: null,
+            selectedGases: [1, 2, 3, 4], // 默认展示前4种
+            allCurveData: [], // 存储用于绘制曲线的所有数据
         };
     },
     mounted() {
@@ -403,8 +340,10 @@ export default {
                 PageNumber: this.pageSize,
             };
             SelectGasAlarmRecord(pageData).then(res => {
-                this.tableData = res.data;
-                this.totalNumber = res.count;
+                const records = res.data || [];
+                // 只显示第一个
+                this.tableData = records.length > 0 ? [records[0]] : [];
+                this.totalNumber = records.length > 0 ? 1 : 0;
 
                 //如果发现加载了一个空页尝试向前翻一页，针对当一页只有一条数据时将该数据删除，页面显示异常问题
                 if (this.currentPage > 1 && this.tableData.length == 0) {
@@ -432,17 +371,9 @@ export default {
         },
         //清空查询条件
         clearQuery(){
-            // 重新设置默认设备
-            const onlineDevices = this.DeviceList.filter(d => d.OnlineStatus === '在线');
-            if (onlineDevices.length > 0) {
-                this.filterDeviceId = onlineDevices[0].Id;
-            } else {
-                this.filterDeviceId = null;
-            }
-            
-            // 重新设置默认工单
-            this.setDefaultWorkOrder();
-            
+            this.filterDeviceId = null;
+            this.filterWorkOrderCode = "";
+            this.filterWorkOrderContent = "";
             this.queryData();
         },
         
@@ -482,12 +413,6 @@ export default {
                         Gas2: 0,
                         Gas3: 0,
                         Gas4: 0,
-                        Gas5: 0,
-                        Gas6: 0,
-                        Gas7: 0,
-                        Gas8: 0,
-                        Gas9: 0,
-                        Gas10: 0,
                     };
                 } else {
                     this.$message.error("创建失败！");
@@ -507,12 +432,6 @@ export default {
                this.editForm.Gas2 = row.Gas2 || 0;
                this.editForm.Gas3 = row.Gas3 || 0;
                this.editForm.Gas4 = row.Gas4 || 0;
-               this.editForm.Gas5 = row.Gas5 || 0;
-               this.editForm.Gas6 = row.Gas6 || 0;
-               this.editForm.Gas7 = row.Gas7 || 0;
-               this.editForm.Gas8 = row.Gas8 || 0;
-               this.editForm.Gas9 = row.Gas9 || 0;
-               this.editForm.Gas10 = row.Gas10 || 0;
             
             this.editDialogFormVisible = true;
         },
@@ -751,6 +670,122 @@ export default {
         handleWorkOrderContentSelect(item) {
             this.filterWorkOrderContent = item.value;
         },
+        
+        // 显示气体曲线
+        showGasCurve() {
+            this.curveDialogVisible = true;
+            this.chartLoading = true;
+            this.fetchFullGasData();
+        },
+        
+        // 获取用于绘图的完整数据（不分页）
+        fetchFullGasData() {
+            // 使用当前的查询条件，但请求更多数据
+            var pageData = {
+                Query: this.Query,
+                Orderby: [{ SortField: "CreateTime", IsDesc: false }], // 曲线应该正序
+                CurrentPage: 0,
+                PageNumber: 500, // 获取最近500条记录用于绘图
+            };
+            
+            SelectGasAlarmRecord(pageData).then(res => {
+                this.allCurveData = res.data || [];
+                this.chartLoading = false;
+                if (this.curveDialogVisible) {
+                    this.$nextTick(() => {
+                        this.updateChart();
+                    });
+                }
+            }).catch(err => {
+                console.error("加载曲线数据失败:", err);
+                this.chartLoading = false;
+                this.$message.error("加载曲线数据失败");
+            });
+        },
+        
+        // 当对话框打开时初始化图表
+        onCurveDialogOpened() {
+            if (!this.chartInstance) {
+                this.chartInstance = echarts.init(this.$refs.gasChart);
+            }
+            this.updateChart();
+            
+            // 响应窗口大小变化
+            window.addEventListener('resize', this.handleResize);
+        },
+        
+        handleResize() {
+            if (this.chartInstance) {
+                this.chartInstance.resize();
+            }
+        },
+        
+        // 更新图表内容
+        updateChart() {
+            if (!this.chartInstance || !this.allCurveData.length) return;
+            
+            const times = this.allCurveData.map(item => item.CreateTime);
+            const series = [];
+            
+            this.selectedGases.forEach(gasIndex => {
+                series.push({
+                    name: `Gas ${gasIndex}`,
+                    type: 'line',
+                    smooth: true,
+                    showSymbol: false,
+                    data: this.allCurveData.map(item => item[`Gas${gasIndex}`] || 0)
+                });
+            });
+            
+            const option = {
+                title: {
+                    text: '浓度变化趋势'
+                },
+                tooltip: {
+                    trigger: 'axis'
+                },
+                legend: {
+                    data: this.selectedGases.map(i => `Gas ${i}`)
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+                toolbox: {
+                    feature: {
+                        saveAsImage: {}
+                    }
+                },
+                xAxis: {
+                    type: 'category',
+                    boundaryGap: false,
+                    data: times,
+                    axisLabel: {
+                        formatter: function(value) {
+                            // 简化时间显示
+                            return value.split(' ')[1] || value;
+                        }
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    name: '浓度值',
+                    min: 0
+                },
+                series: series
+            };
+            
+            this.chartInstance.setOption(option, true);
+        },
+        
+        beforeDestroy() {
+            window.removeEventListener('resize', this.handleResize);
+            if (this.chartInstance) {
+                this.chartInstance.dispose();
+            }
+        }
     }
 };
 </script>

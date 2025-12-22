@@ -21,9 +21,41 @@
                         <div class="card-title">设备总数</div>
                         <div class="device-count">{{ deviceTotal }}</div>
                         <div class="device-types">
-                            <div class="device-type">
-                                <span class="type-name">在线</span>
-                                <span class="type-count online">{{ onlineCount }}</span>
+                            <div class="device-type-wrapper">
+                                <el-popover
+                                    placement="right"
+                                    width="400"
+                                    trigger="hover"
+                                    popper-class="dark-popover">
+                                    <template slot="reference">
+                                        <div class="device-type">
+                                            <span class="type-name">在线</span>
+                                            <span class="type-count online">{{ onlineCount }}</span>
+                                        </div>
+                                    </template>
+                                    <div class="popover-content">
+                                        <div class="popover-header">在线工单信息</div>
+                                        <table class="popover-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>编号</th>
+                                                    <th>内容</th>
+                                                    <th>开始时间</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr v-if="onlineWorkOrders.length === 0">
+                                                    <td colspan="3" style="text-align: center; color: #909399; padding: 10px;">暂无在线工单</td>
+                                                </tr>
+                                                <tr v-for="wo in onlineWorkOrders" :key="wo.Id">
+                                                    <td>{{ wo.Code }}</td>
+                                                    <td>{{ wo.Content }}</td>
+                                                    <td>{{ wo.StartTime }}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </el-popover>
                             </div>
                             <div class="device-type">
                                 <span class="type-name">离线</span>
@@ -88,7 +120,7 @@
                                     <td>{{ item.WorkOrderCode }}</td>
                                     <td>{{ item.GasName }}</td>
                                     <td>{{ item.GasValue }}</td>
-                                    <td class="status-online">{{ item.Status }}</td>
+                                    <td class="status-normal">{{ item.Status }}</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -120,7 +152,7 @@
                                     <td>{{ item.WorkOrderCode }}</td>
                                     <td>{{ item.WorkerName }}</td>
                                     <td>{{ item.HeartRate || '-' }}</td>
-                                    <td :class="{'status-entry': item.EntryExitStatus === '进入' || item.EntryExitStatus === '刷卡成功', 'status-exit': item.EntryExitStatus === '已签出'}">{{ item.EntryExitStatus }}</td>
+                                    <td class="status-normal">{{ item.EntryExitStatus }}</td>
                                     <td>{{ item.EntryTime || '-' }}</td>
                                     <td>{{ item.ExitTime || '-' }}</td>
                                 </tr>
@@ -133,7 +165,8 @@
 </template>
 
 <script>
-import { SelectALLDevice, GetRealtimeGasData, GetRealtimeBraceletInfo, SelectALLCamera } from '@/api/api.js';
+import { SelectALLDevice, GetRealtimeGasData, GetRealtimeBraceletInfo, SelectALLCamera, GetRealtimeWorkOrders } from '@/api/api.js';
+import flvjs from 'flv.js';
 
 export default {
     name: 'MonitoringDashboard',
@@ -149,7 +182,9 @@ export default {
             onlineCount: 0,
             offlineCount: 0,
             gasMonitoringData: [],
-            braceletInfoData: []
+            braceletInfoData: [],
+            workOrders: [],
+            playerInstances: {} // 存储视频播放器实例
         }
     },
     mounted() {
@@ -160,6 +195,9 @@ export default {
             await this.loadCameras();
             this.loadGasMonitoringData();
             this.loadBraceletInfo();
+            this.loadWorkOrders();
+            // 初始加载后尝试播放所有视频
+            this.autoPlayAll();
         })();
         setInterval(this.updateTime, 1000);
         // 每5秒更新一次设备位置、气体数据、手环信息和摄像头
@@ -168,7 +206,19 @@ export default {
             await this.loadCameras();
             this.loadGasMonitoringData();
             this.loadBraceletInfo();
+            this.loadWorkOrders();
         }, 5000);
+    },
+    beforeDestroy() {
+        // 组件销毁前停止所有视频播放器
+        Object.keys(this.playerInstances).forEach(id => {
+            this.stopCamera(id);
+        });
+    },
+    computed: {
+        onlineWorkOrders() {
+            return this.workOrders || [];
+        }
     },
     methods: {
         updateTime() {
@@ -271,7 +321,7 @@ export default {
                         size: new AMap.Size(32, 32),
                         image: 'data:image/svg+xml;base64,' + btoa(`
                             <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-                                <circle cx="16" cy="16" r="12" fill="${device.ToxicGasAlarmOnlineStatus === '报警' ? '#ff0000' : '#409eff'}" stroke="#fff" stroke-width="2"/>
+                                <circle cx="16" cy="16" r="12" fill="#409eff" stroke="#fff" stroke-width="2"/>
                                 <circle cx="16" cy="16" r="6" fill="#fff"/>
                             </svg>
                         `)
@@ -295,7 +345,7 @@ export default {
         
         showDeviceInfo(device, lng, lat) {
             const onlineStatus = device.OnlineStatus || '离线';
-            const onlineStatusColor = onlineStatus === '在线' ? '#67c23a' : '#f56c6c';
+            const onlineStatusColor = '#909399';
             // 格式化设备显示名称：设备名称/设备型号
             const deviceDisplayName = device.Model && device.Model.trim() 
                 ? `${device.Name}/${device.Model}` 
@@ -397,10 +447,69 @@ export default {
             }
         },
         
+        async loadWorkOrders() {
+            try {
+                const res = await GetRealtimeWorkOrders();
+                if (res) {
+                    this.workOrders = res;
+                }
+            } catch (error) {
+                console.error('加载实时工单失败:', error);
+            }
+        },
+        
         async playCamera(camera) {
             try {
-                console.log(`播放摄像头: ${camera.name}`);
-                // 这里应该启动视频流播放
+                if (!flvjs.isSupported()) {
+                    console.error('浏览器不支持 flv.js');
+                    return;
+                }
+
+                console.log(`播放摄像头: ${camera.name} (ID: ${camera.id})`);
+                
+                // 如果已经存在该摄像头的播放器，先销毁
+                if (this.playerInstances[camera.id]) {
+                    this.stopCamera(camera.id);
+                }
+
+                const videoElement = document.getElementById(`videoPlayer_${camera.id}`);
+                if (!videoElement) {
+                    console.warn(`未找到视频元素: videoPlayer_${camera.id}`);
+                    return;
+                }
+
+                const flvPlayer = flvjs.createPlayer({
+                    type: 'flv',
+                    isLive: true,
+                    url: `http://localhost:5002/HK/flv-stream/${camera.id}`
+                }, {
+                    enableWorker: true,
+                    enableStashBuffer: false, // 降低延迟
+                    stashInitialSize: 128
+                });
+
+                flvPlayer.attachMediaElement(videoElement);
+                flvPlayer.load();
+                
+                // 处理自动播放限制
+                const playPromise = flvPlayer.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(error => {
+                        console.error('视频播放失败 (可能是浏览器限制):', error);
+                        // 静音后重试自动播放（虽然模板已经设置了muted）
+                        videoElement.muted = true;
+                        flvPlayer.play();
+                    });
+                }
+
+                this.playerInstances[camera.id] = flvPlayer;
+
+                // 错误处理
+                flvPlayer.on(flvjs.Events.ERROR, (errorType, errorDetail, errorInfo) => {
+                    console.error(`flv.js 错误 [${camera.id}]:`, errorType, errorDetail, errorInfo);
+                    this.stopCamera(camera.id);
+                });
+
             } catch (error) {
                 console.error('播放失败:', error);
             }
@@ -408,7 +517,27 @@ export default {
         
         stopCamera(cameraId) {
             console.log(`停止摄像头: ${cameraId}`);
-            // 这里应该停止视频流
+            const flvPlayer = this.playerInstances[cameraId];
+            if (flvPlayer) {
+                try {
+                    flvPlayer.pause();
+                    flvPlayer.unload();
+                    flvPlayer.detachMediaElement();
+                    flvPlayer.destroy();
+                } catch (e) {
+                    console.error(`销毁播放器失败 [${cameraId}]:`, e);
+                }
+                delete this.playerInstances[cameraId];
+            }
+        },
+
+        autoPlayAll() {
+            // 延迟一秒执行，确保 DOM 已经渲染
+            setTimeout(() => {
+                this.cameras.forEach(camera => {
+                    this.playCamera(camera);
+                });
+            }, 1000);
         }
     }
 }
@@ -599,14 +728,19 @@ export default {
     gap: 15px;
 }
 
-.device-type {
+.device-type, .device-type-wrapper {
     flex: 1;
     text-align: center;
+}
+
+.device-type {
     padding: 12px;
     background: rgba(0, 0, 0, 0.3);
     border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.1);
     transition: all 0.3s ease;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .device-type:hover {
@@ -630,13 +764,11 @@ export default {
 }
 
 .type-count.online {
-    color: #67c23a;
-    text-shadow: 0 0 10px rgba(103, 194, 58, 0.5);
+    color: #ffffff;
 }
 
 .type-count.offline {
-    color: #f56c6c;
-    text-shadow: 0 0 10px rgba(245, 108, 108, 0.5);
+    color: #ffffff;
 }
 
 /* 视频面板 */
@@ -724,6 +856,8 @@ export default {
     height: 100%;
     object-fit: cover;
 }
+
+
 
 .video-controls {
     position: absolute;
@@ -923,27 +1057,6 @@ export default {
 }
 
 
-.status-online {
-    color: #67c23a !important;
-    font-weight: 600;
-}
-
-.alarm-type {
-    color: #f56c6c !important;
-    font-weight: 600;
-}
-
-.status-entry {
-    color: #67c23a !important;
-    font-weight: 600;
-    text-shadow: 0 0 8px rgba(103, 194, 58, 0.5);
-}
-
-.status-exit {
-    color: #909399 !important;
-    font-weight: 600;
-}
-
 /* 响应式设计 */
 @media (max-width: 1400px) {
     .left-panel {
@@ -982,5 +1095,61 @@ export default {
         right: auto;
         margin: 10px;
     }
+}
+</style>
+
+<style>
+/* 全局 Popover 样式，用于覆盖 Element UI 默认样式 */
+.dark-popover {
+    background: #0a0e1a !important;
+    border: 1px solid #409eff !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8) !important;
+    padding: 0 !important;
+}
+
+.dark-popover[x-placement^="right"] .popper__arrow::after {
+    border-right-color: #0a0e1a !important;
+}
+
+.dark-popover[x-placement^="right"] .popper__arrow {
+    border-right-color: #409eff !important;
+}
+
+.popover-content {
+    color: #ffffff;
+    background: #0a0e1a;
+}
+
+.popover-header {
+    background: linear-gradient(135deg, rgba(64, 158, 255, 0.3) 0%, transparent 100%);
+    padding: 12px 15px;
+    font-weight: bold;
+    border-bottom: 1px solid rgba(64, 158, 255, 0.3);
+    font-size: 15px;
+    color: #409eff;
+}
+
+.popover-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.popover-table th {
+    text-align: left;
+    padding: 10px 15px;
+    color: rgba(255, 255, 255, 0.6);
+    border-bottom: 1px solid rgba(64, 158, 255, 0.2);
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.popover-table td {
+    padding: 10px 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    color: #fff;
+}
+
+.popover-table tr:hover {
+    background: rgba(64, 158, 255, 0.1);
 }
 </style>

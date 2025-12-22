@@ -16,12 +16,6 @@ namespace YixiaoAdmin.EntityFrameworkCore
         }
 
         /// <summary>
-        /// 将数据实体填写到此处
-        /// </summary>
-        //public DbSet<Student> Student { get; set; }
-
-
-        /// <summary>
         /// 用户
         /// </summary>
         public DbSet<User> User { get; set; }
@@ -82,6 +76,11 @@ namespace YixiaoAdmin.EntityFrameworkCore
         /// 气体报警记录
         /// </summary>
         public DbSet<GasAlarmRecord> GasAlarmRecord { get; set; }
+
+        /// <summary>
+        /// 工人进出状态记录
+        /// </summary>
+        public DbSet<WorkerStatusRecord> WorkerStatusRecord { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

@@ -42,10 +42,24 @@ namespace YixiaoAdmin.Services
                 }
                 if (item.QueryField == "Name")
                 {
-
-                    whereExpression = PredicateBuilder.And(whereExpression, (x) => x.Name == item.QueryStr);
+                    whereExpression = PredicateBuilder.And(whereExpression, (x) => x.Name.Contains(item.QueryStr));
                 }
-
+                else if (item.QueryField == "Model")
+                {
+                    whereExpression = PredicateBuilder.And(whereExpression, (x) => x.Model.Contains(item.QueryStr));
+                }
+                else if (item.QueryField == "OnlineStatus")
+                {
+                    whereExpression = PredicateBuilder.And(whereExpression, (x) => x.OnlineStatus == item.QueryStr);
+                }
+                else if (item.QueryField == "BelongToUnit")
+                {
+                    whereExpression = PredicateBuilder.And(whereExpression, (x) => x.BelongToUnit.Contains(item.QueryStr));
+                }
+                else if (item.QueryField == "IP")
+                {
+                    whereExpression = PredicateBuilder.And(whereExpression, (x) => x.IP.Contains(item.QueryStr));
+                }
                 else if (item.QueryField == "CreateTime")
                 {
                     whereExpression = PredicateBuilder.And(whereExpression, (x) => x.CreateTime.Date == Convert.ToDateTime(item.QueryStr.Trim())); 

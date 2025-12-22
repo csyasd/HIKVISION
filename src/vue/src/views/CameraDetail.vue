@@ -1,19 +1,6 @@
  <template>
     <div class="video-container">
-        <h2>摄像头实时直播监控 ⚡ 低延迟模式</h2>
-        
-        <div id="status" class="status">
-            {{ statusText }}
-            <div v-if="flvjsLoaded" class="flv-status-success">✅ FLV播放器已就绪</div>
-            <div v-else class="flv-status-error">❌ FLV播放器未加载</div>
-        </div>
-        
-        <div class="controls">
-            <el-button @click="refreshCameras" type="primary">刷新摄像头</el-button>
-            <el-button @click="checkAllStatus" type="info">检查状态</el-button>
-            <el-button @click="checkFlvjsStatus" type="success">重新检查播放器</el-button>
-            <el-button @click="clearLog" type="warning">清除日志</el-button>
-        </div>
+        <h2>实时监控</h2>
         
         <!-- 摄像头网格布局 -->
         <div class="cameras-grid" v-if="cameras.length > 0">
@@ -122,12 +109,51 @@
             <el-button @click="refreshCameras" type="primary">重新加载</el-button>
         </div>
         
-        <div id="log" class="log"></div>
+        <div id="log" class="log" style="display: none;"></div>
+
+        <!-- 底部实时数据部分 -->
+        <div class="bottom-data-sections">
+            <!-- 气体监测部分 -->
+            <div class="data-block">
+                <div class="block-header">气体监测实时数据</div>
+                <el-table :data="gasMonitoringData" border style="width: 100%" size="small">
+                    <el-table-column prop="DeviceName" label="设备名称及型号"></el-table-column>
+                    <el-table-column prop="WorkOrderCode" label="工单编号"></el-table-column>
+                    <el-table-column prop="GasName" label="气体名称"></el-table-column>
+                    <el-table-column prop="GasValue" label="检测数值"></el-table-column>
+                    <el-table-column prop="Status" label="状态">
+                        <template slot-scope="scope">
+                            <span style="color: #67c23a; font-weight: bold;">{{ scope.row.Status }}</span>
+                        </template>
+                    </el-table-column>
+                </el-table>
+            </div>
+
+            <!-- 手环信息部分 -->
+            <div class="data-block">
+                <div class="block-header">手环实时信息</div>
+                <el-table :data="braceletInfoData" border style="width: 100%" size="small">
+                    <el-table-column prop="DeviceName" label="设备名称及型号"></el-table-column>
+                    <el-table-column prop="WorkOrderCode" label="工单编号"></el-table-column>
+                    <el-table-column prop="WorkerName" label="工人姓名"></el-table-column>
+                    <el-table-column prop="HeartRate" label="心率"></el-table-column>
+                    <el-table-column label="进离场状态">
+                        <template slot-scope="scope">
+                            <span :style="{ color: (scope.row.EntryExitStatus === '进入' || scope.row.EntryExitStatus === '刷卡成功') ? '#67c23a' : '#909399', fontWeight: 'bold' }">
+                                {{ scope.row.EntryExitStatus }}
+                            </span>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="EntryTime" label="进场时间"></el-table-column>
+                    <el-table-column prop="ExitTime" label="出场时间"></el-table-column>
+                </el-table>
+            </div>
+        </div>
     </div>
 </template>
 
 <script>
-import { PTZControl } from '../api/api'
+import { PTZControl, GetRealtimeGasData, GetRealtimeBraceletInfo, SelectALLDevice } from '../api/api'
 
 export default {
     data() {
@@ -140,7 +166,11 @@ export default {
             statusText: '正在初始化...',
             API_BASE: window.location.hostname === '127.0.0.1' ? 'http://127.0.0.1:5002' : 'http://localhost:5002',
             ptzSpeed: 4,  // 云台速度 1-7
-            flvjsLoaded: false  // flv.js加载状态
+            flvjsLoaded: false,  // flv.js加载状态
+            gasMonitoringData: [],
+            braceletInfoData: [],
+            devices: [],
+            refreshTimer: null
         }
     },
     mounted() {
@@ -148,14 +178,43 @@ export default {
         this.checkFlvjsStatus();
         // 加载摄像头列表
         this.loadCameras();
+        // 加载实时数据
+        this.fetchRealtimeData();
+        this.refreshTimer = setInterval(this.fetchRealtimeData, 5000);
     },
     beforeDestroy() {
         // 清理所有播放器
         Object.keys(this.players).forEach(cameraId => {
             this.stopCameraStream(cameraId);
         });
+        if (this.refreshTimer) {
+            clearInterval(this.refreshTimer);
+        }
     },
     methods: {
+        async fetchRealtimeData() {
+            try {
+                const [gasRes, braceletRes, deviceRes] = await Promise.all([
+                    GetRealtimeGasData(),
+                    GetRealtimeBraceletInfo(),
+                    SelectALLDevice()
+                ]);
+                
+                if (gasRes && Array.isArray(gasRes)) {
+                    this.gasMonitoringData = gasRes;
+                }
+                
+                if (braceletRes && Array.isArray(braceletRes)) {
+                    this.braceletInfoData = braceletRes;
+                }
+
+                if (deviceRes) {
+                    this.devices = deviceRes;
+                }
+            } catch (error) {
+                console.error('获取监控页面实时数据失败:', error);
+            }
+        },
         // 加载摄像头列表
         async loadCameras() {
             try {
@@ -447,28 +506,26 @@ export default {
             }
         },
         
-        // 获取摄像头状态
+        // 获取摄像头状态（根据设备的离在线状态）
         getCameraStatus(cameraId) {
-            const streamInfo = this.streamStatus[cameraId];
-            if (!streamInfo) return '未知';
-            
-            if (streamInfo.IsActive) {
-                return '在线';
-            } else if (streamInfo.LastError) {
-                return '错误';
-            } else {
-                return '离线';
-            }
+            const camera = this.cameras.find(c => c.Id === cameraId);
+            if (!camera || !camera.DeviceId) return '未知';
+
+            const device = this.devices.find(d => d.Id === camera.DeviceId);
+            if (!device) return '未知';
+
+            return device.OnlineStatus || '离线';
         },
         
         // 获取摄像头状态样式类
         getCameraStatusClass(cameraId) {
             const status = this.getCameraStatus(cameraId);
-            switch (status) {
-                case '在线': return 'status-online';
-                case '错误': return 'status-error';
-                case '离线': return 'status-offline';
-                default: return 'status-unknown';
+            if (status === '在线') {
+                return 'status-online';
+            } else if (status === '离线') {
+                return 'status-offline';
+            } else {
+                return 'status-unknown';
             }
         },
         
@@ -550,6 +607,30 @@ export default {
     text-align: center;
     color: #333;
     margin-bottom: 20px;
+}
+
+/* 底部数据区块样式 */
+.bottom-data-sections {
+    margin-top: 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.data-block {
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.block-header {
+    padding: 12px 15px;
+    background: #f5f7fa;
+    border-left: 4px solid #409eff;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 10px;
+    font-size: 16px;
 }
 
 .controls {

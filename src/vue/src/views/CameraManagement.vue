@@ -6,7 +6,18 @@
 <template>
     <div class="container" >
         <el-col :span="24" class="toolbar">
-            <el-input style="width: 200px" placeholder="搜索名称" v-model="Query[0].QueryStr"></el-input>&nbsp;&nbsp;
+            <el-input style="width: 150px" placeholder="搜索名称" v-model="filterName" clearable @clear="queryData"></el-input>&nbsp;&nbsp;
+            <el-input style="width: 150px" placeholder="搜索型号" v-model="filterModel" clearable @clear="queryData"></el-input>&nbsp;&nbsp;
+            <el-select style="width: 150px" v-model="filterDeviceId" placeholder="设备" clearable @change="queryData">
+                <el-option
+                    v-for="(item, i) in DeviceList"
+                    :label="item.Name"
+                    :value="item.Id"
+                    :key="i"
+                ></el-option>
+            </el-select>&nbsp;&nbsp;
+            <el-input style="width: 150px" placeholder="搜索IP" v-model="filterIP" clearable @clear="queryData"></el-input>&nbsp;&nbsp;
+            <el-input style="width: 150px" placeholder="设备编码" v-model="filterDeviceCode" clearable @clear="queryData"></el-input>&nbsp;&nbsp;
             <el-button @click="queryData()">查询</el-button>
             <el-button  @click="clearQuery()">清空</el-button>
             <el-button type="danger" @click="refreshTable()">刷新列表</el-button>
@@ -29,7 +40,7 @@
             
             <el-table-column :show-overflow-tooltip="true" prop="Model" label="摄像头型号" width="220" ></el-table-column>
     
-            <el-table-column :show-overflow-tooltip="true" prop="Device" label="所属设备" width="220" >
+            <el-table-column :show-overflow-tooltip="true" prop="Device" label="设备" width="220" >
                 <template slot-scope="scope">
                     <div>{{ DeviceList[DeviceList.findIndex((x) => x.Id == scope.row.DeviceId)]?.Name}}</div>
                 </template>
@@ -77,7 +88,7 @@
     
     
 
-            <el-form-item label="所属设备" :label-width="formLabelWidth">
+            <el-form-item label="设备" :label-width="formLabelWidth">
                 <el-select v-model="addForm.DeviceId" placeholder="请选择">
                     <el-option
 						v-for="(item, i) in DeviceList"
@@ -128,7 +139,7 @@
 
 
 
-            <el-form-item label="所属设备" :label-width="formLabelWidth">
+            <el-form-item label="设备" :label-width="formLabelWidth">
                 <el-select v-model="editForm.DeviceId" placeholder="请选择">
                     <el-option
 						v-for="(item, i) in DeviceList"
@@ -234,9 +245,12 @@ export default {
                 },
             ],
             selectDataArrL: [], //跨页多选所有的项
-
             DeviceList:[],
-
+            filterName: "",
+            filterModel: "",
+            filterDeviceId: null,
+            filterIP: "",
+            filterDeviceCode: "",
         };
     },
     mounted() {
@@ -253,6 +267,13 @@ export default {
         //获取表格数据
         getTableData() {
             this.operationDisabled = true;
+            this.Query = [];
+            if (this.filterName) this.Query.push({ QueryField: "Name", QueryStr: this.filterName });
+            if (this.filterModel) this.Query.push({ QueryField: "Model", QueryStr: this.filterModel });
+            if (this.filterDeviceId) this.Query.push({ QueryField: "DeviceId", QueryStr: this.filterDeviceId });
+            if (this.filterIP) this.Query.push({ QueryField: "IP", QueryStr: this.filterIP });
+            if (this.filterDeviceCode) this.Query.push({ QueryField: "DeviceCode", QueryStr: this.filterDeviceCode });
+
             var pageData = {
                 Query: this.Query,
                 Orderby: this.Orderby,
@@ -289,9 +310,11 @@ export default {
         },
         //清空查询条件
         clearQuery(){
-            for(var item in Query){
-                item.queryStr = "";
-            }
+            this.filterName = "";
+            this.filterModel = "";
+            this.filterDeviceId = null;
+            this.filterIP = "";
+            this.filterDeviceCode = "";
             this.queryData();
         },
         //刷新表格

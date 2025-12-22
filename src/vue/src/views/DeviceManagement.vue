@@ -6,7 +6,14 @@
 <template>
     <div class="container" >
         <el-col :span="24" class="toolbar">
-            <el-input style="width: 200px" placeholder="搜索名称" v-model="Query[0].QueryStr"></el-input>&nbsp;&nbsp;
+            <el-input style="width: 150px" placeholder="搜索名称" v-model="filterName" clearable @clear="queryData"></el-input>&nbsp;&nbsp;
+            <el-input style="width: 150px" placeholder="搜索型号" v-model="filterModel" clearable @clear="queryData"></el-input>&nbsp;&nbsp;
+            <el-select style="width: 120px" v-model="filterOnlineStatus" placeholder="在线状态" clearable @change="queryData">
+                <el-option label="在线" value="在线"></el-option>
+                <el-option label="离线" value="离线"></el-option>
+            </el-select>&nbsp;&nbsp;
+            <el-input style="width: 150px" placeholder="搜索单位" v-model="filterBelongToUnit" clearable @clear="queryData"></el-input>&nbsp;&nbsp;
+            <el-input style="width: 150px" placeholder="搜索IP" v-model="filterIP" clearable @clear="queryData"></el-input>&nbsp;&nbsp;
             <el-button @click="queryData()">查询</el-button>
             <el-button  @click="clearQuery()">清空</el-button>
             <el-button type="danger" @click="refreshTable()">刷新列表</el-button>
@@ -31,7 +38,7 @@
     
             <el-table-column :show-overflow-tooltip="true" prop="ManufactureDate" label="出厂日期" width="220" ></el-table-column>
     
-            <el-table-column :show-overflow-tooltip="true" prop="BelongToUnit" label="所属单位" width="220" ></el-table-column>
+            <el-table-column :show-overflow-tooltip="true" prop="BelongToUnit" label="单位" width="220" ></el-table-column>
     
             <el-table-column :show-overflow-tooltip="true" prop="GpsLongitude" label="GPS经度" width="150" ></el-table-column>
     
@@ -43,7 +50,7 @@
     
             <el-table-column :show-overflow-tooltip="true" prop="OnlineStatus" label="在线状态" width="120" >
                 <template slot-scope="scope">
-                    <el-tag :type="scope.row.OnlineStatus === '在线' ? 'success' : 'danger'" size="small">
+                    <el-tag size="small">
                         {{ scope.row.OnlineStatus || '离线' }}
                     </el-tag>
                 </template>
@@ -98,8 +105,8 @@
     
     
 
-            <el-form-item label="所属单位" :label-width="formLabelWidth">
-                <el-input v-model="addForm.BelongToUnit" autocomplete="off" placeholder="请输入所属单位"></el-input>
+            <el-form-item label="单位" :label-width="formLabelWidth">
+                <el-input v-model="addForm.BelongToUnit" autocomplete="off" placeholder="请输入单位"></el-input>
             </el-form-item>
 
             <el-form-item label="GPS经度" :label-width="formLabelWidth">
@@ -149,8 +156,8 @@
 
 
 
-            <el-form-item label="所属单位" :label-width="formLabelWidth">
-                <el-input v-model="editForm.BelongToUnit" autocomplete="off" placeholder="请输入所属单位"></el-input>
+            <el-form-item label="单位" :label-width="formLabelWidth">
+                <el-input v-model="editForm.BelongToUnit" autocomplete="off" placeholder="请输入单位"></el-input>
             </el-form-item>
 
             <el-form-item label="GPS经度" :label-width="formLabelWidth">
@@ -256,7 +263,11 @@ export default {
                 },
             ],
             selectDataArrL: [], //跨页多选所有的项
-
+            filterName: "",
+            filterModel: "",
+            filterOnlineStatus: null,
+            filterBelongToUnit: "",
+            filterIP: "",
         };
     },
     mounted() {
@@ -271,6 +282,13 @@ export default {
         //获取表格数据
         getTableData() {
             this.operationDisabled = true;
+            this.Query = [];
+            if (this.filterName) this.Query.push({ QueryField: "Name", QueryStr: this.filterName });
+            if (this.filterModel) this.Query.push({ QueryField: "Model", QueryStr: this.filterModel });
+            if (this.filterOnlineStatus) this.Query.push({ QueryField: "OnlineStatus", QueryStr: this.filterOnlineStatus });
+            if (this.filterBelongToUnit) this.Query.push({ QueryField: "BelongToUnit", QueryStr: this.filterBelongToUnit });
+            if (this.filterIP) this.Query.push({ QueryField: "IP", QueryStr: this.filterIP });
+
             var pageData = {
                 Query: this.Query,
                 Orderby: this.Orderby,
@@ -307,9 +325,11 @@ export default {
         },
         //清空查询条件
         clearQuery(){
-            for(var item in Query){
-                item.queryStr = "";
-            }
+            this.filterName = "";
+            this.filterModel = "";
+            this.filterOnlineStatus = null;
+            this.filterBelongToUnit = "";
+            this.filterIP = "";
             this.queryData();
         },
         //刷新表格

@@ -19,12 +19,34 @@ namespace YixiaoAdmin.WebApi.Controllers
     public class WorkOrderController : ControllerBase
     {
         private readonly IWorkOrderServices _WorkRecordServices;
+        private readonly IDeviceServices _DeviceServices;
 
 
-        public WorkOrderController(IWorkOrderServices WorkRecordServices)
+        public WorkOrderController(IWorkOrderServices WorkRecordServices, IDeviceServices DeviceServices)
         {
             _WorkRecordServices = WorkRecordServices ?? 
                                        throw new ArgumentNullException(nameof(WorkRecordServices));
+            _DeviceServices = DeviceServices ?? 
+                                       throw new ArgumentNullException(nameof(DeviceServices));
+        }
+
+        /// <summary>
+        /// 获取在线设备的在线工单
+        /// </summary>
+        /// <returns></returns>
+        [HttpGet("[action]")]
+        public async Task<List<WorkOrder>> GetRealtimeWorkOrders()
+        {
+            // 获取所有设备
+            var allDevices = await _DeviceServices.Query();
+            // 筛选在线设备ID
+            var onlineDeviceIds = allDevices
+                .Where(d => d.OnlineStatus == "在线")
+                .Select(d => d.Id)
+                .ToList();
+
+            // 获取实时在线工单
+            return await _WorkRecordServices.GetRealtimeWorkOrders(onlineDeviceIds);
         }
 
         /// <summary>
