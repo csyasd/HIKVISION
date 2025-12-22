@@ -44,7 +44,6 @@
             <el-button @click="queryData()">查询</el-button>
             <el-button  @click="clearQuery()">清空</el-button>
             <el-button type="danger" @click="refreshTable()">刷新列表</el-button>
-            <el-button type="primary" @click="changeDialogFormVisible()" :disabled = "operationDisabled">添加</el-button>
             <el-button type="success" @click="showHeartRateCurve()" icon="el-icon-data-line" :disabled="operationDisabled">心率曲线</el-button>
         </el-col>
         <el-table 
@@ -67,7 +66,7 @@
                     <div>{{ WorkOrderList[WorkOrderList.findIndex((x) => x.Id == scope.row.WorkOrderId)]?.Code || '未分配' }}</div>
                 </template>
             </el-table-column>
-
+ 
             <el-table-column :show-overflow-tooltip="true" prop="WorkerName" label="工人姓名" width="220" ></el-table-column>
     
             <el-table-column :show-overflow-tooltip="true" prop="HeartRate" label="心率" width="120" ></el-table-column>
@@ -91,12 +90,6 @@
                 width="220"
                 sortable="custom"
             ></el-table-column>
-            <el-table-column fixed="right" label="操作" width="100">
-                <template slot-scope="scope">
-                    <el-button @click="handleEdit(scope.row)" type="text" size="small" :disabled = "operationDisabled">编辑</el-button>
-                    <el-button @click="handleDelete(scope.row)" type="text" size="small" :disabled = "operationDisabled">删除</el-button>
-                </template>
-            </el-table-column>
         </el-table>
         <div class="block">
             <el-pagination
@@ -230,9 +223,9 @@
         </el-dialog>
 
         <!-- 心率曲线对话框 -->
-        <el-dialog title="心率变化趋势图" :visible.sync="curveDialogVisible" width="80%" @opened="onCurveDialogOpened">
+        <el-dialog title="心率变化趋势图" :visible.sync="curveDialogVisible" width="80%" @opened="onCurveDialogOpened" destroy-on-close>
             <div v-loading="chartLoading">
-                <div ref="heartRateChart" style="width: 100%; height: 500px;"></div>
+                <div ref="heartRateChart" style="width: 100%; height: 500px; background: white; border-radius: 12px; padding: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.5);"></div>
             </div>
             <div slot="footer" class="dialog-footer">
                 <el-button @click="curveDialogVisible = false">关 闭</el-button>
@@ -745,10 +738,28 @@ export default {
 
         // 当对话框打开时初始化图表
         onCurveDialogOpened() {
-            if (!this.chartInstance) {
-                this.chartInstance = echarts.init(this.$refs.heartRateChart);
-            }
-            this.updateChart();
+            setTimeout(() => {
+                if (!this.chartInstance) {
+                    this.chartInstance = echarts.init(this.$refs.heartRateChart);
+                }
+                // 确保数据已加载后再更新
+                if (this.allCurveData && this.allCurveData.length) {
+                    this.updateChart();
+                }
+                this.chartInstance.resize();
+
+                // 模拟点击以强制刷新（最后的手段）
+                setTimeout(() => {
+                    const event = new MouseEvent('click', {
+                        view: window,
+                        bubbles: true,
+                        cancelable: true
+                    });
+                    if (this.$refs.heartRateChart) {
+                        this.$refs.heartRateChart.dispatchEvent(event);
+                    }
+                }, 100);
+            }, 300);
 
             // 响应窗口大小变化
             window.addEventListener('resize', this.handleResize);

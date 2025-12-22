@@ -137,17 +137,36 @@ body {
     background: rgba(64, 158, 255, 0.1) !important;
 }
 
-/* 美化表单输入 */
+/* 美化表单输入 - 极简下划线 + 霓虹电音风格 */
 .el-input__inner {
-    background: rgba(0, 0, 0, 0.2) !important;
-    border: 1px solid var(--glass-border) !important;
-    color: var(--text-bright) !important;
-    border-radius: 10px !important;
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 2px solid rgba(64, 158, 255, 0.2) !important;
+    color: #e6f7ff !important;
+    border-radius: 0 !important;
+    padding-left: 8px !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.el-input__inner::placeholder {
+    color: rgba(64, 158, 255, 0.4) !important;
+}
+
+.el-input__icon {
+    color: #409eff !important;
+    font-size: 16px !important;
+    text-shadow: 0 0 10px rgba(64, 158, 255, 0.5);
 }
 
 .el-input__inner:focus {
-    border-color: #409eff !important;
-    box-shadow: 0 0 0 2px var(--primary-glow) !important;
+    border-bottom-color: #409eff !important;
+    background: transparent !important;
+    box-shadow: 0 4px 15px -4px var(--primary-glow) !important;
+}
+
+.el-input__inner:focus + .el-input__prefix .el-input__icon {
+    color: #fff !important;
+    text-shadow: 0 0 15px #409eff;
 }
 
 .el-select-dropdown {
@@ -215,9 +234,21 @@ body {
 
 /* 全局容器间距 */
 .SubPageContainer {
-    background: var(--glass-bg) !important;
-    backdrop-filter: blur(20px);
     border: 1px solid var(--glass-border) !important;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* 修复加载遮罩层“黑屏”问题 - 改为磨砂玻璃 */
+.el-loading-mask {
+    background-color: rgba(0, 0, 0, 0.3) !important;
+    backdrop-filter: blur(4px);
+    transition: all 0.3s;
+}
+
+/* 修复对话框遮罩层“死黑”问题 */
+.v-modal {
+    opacity: 0.4 !important;
+    background: #000 !important;
+    backdrop-filter: blur(2px);
 }
 </style>

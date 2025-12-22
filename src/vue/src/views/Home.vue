@@ -253,7 +253,7 @@ export default {
 .el-main {
     height: 90vh;
     padding: 0px !important;
-    background: #f5f7fa;
+    background: transparent;
 }
 
 .el-header {

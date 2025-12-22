@@ -44,7 +44,6 @@
             <el-button @click="queryData()">查询</el-button>
             <el-button  @click="clearQuery()">清空</el-button>
             <el-button type="danger" @click="refreshTable()">刷新列表</el-button>
-            <el-button type="primary" @click="changeDialogFormVisible()" :disabled = "operationDisabled">添加</el-button>
         </el-col>
         <el-table 
             :data="tableData" 
@@ -90,12 +89,6 @@
                 width="220"
                 sortable="custom"
             ></el-table-column>
-            <el-table-column fixed="right" label="操作" width="100">
-                <template slot-scope="scope">
-                    <el-button @click="handleEdit(scope.row)" type="text" size="small" :disabled = "operationDisabled">编辑</el-button>
-                    <el-button @click="handleDelete(scope.row)" type="text" size="small" :disabled = "operationDisabled">删除</el-button>
-                </template>
-            </el-table-column>
         </el-table>
         <div class="block">
             <el-pagination
