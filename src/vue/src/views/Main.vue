@@ -353,13 +353,12 @@ export default {
             
             const infoWindow = new AMap.InfoWindow({
                 content: `
-                    <div style="color: black; padding: 12px; background-color: white; border-radius: 6px; min-width: 220px; box-shadow: 0 2px 12px rgba(0,0,0,0.15);">
-                        <h4 style="margin: 0 0 10px 0; border-bottom: 2px solid #eee; padding-bottom: 8px; color: #333; font-size: 16px;">${deviceDisplayName}</h4>
+                    <div style="color: #e6edf3; padding: 16px; background: rgba(13, 17, 23, 0.9); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; min-width: 240px; box-shadow: 0 8px 32px rgba(0,0,0,0.5);">
+                        <h4 style="margin: 0 0 12px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 10px; color: #409eff; font-size: 16px; font-weight: 700;">${deviceDisplayName}</h4>
                         <p style="margin: 6px 0; font-size: 13px; color: #666;"><b>在线状态:</b> <span style="color: ${onlineStatusColor}; font-weight: bold;">${onlineStatus}</span></p>
                         <p style="margin: 6px 0; font-size: 13px; color: #666;"><b>IP地址:</b> ${device.IP || '未知'}</p>
                         <p style="margin: 6px 0; font-size: 13px; color: #666;"><b>经度:</b> ${lng.toFixed(6)}</p>
                         <p style="margin: 6px 0; font-size: 13px; color: #666;"><b>纬度:</b> ${lat.toFixed(6)}</p>
-                        <button onclick="window.playCameraFromMap('${device.Id}')" style="background: #409eff; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin-top: 10px; width: 100%; font-size: 13px; transition: background 0.3s;">查看视频</button>
                     </div>
                 `,
                 offset: new AMap.Pixel(0, -30)
@@ -773,12 +772,12 @@ export default {
 
 /* 视频面板 */
 .video-panel {
-    background: linear-gradient(135deg, rgba(0, 0, 0, 0.7) 0%, rgba(26, 35, 50, 0.7) 100%);
-    padding: 15px;
-    border-radius: 12px;
-    border: 1px solid rgba(64, 158, 255, 0.2);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    padding: 20px;
+    border-radius: 20px;
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
     flex: 1;
     min-height: 0;
     display: flex;
@@ -914,16 +913,16 @@ export default {
 /* 表格样式优化 */
 .gas-monitoring-table, .alarm-table {
     position: absolute;
-    background: linear-gradient(135deg, rgba(0, 0, 0, 0.9) 0%, rgba(26, 35, 50, 0.9) 100%);
-    backdrop-filter: blur(15px);
-    border-radius: 12px;
-    border: 1px solid rgba(64, 158, 255, 0.3);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    border-radius: 20px;
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
     max-width: 480px;
     width: 480px;
     z-index: 3;
     overflow: hidden;
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .gas-monitoring-table:hover, .alarm-table:hover {
@@ -975,16 +974,17 @@ export default {
 }
 
 .table-header {
-    padding: 12px 16px;
-    background: linear-gradient(135deg, rgba(64, 158, 255, 0.25) 0%, rgba(64, 158, 255, 0.1) 100%);
+    padding: 16px 20px;
+    background: linear-gradient(90deg, rgba(64, 158, 255, 0.1), transparent);
     color: #409eff;
-    font-weight: 600;
+    font-weight: 700;
     font-size: 16px;
-    border-bottom: 2px solid rgba(64, 158, 255, 0.3);
+    border-bottom: 1px solid var(--glass-border);
     display: flex;
     align-items: center;
-    gap: 8px;
-    letter-spacing: 0.5px;
+    gap: 12px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
     flex-shrink: 0;
 }
 
@@ -1101,9 +1101,10 @@ export default {
 <style>
 /* 全局 Popover 样式，用于覆盖 Element UI 默认样式 */
 .dark-popover {
-    background: #0a0e1a !important;
-    border: 1px solid #409eff !important;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8) !important;
+    background: var(--glass-bg) !important;
+    backdrop-filter: blur(20px) !important;
+    border: 1px solid var(--glass-border) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8) !important;
     padding: 0 !important;
 }
 

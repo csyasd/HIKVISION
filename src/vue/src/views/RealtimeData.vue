@@ -62,48 +62,80 @@ export default {
 
 <style scoped>
 .realtime-data {
-    padding: 20px;
+    padding: 24px;
+    color: var(--text-bright);
+}
+
+.realtime-data h2 {
+    font-size: 28px;
+    font-weight: 800;
+    margin-bottom: 30px;
+    letter-spacing: 2px;
+    background: linear-gradient(135deg, #409eff 0%, #7948ea 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 20px rgba(64, 158, 255, 0.2);
 }
 
 .data-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 20px;
-    margin-top: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 24px;
 }
 
 .data-card {
-    background: #fff;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    padding: 24px;
+    border-radius: 20px;
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    transition: all 0.3s ease;
+}
+
+.data-card:hover {
+    border-color: rgba(64, 158, 255, 0.3);
+    box-shadow: 0 0 20px rgba(64, 158, 255, 0.1);
+    transform: translateY(-5px);
 }
 
 .data-card h3 {
-    margin: 0 0 15px 0;
-    color: #333;
-    border-bottom: 2px solid #409eff;
-    padding-bottom: 10px;
+    margin: 0 0 20px 0;
+    font-weight: 700;
+    color: #409eff;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    letter-spacing: 1px;
 }
 
 .status-item, .gas-item, .alarm-item {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 10px;
-    padding: 8px 0;
-    border-bottom: 1px solid #f0f0f0;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.status-item:last-child, .gas-item:last-child, .alarm-item:last-child {
+    border-bottom: none;
 }
 
 .status-label, .gas-label, .alarm-label {
-    color: #666;
+    color: var(--text-muted);
+    font-size: 14px;
 }
 
 .status-value, .gas-value, .alarm-value {
-    font-weight: bold;
+    color: var(--text-bright);
+    font-weight: 700;
+    font-size: 16px;
+    font-family: 'JetBrains Mono', monospace;
 }
 
 .status-value.online {
     color: #67c23a;
+    text-shadow: 0 0 10px rgba(103, 194, 58, 0.3);
 }
 
 .status-value.offline {
@@ -112,6 +144,13 @@ export default {
 
 .alarm-value.urgent {
     color: #f56c6c;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.6; }
+    100% { opacity: 1; }
 }
 </style>
 

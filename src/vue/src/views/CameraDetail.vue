@@ -45,23 +45,6 @@
                     </div>
                 </div>
                 
-                <div class="camera-controls">
-                    <el-button 
-                        @click="playCameraStream(camera)" 
-                        type="success" 
-                        size="mini"
-                        :disabled="!flvjsLoaded"
-                    >
-                        播放
-                    </el-button>
-                    <el-button 
-                        @click="stopCameraStream(camera.Id)" 
-                        type="danger" 
-                        size="mini"
-                    >
-                        停止
-                    </el-button>
-                </div>
                 
                 <!-- 云台控制 -->
                 <div class="ptz-panel">
@@ -260,8 +243,10 @@ export default {
         
         // 自动播放所有摄像头
         async autoPlayAll() {
-            this.log('请手动点击播放按钮');
-            this.statusText = `已加载 ${this.cameras.length} 个摄像头，请点击"播放"按钮`;
+            this.log('开始尝试自动播放所有摄像头...');
+            this.cameras.forEach(camera => {
+                this.playCameraStream(camera);
+            });
         },
         
         // 播放指定摄像头流（FLV方式 - 低延迟）
@@ -597,148 +582,149 @@ export default {
 
 <style scoped>
 .video-container {
-    padding: 20px;
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    padding: 24px;
+    background: transparent;
 }
 
 .video-container h2 {
     text-align: center;
-    color: #333;
-    margin-bottom: 20px;
+    color: var(--text-bright);
+    font-size: 28px;
+    font-weight: 800;
+    margin-bottom: 30px;
+    letter-spacing: 2px;
+    background: linear-gradient(135deg, #409eff 0%, #7948ea 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 20px rgba(64, 158, 255, 0.2);
 }
 
 /* 底部数据区块样式 */
 .bottom-data-sections {
-    margin-top: 30px;
+    margin-top: 40px;
     display: flex;
     flex-direction: column;
-    gap: 30px;
+    gap: 40px;
 }
 
 .data-block {
-    background: #fff;
-    border-radius: 8px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    border-radius: 20px;
+    border: 1px solid var(--glass-border);
     overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
 .block-header {
-    padding: 12px 15px;
-    background: #f5f7fa;
+    padding: 16px 20px;
+    background: linear-gradient(90deg, rgba(64, 158, 255, 0.1), transparent);
     border-left: 4px solid #409eff;
-    font-weight: bold;
-    color: #333;
-    margin-bottom: 10px;
-    font-size: 16px;
-}
-
-.controls {
-    margin: 20px 0;
-    text-align: center;
-}
-
-.controls .el-button {
-    margin: 5px;
+    font-weight: 800;
+    color: #409eff;
+    font-size: 18px;
+    letter-spacing: 1px;
 }
 
 /* 摄像头网格布局 */
 .cameras-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-    gap: 20px;
-    margin: 20px 0;
+    gap: 30px;
+    margin: 30px 0;
 }
 
 .camera-item {
-    border: 2px solid #e9ecef;
-    border-radius: 8px;
-    padding: 15px;
-    background: #fff;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    transition: all 0.3s ease;
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    padding: 20px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .camera-item:hover {
-    border-color: #409eff;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
-
-.camera-item.camera-error {
-    border-color: #f56c6c;
-    background: #fef0f0;
+    border-color: rgba(64, 158, 255, 0.3);
+    box-shadow: 0 0 20px rgba(64, 158, 255, 0.1);
+    transform: translateY(-5px);
 }
 
 .camera-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #eee;
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--glass-border);
 }
 
 .camera-header h3 {
     margin: 0;
-    color: #333;
-    font-size: 16px;
-    font-weight: 600;
-}
-
-.camera-info {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 4px;
+    color: var(--text-bright);
+    font-size: 18px;
+    font-weight: 700;
 }
 
 .camera-ip {
-    font-size: 12px;
-    color: #666;
-    font-family: 'Courier New', monospace;
-}
-
-.camera-status {
-    font-size: 11px;
-    padding: 2px 6px;
-    border-radius: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-}
-
-.status-online {
-    background: #f0f9ff;
-    color: #1e40af;
-}
-
-.status-error {
-    background: #fef2f2;
-    color: #dc2626;
-}
-
-.status-offline {
-    background: #f5f5f5;
-    color: #6b7280;
-}
-
-.status-unknown {
-    background: #fefce8;
-    color: #ca8a04;
+    font-size: 13px;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
 }
 
 .video-wrapper {
-    margin: 10px 0;
+    margin: 15px 0;
     background: #000;
-    border-radius: 6px;
+    border-radius: 12px;
     overflow: hidden;
     position: relative;
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .video-player {
     width: 100% !important;
     height: 400px !important;
-    background: #000;
+    background: #001;
+}
+
+/* 云台控制样式 */
+.ptz-panel {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 12px;
+    padding: 15px;
+    margin-top: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.ptz-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fff;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.ptz-btn:hover {
+    background: rgba(64, 158, 255, 0.2);
+    border-color: #409eff;
+}
+
+.ptz-small-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.8);
+    padding: 6px 12px;
     border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s;
+}
+
+.ptz-small-btn:hover {
+    background: rgba(64, 158, 255, 0.2);
+    color: #409eff;
+    border-color: #409eff;
 }
 
 /* 隐藏视频控制条 */
@@ -800,187 +786,144 @@ export default {
 
 .error-content p {
     margin: 0 0 16px 0;
-    color: #ccc;
+    color: var(--text-muted);
     font-size: 14px;
-}
-
-.live-badge::before {
-    content: '● ';
-    animation: blink 1.5s infinite;
-}
-
-@keyframes blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
 }
 
 .camera-controls {
     display: flex;
     justify-content: center;
-    gap: 10px;
-    margin-top: 10px;
+    gap: 12px;
+    margin-top: 15px;
 }
 
 .status {
     padding: 12px;
     margin: 10px 0;
-    border-radius: 6px;
-    background-color: #e1f5fe;
-    color: #0277bd;
+    border-radius: 8px;
+    background: rgba(64, 158, 255, 0.1);
+    color: #409eff;
     text-align: center;
     font-weight: 500;
-    border: 1px solid #b3e5fc;
+    border: 1px solid var(--glass-border);
 }
 
 .flv-status-success {
     margin-top: 8px;
     color: #67c23a;
-    font-weight: 600;
+    font-weight: 700;
+    text-shadow: 0 0 10px rgba(103, 194, 58, 0.3);
 }
 
 .flv-status-error {
     margin-top: 8px;
     color: #f56c6c;
-    font-weight: 600;
+    font-weight: 700;
 }
 
 /* 加载和空状态 */
 .loading, .no-cameras {
     text-align: center;
-    padding: 60px 20px;
-    color: #666;
+    padding: 80px 20px;
+    color: var(--text-muted);
 }
 
 .loading i, .no-cameras i {
-    font-size: 48px;
-    color: #ddd;
-    margin-bottom: 16px;
+    font-size: 56px;
+    color: rgba(64, 158, 255, 0.1);
+    margin-bottom: 20px;
     display: block;
 }
 
-.loading span, .no-cameras p {
-    font-size: 16px;
-    margin: 0 0 20px 0;
-}
-
 .log {
-    margin-top: 20px;
-    padding: 15px;
-    background: #f8f9fa;
-    border-radius: 6px;
-    font-family: 'Courier New', monospace;
+    margin-top: 30px;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 12px;
-    max-height: 200px;
+    max-height: 250px;
     overflow-y: auto;
-    border: 1px solid #e9ecef;
+    border: 1px solid var(--glass-border);
+    color: var(--text-muted);
 }
 
 .log div {
-    margin-bottom: 2px;
-    line-height: 1.4;
+    margin-bottom: 4px;
+    line-height: 1.5;
 }
 
-/* 云台控制样式 */
-.ptz-panel {
-    margin-top: 15px;
-    padding: 12px;
-    background: #f5f7fa;
-    border-radius: 6px;
-}
-
+/* 云台控制样式补全 */
 .ptz-title {
-    font-size: 13px;
-    font-weight: 600;
-    color: #333;
-    margin-bottom: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-bright);
+    margin-bottom: 15px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    letter-spacing: 1px;
 }
 
 .ptz-speed-label {
     font-size: 12px;
     font-weight: normal;
-    color: #666;
+    color: var(--text-muted);
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 8px;
 }
 
 .ptz-grid {
     display: grid;
-    grid-template-columns: repeat(3, 40px);
-    gap: 3px;
+    grid-template-columns: repeat(3, 44px);
+    gap: 6px;
     justify-content: center;
-    margin-bottom: 10px;
+    margin-bottom: 15px;
 }
 
 .ptz-btn {
-    width: 40px;
-    height: 40px;
-    border: 2px solid #ddd;
-    background: white;
-    border-radius: 6px;
+    width: 44px;
+    height: 44px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
     cursor: pointer;
     font-size: 18px;
-    color: #333;
-    transition: all 0.2s;
+    color: #fff;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .ptz-btn:hover {
-    background: #409eff;
-    color: white;
+    background: rgba(64, 158, 255, 0.2);
     border-color: #409eff;
-}
-
-.ptz-btn:active {
-    transform: scale(0.95);
+    color: #409eff;
 }
 
 .ptz-center {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #e9ecef;
-    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 10px;
     font-size: 20px;
-    color: #999;
+    color: rgba(255, 255, 255, 0.2);
 }
 
 .ptz-extra {
     display: flex;
     justify-content: center;
-    gap: 5px;
+    gap: 8px;
     flex-wrap: wrap;
 }
 
-.ptz-small-btn {
-    padding: 5px 10px;
-    border: 1px solid #ddd;
-    background: white;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 12px;
-    transition: all 0.2s;
-}
-
-.ptz-small-btn:hover {
-    background: #67c23a;
-    color: white;
-    border-color: #67c23a;
-}
-
-.ptz-small-btn:active {
-    transform: scale(0.95);
-}
-
-/* 响应式设计 */
+/* 响应式设计更新 */
 @media (max-width: 1200px) {
     .cameras-grid {
-        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-        gap: 15px;
+        grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+        gap: 20px;
     }
 }
 
