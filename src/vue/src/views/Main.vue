@@ -483,7 +483,7 @@ export default {
                 // 创建播放器实例
                 const player = new JSPlugin({
                     szId: playWindowId, // 容器ID
-                    szBasePath: "./static/h5player/", // 引用路径
+                    szBasePath: "/static/h5player/", // 引用路径
                     iMaxSplit: 1, // 这里的场景是每个camera一个独立播放器，所以分屏设为1
                     iCurrentSplit: 1,
                     openDebug: true,
@@ -495,21 +495,7 @@ export default {
                 this.playerInstances[camera.id] = player;
 
                 // 播放参数
-                const playURL = `wss://10.19.147.57:6014/proxy/10.19.147.57:559/EUrl/KjuVUic`; // 示例 URL，需要替换为真实 URL
-                // 注意：这里需要根据实际情况获取播放 URL。原代码用的是 flv-stream 接口，
-                // 如果 H5 Player 需要特定的 URL 格式 (如 wss)，请确认后端接口或 URL 转换逻辑。
-                // 暂时假设使用原有接口地址，但 H5 Player 通常需要 WS/WSS 或 RTSP 等。
-                // 如果是 FLV over HTTP，H5 Player 也支持。
-                // 假设后端接口返回的是可以直接给 H5 Player 用的 URL。
-                // 由于原代码直接拼了 http flv url，这里需要确认 URL。
-                // 暂时保留原 FLV URL 尝试播放，或者提示用户需要适配 URL。
-                
-                // 修正：H5 Player 通常用于特定协议。
-                // 如果我们必须用 flv.js 的 http-flv url: `http://localhost:5002/HK/flv-stream/${camera.id}`
-                // JSPlugin 的 JS_Play 接口参数: url, options, windowIndex
-                
-                let realPlayUrl = `http://localhost:5002/HK/flv-stream/${camera.id}`;
-                realPlayUrl = realPlayUrl.replace(/^http/, 'ws');
+                const realPlayUrl = `http://localhost:5002/HK/flv-stream/${camera.id}`;
 
                 // 播放
                 // mode: 0 (MSE), 1 (Decoder)

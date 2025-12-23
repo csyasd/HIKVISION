@@ -276,17 +276,15 @@ export default {
                     await new Promise(resolve => setTimeout(resolve, 300));
                 }
                 
-                // 构造流地址 (尝试使用 WebSocket)
-                let playUrl = `${this.API_BASE}/api/HK/flv-stream/${camera.Id}`;
-                playUrl = playUrl.replace(/^http/, 'ws');
-                // 注意：H5 Player 通常需要 WebSocket 协议
+                // 构造流地址
+                const playUrl = `${this.API_BASE}/api/HK/flv-stream/${camera.Id}`;
                 
                  this.log(`播放地址: ${playUrl}`);
 
                 // 创建H5播放器
                 const player = new JSPlugin({
                     szId: playWindowId,
-                    szBasePath: "./static/h5player/",
+                    szBasePath: "/static/h5player/",
                     iMaxSplit: 1,
                     iCurrentSplit: 1,
                     openDebug: true,
