@@ -276,10 +276,10 @@ export default {
                     await new Promise(resolve => setTimeout(resolve, 300));
                 }
                 
-                // 构造流地址
-                const playUrl = `${this.API_BASE}/api/HK/flv-stream/${camera.Id}`; 
-                // 注意：这里沿用了 FLV 的 URL 逻辑，假设 H5 Player 也能处理该地址或后端做了适配。
-                // 实际集成时需确认 H5 Player 需要的 URL 协议 (wss/rtsp/http-flv 等)
+                // 构造流地址 (尝试使用 WebSocket)
+                let playUrl = `${this.API_BASE}/api/HK/flv-stream/${camera.Id}`;
+                playUrl = playUrl.replace(/^http/, 'ws');
+                // 注意：H5 Player 通常需要 WebSocket 协议
                 
                  this.log(`播放地址: ${playUrl}`);
 

@@ -508,7 +508,8 @@ export default {
                 // 如果我们必须用 flv.js 的 http-flv url: `http://localhost:5002/HK/flv-stream/${camera.id}`
                 // JSPlugin 的 JS_Play 接口参数: url, options, windowIndex
                 
-                const realPlayUrl = `http://localhost:5002/HK/flv-stream/${camera.id}`;
+                let realPlayUrl = `http://localhost:5002/HK/flv-stream/${camera.id}`;
+                realPlayUrl = realPlayUrl.replace(/^http/, 'ws');
 
                 // 播放
                 // mode: 0 (MSE), 1 (Decoder)
