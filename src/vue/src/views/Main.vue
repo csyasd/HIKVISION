@@ -78,10 +78,10 @@
                                         class="video-stream"
                                         style="width: 100%; height: 100%; background: #000;">
                                     </div>
-                                    <div class="video-controls">
+                                    <!-- <div class="video-controls">
                                         <button class="control-btn" @click="playCamera(camera)">播放</button>
                                         <button class="control-btn" @click="stopCamera(camera.id)">停止</button>
-                                    </div>
+                                    </div> -->
                                 </div>
                                 <div class="video-info">{{ camera.name }}</div>
                             </div>
@@ -466,8 +466,12 @@ export default {
 
                 // 检查 H5 Player 插件是否加载
                 if (typeof JSPlugin === 'undefined') {
-                    console.error('H5Player 插件未加载，请检查 h5player.min.js 是否正确引入');
-                    return;
+                    // 尝试等待插件加载
+                    const loaded = await this.waitForPlugin();
+                    if (!loaded) {
+                        console.error('H5Player 插件加载超时，请检查 h5player.min.js 是否正确引入');
+                        return;
+                    }
                 }
 
                 const playWindow = document.getElementById(playWindowId);
@@ -545,9 +549,34 @@ export default {
             }
         },
 
+        async waitForPlugin() {
+            return new Promise((resolve) => {
+                if (typeof JSPlugin !== 'undefined') {
+                    resolve(true);
+                    return;
+                }
+                
+                let count = 0;
+                const interval = setInterval(() => {
+                    count++;
+                    if (typeof JSPlugin !== 'undefined') {
+                        clearInterval(interval);
+                        resolve(true);
+                    }
+                    if (count > 50) { // 5秒超时
+                        clearInterval(interval);
+                        resolve(false);
+                    }
+                }, 100);
+            });
+        },
+
         autoPlayAll() {
-            // 延迟一秒执行，确保 DOM 已经渲染
-            setTimeout(() => {
+             // 延迟执行
+            setTimeout(async () => {
+                // 等待插件加载
+                await this.waitForPlugin();
+                
                 this.cameras.forEach(camera => {
                     this.playCamera(camera);
                 });

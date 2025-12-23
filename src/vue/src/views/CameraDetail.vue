@@ -254,12 +254,14 @@ export default {
                 this.log(`准备播放摄像头: ${camera.Name}(${camera.IP}), 窗口: ${playWindowId}`);
                 
                 // 检查插件是否加载
-                if (!this.h5PlayerLoaded || typeof JSPlugin === 'undefined') {
-                    this.$message.error('播放器插件未加载，请刷新页面重试');
-                    this.log('❌ JSPlugin未定义或加载失败');
-                     // 重新检查状态
-                    this.checkPlayerStatus();
-                    return;
+                if (typeof JSPlugin === 'undefined') {
+                    // 尝试等待插件加载
+                     const loaded = await this.waitForPlugin();
+                    if (!loaded) {
+                        this.$message.error('播放器插件加载失败，请刷新页面重试');
+                        this.log('❌ JSPlugin加载超时');
+                        return;
+                    }
                 }
                 
                 const playWindow = document.getElementById(playWindowId);
@@ -521,10 +523,35 @@ export default {
                 
                 if (this.h5PlayerLoaded) {
                     this.log('✅ H5播放器已就绪');
-                } else {
-                    this.log('❌ JSPlugin未定义，视频播放功能将不可用');
                 }
             }, 1000);
+        },
+
+        // 等待插件加载
+        async waitForPlugin() {
+            return new Promise((resolve) => {
+                if (typeof JSPlugin !== 'undefined') {
+                    this.h5PlayerLoaded = true;
+                    resolve(true);
+                    return;
+                }
+                
+                this.log('等待H5Player插件加载...');
+                let count = 0;
+                const interval = setInterval(() => {
+                    count++;
+                    if (typeof JSPlugin !== 'undefined') {
+                        clearInterval(interval);
+                        this.h5PlayerLoaded = true;
+                        this.log('✅ H5Player插件加载成功');
+                        resolve(true);
+                    }
+                    if (count > 50) { // 5秒超时
+                        clearInterval(interval);
+                        resolve(false);
+                    }
+                }, 100);
+            });
         },
 
         // 云台控制 - 简化版本
