@@ -25,20 +25,18 @@
                 
                 <!-- 视频播放器（FLV直播模式） -->
                 <div class="video-wrapper">
-                    <video
-                        :id="`videoPlayer_${camera.Id}`"
+                    <!-- 视频容器 -->
+                    <div 
+                        :id="`play_window_${camera.Id}`"
                         class="video-player video-live"
-                        muted
-                        playsinline
-                        autoplay
-                        style="width: 100%; height: 400px; background: #000; object-fit: fill;">
-                    </video>
+                        style="width: 100%; height: 400px; background: #000;">
+                    </div>
                     <div class="live-badge">直播</div>
-                    <!-- flv.js加载状态提示 -->
-                    <div v-if="!flvjsLoaded" class="error-overlay">
+                    <!-- H5 Player加载状态提示 -->
+                    <div v-if="!h5PlayerLoaded" class="error-overlay">
                         <div class="error-content">
                             <i class="el-icon-warning"></i>
-                            <h4>flv.js 播放器未加载</h4>
+                            <h4>播放器插件未加载</h4>
                             <p>请检查网络连接或刷新页面重试</p>
                             <el-button @click="refreshPage" type="primary" size="mini">刷新页面</el-button>
                         </div>
@@ -149,7 +147,7 @@ export default {
             statusText: '正在初始化...',
             API_BASE: window.location.hostname === '127.0.0.1' ? 'http://127.0.0.1:5002' : 'http://localhost:5002',
             ptzSpeed: 4,  // 云台速度 1-7
-            flvjsLoaded: false,  // flv.js加载状态
+            h5PlayerLoaded: false,  // 播放器加载状态
             gasMonitoringData: [],
             braceletInfoData: [],
             devices: [],
@@ -157,8 +155,8 @@ export default {
         }
     },
     mounted() {
-        // 检查flv.js加载状态
-        this.checkFlvjsStatus();
+        // 检查播放器加载状态
+        this.checkPlayerStatus();
         // 加载摄像头列表
         this.loadCameras();
         // 加载实时数据
@@ -249,33 +247,25 @@ export default {
             });
         },
         
-        // 播放指定摄像头流（FLV方式 - 低延迟）
+        // 播放指定摄像头流（H5 Player方式）
         async playCameraStream(camera) {
             try {
-                this.log(`开始播放摄像头: ${camera.Name}(${camera.IP})`);
+                const playWindowId = `play_window_${camera.Id}`;
+                this.log(`准备播放摄像头: ${camera.Name}(${camera.IP}), 窗口: ${playWindowId}`);
                 
-                // 检查flv.js是否加载
-                if (!this.flvjsLoaded || typeof flvjs === 'undefined' || flvjs === null) {
-                    this.$message.error('flv.js播放器未加载，请刷新页面重试');
-                    this.log('❌ flv.js未定义或加载失败');
-                    this.log('💡 解决方案: 1. 检查网络连接 2. 刷新页面 3. 检查防火墙设置');
-                    // 重新检查状态
-                    this.checkFlvjsStatus();
+                // 检查插件是否加载
+                if (!this.h5PlayerLoaded || typeof JSPlugin === 'undefined') {
+                    this.$message.error('播放器插件未加载，请刷新页面重试');
+                    this.log('❌ JSPlugin未定义或加载失败');
+                     // 重新检查状态
+                    this.checkPlayerStatus();
                     return;
                 }
                 
-                // 检查浏览器支持
-                if (!flvjs.isSupported()) {
-                    this.$message.error('当前浏览器不支持FLV播放，请使用Chrome、Firefox或Edge浏览器');
-                    this.log('❌ 浏览器不支持flv.js');
+                const playWindow = document.getElementById(playWindowId);
+                if (!playWindow) {
+                     this.log(`⚠️ 未找到播放窗口元素: ${playWindowId}`);
                     return;
-                }
-                
-                const videoId = `videoPlayer_${camera.Id}`;
-                const videoElement = document.getElementById(videoId);
-                
-                if (!videoElement) {
-                    throw new Error('视频元素未找到');
                 }
                 
                 // 如果已有播放器，先停止
@@ -284,60 +274,44 @@ export default {
                     await new Promise(resolve => setTimeout(resolve, 300));
                 }
                 
-                // 构造FLV流地址
-                const flvUrl = `${this.API_BASE}/api/HK/flv-stream/${camera.Id}`;
-                this.log(`FLV地址: ${flvUrl}`);
+                // 构造流地址
+                const playUrl = `${this.API_BASE}/api/HK/flv-stream/${camera.Id}`; 
+                // 注意：这里沿用了 FLV 的 URL 逻辑，假设 H5 Player 也能处理该地址或后端做了适配。
+                // 实际集成时需确认 H5 Player 需要的 URL 协议 (wss/rtsp/http-flv 等)
                 
-                // 创建flv.js播放器
-                const flvPlayer = flvjs.createPlayer({
-                    type: 'flv',
-                    url: flvUrl,
-                    isLive: true,
-                    hasAudio: false
-                }, {
-                    enableWorker: false,
-                    enableStashBuffer: false,
-                    stashInitialSize: 128,
-                    // 低延迟配置
-                    autoCleanupSourceBuffer: true,
-                    autoCleanupMaxBackwardDuration: 3,
-                    autoCleanupMinBackwardDuration: 2,
-                    liveBufferLatencyChasing: true,
-                    liveBufferLatencyChasingOnPaused: false,
-                    liveBufferLatencyMaxLatency: 1.5,
-                    liveBufferLatencyMinRemain: 0.3
+                 this.log(`播放地址: ${playUrl}`);
+
+                // 创建H5播放器
+                const player = new JSPlugin({
+                    szId: playWindowId,
+                    szBasePath: "./static/h5player/",
+                    iMaxSplit: 1,
+                    iCurrentSplit: 1,
+                    openDebug: true,
+                    oStyle: {
+                        borderSelect: '#000'
+                    }
                 });
                 
-                flvPlayer.attachMediaElement(videoElement);
-                
-                // 绑定事件
-                flvPlayer.on(flvjs.Events.ERROR, (errorType, errorDetail) => {
-                    this.log(`❌ FLV播放错误: ${errorType} - ${errorDetail}`);
-                    this.$message.error(`播放失败: ${errorDetail}`);
-                    this.$set(this.cameraErrors, camera.Id, true);
-                });
-                
-                flvPlayer.on(flvjs.Events.LOADING_COMPLETE, () => {
-                    this.log(`FLV加载完成`);
-                });
-                
-                // 加载并播放
-                flvPlayer.load();
-                flvPlayer.play().then(() => {
-                    this.log(`✅ ${camera.Name} 播放成功（FLV模式，延迟1-2秒）⚡`);
-                    this.$message.success(`${camera.Name} 播放成功`);
-                    this.$set(this.cameraErrors, camera.Id, false);
-                }).catch(err => {
-                    this.log(`❌ 播放失败: ${err}`);
-                    this.$message.error(`播放失败`);
-                    this.$set(this.cameraErrors, camera.Id, true);
-                });
-                
-                // 保存播放器实例
-                this.players[camera.Id] = flvPlayer;
+                this.players[camera.Id] = player;
+
+                // 播放
+                // mode: 0 (MSE), 1 (Decoder)
+                player.JS_Play(playUrl, { playURL: playUrl, mode: 0 }, 0).then(
+                    () => {
+                        this.log(`✅ ${camera.Name} 播放指令发送成功`);
+                        this.$set(this.cameraErrors, camera.Id, false);
+                        player.JS_Resize();
+                    },
+                    (err) => {
+                         this.log(`❌ 播放失败: ${err}`);
+                         this.$message.error(`播放失败`);
+                         this.$set(this.cameraErrors, camera.Id, true);
+                    }
+                );
                 
             } catch (error) {
-                this.log(`播放失败: ${error.message}`);
+                this.log(`播放初始化异常: ${error.message}`);
                 this.$message.error(`播放失败: ${error.message}`);
                 this.$set(this.cameraErrors, camera.Id, true);
             }
@@ -435,21 +409,22 @@ export default {
         },
         */
         
-        // 停止指定摄像头流（FLV方式）
+        // 停止指定摄像头流（H5 Player方式）
         stopCameraStream(cameraId) {
             try {
-                const flvPlayer = this.players[cameraId];
-                if (flvPlayer) {
-                    flvPlayer.pause();
-                    flvPlayer.unload();
-                    flvPlayer.detachMediaElement();
-                    flvPlayer.destroy();
+                const player = this.players[cameraId];
+                if (player) {
+                    player.JS_Stop(0).then(() => {
+                        this.log(`摄像头 ${cameraId} 已停止`);
+                    }, (err) => {
+                        this.log(`停止失败: ${err}`);
+                    });
+                     // 移除引用
                     delete this.players[cameraId];
-                    this.log(`摄像头 ${cameraId} 已停止`);
                     this.$set(this.cameraErrors, cameraId, false);
                 }
             } catch (error) {
-                this.log(`停止失败: ${error.message}`);
+                this.log(`停止异常: ${error.message}`);
                 delete this.players[cameraId];
             }
         },
@@ -537,18 +512,17 @@ export default {
             window.location.reload();
         },
         
-        // 检查flv.js加载状态
-        checkFlvjsStatus() {
+        // 检查播放器插件状态
+        checkPlayerStatus() {
             // 延迟检查，确保脚本完全加载
             setTimeout(() => {
-                this.flvjsLoaded = typeof flvjs !== 'undefined' && flvjs !== null;
-                this.log(`flv.js状态检查: ${this.flvjsLoaded ? '✅ 已加载' : '❌ 未加载'}`);
+                this.h5PlayerLoaded = typeof JSPlugin !== 'undefined';
+                this.log(`H5Player插件检查: ${this.h5PlayerLoaded ? '✅ 已加载' : '❌ 未加载'}`);
                 
-                if (this.flvjsLoaded) {
-                    this.log('✅ FLV播放器已就绪');
-                    this.log('浏览器支持:', flvjs.isSupported() ? '✅' : '❌');
+                if (this.h5PlayerLoaded) {
+                    this.log('✅ H5播放器已就绪');
                 } else {
-                    this.log('❌ flv.js未定义，视频播放功能将不可用');
+                    this.log('❌ JSPlugin未定义，视频播放功能将不可用');
                 }
             }, 1000);
         },

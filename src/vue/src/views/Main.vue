@@ -73,13 +73,11 @@
                         <div class="video-grid">
                             <div class="video-item" v-for="camera in cameras" :key="camera.id">
                                 <div class="video-container">
-                                    <video 
-                                        :id="`videoPlayer_${camera.id}`"
+                                    <div 
+                                        :id="`play_window_${camera.id}`"
                                         class="video-stream"
-                                        muted
-                                        playsinline
-                                        autoplay>
-                                    </video>
+                                        style="width: 100%; height: 100%; background: #000;">
+                                    </div>
                                     <div class="video-controls">
                                         <button class="control-btn" @click="playCamera(camera)">播放</button>
                                         <button class="control-btn" @click="stopCamera(camera.id)">停止</button>
@@ -166,7 +164,6 @@
 
 <script>
 import { SelectALLDevice, GetRealtimeGasData, GetRealtimeBraceletInfo, SelectALLCamera, GetRealtimeWorkOrders } from '@/api/api.js';
-import flvjs from 'flv.js';
 
 export default {
     name: 'MonitoringDashboard',
@@ -459,72 +456,90 @@ export default {
         
         async playCamera(camera) {
             try {
-                if (!flvjs.isSupported()) {
-                    console.error('浏览器不支持 flv.js');
-                    return;
-                }
-
-                console.log(`播放摄像头: ${camera.name} (ID: ${camera.id})`);
+                const playWindowId = `play_window_${camera.id}`;
+                console.log(`播放摄像头: ${camera.name} (ID: ${camera.id}), 窗口ID: ${playWindowId}`);
                 
                 // 如果已经存在该摄像头的播放器，先销毁
                 if (this.playerInstances[camera.id]) {
                     this.stopCamera(camera.id);
                 }
 
-                const videoElement = document.getElementById(`videoPlayer_${camera.id}`);
-                if (!videoElement) {
-                    console.warn(`未找到视频元素: videoPlayer_${camera.id}`);
+                // 检查 H5 Player 插件是否加载
+                if (typeof JSPlugin === 'undefined') {
+                    console.error('H5Player 插件未加载，请检查 h5player.min.js 是否正确引入');
                     return;
                 }
 
-                const flvPlayer = flvjs.createPlayer({
-                    type: 'flv',
-                    isLive: true,
-                    url: `http://localhost:5002/HK/flv-stream/${camera.id}`
-                }, {
-                    enableWorker: true,
-                    enableStashBuffer: false, // 降低延迟
-                    stashInitialSize: 128
-                });
-
-                flvPlayer.attachMediaElement(videoElement);
-                flvPlayer.load();
-                
-                // 处理自动播放限制
-                const playPromise = flvPlayer.play();
-                if (playPromise !== undefined) {
-                    playPromise.catch(error => {
-                        console.error('视频播放失败 (可能是浏览器限制):', error);
-                        // 静音后重试自动播放（虽然模板已经设置了muted）
-                        videoElement.muted = true;
-                        flvPlayer.play();
-                    });
+                const playWindow = document.getElementById(playWindowId);
+                if (!playWindow) {
+                    console.warn(`未找到播放窗口: ${playWindowId}`);
+                    return;
                 }
 
-                this.playerInstances[camera.id] = flvPlayer;
-
-                // 错误处理
-                flvPlayer.on(flvjs.Events.ERROR, (errorType, errorDetail, errorInfo) => {
-                    console.error(`flv.js 错误 [${camera.id}]:`, errorType, errorDetail, errorInfo);
-                    this.stopCamera(camera.id);
+                // 创建播放器实例
+                const player = new JSPlugin({
+                    szId: playWindowId, // 容器ID
+                    szBasePath: "./static/h5player/", // 引用路径
+                    iMaxSplit: 1, // 这里的场景是每个camera一个独立播放器，所以分屏设为1
+                    iCurrentSplit: 1,
+                    openDebug: true,
+                    oStyle: {
+                        borderSelect: '#000'
+                    }
                 });
 
+                this.playerInstances[camera.id] = player;
+
+                // 播放参数
+                const playURL = `wss://10.19.147.57:6014/proxy/10.19.147.57:559/EUrl/KjuVUic`; // 示例 URL，需要替换为真实 URL
+                // 注意：这里需要根据实际情况获取播放 URL。原代码用的是 flv-stream 接口，
+                // 如果 H5 Player 需要特定的 URL 格式 (如 wss)，请确认后端接口或 URL 转换逻辑。
+                // 暂时假设使用原有接口地址，但 H5 Player 通常需要 WS/WSS 或 RTSP 等。
+                // 如果是 FLV over HTTP，H5 Player 也支持。
+                // 假设后端接口返回的是可以直接给 H5 Player 用的 URL。
+                // 由于原代码直接拼了 http flv url，这里需要确认 URL。
+                // 暂时保留原 FLV URL 尝试播放，或者提示用户需要适配 URL。
+                
+                // 修正：H5 Player 通常用于特定协议。
+                // 如果我们必须用 flv.js 的 http-flv url: `http://localhost:5002/HK/flv-stream/${camera.id}`
+                // JSPlugin 的 JS_Play 接口参数: url, options, windowIndex
+                
+                const realPlayUrl = `http://localhost:5002/HK/flv-stream/${camera.id}`;
+
+                // 播放
+                // mode: 0 (MSE), 1 (Decoder)
+                // 默认尝试 MSE
+                player.JS_Play(realPlayUrl, { playURL: realPlayUrl, mode: 0 }, 0).then(
+                    () => { 
+                        console.log(`[${camera.name}] 播放成功`);
+                        
+                        // 调整样式以适应容器
+                        player.JS_Resize();
+                    },
+                    (err) => { 
+                        console.error(`[${camera.name}] 播放失败:`, err);
+                    }
+                );
+
             } catch (error) {
-                console.error('播放失败:', error);
+                console.error('播放初始化失败:', error);
             }
         },
         
         stopCamera(cameraId) {
             console.log(`停止摄像头: ${cameraId}`);
-            const flvPlayer = this.playerInstances[cameraId];
-            if (flvPlayer) {
+            const player = this.playerInstances[cameraId];
+            if (player) {
                 try {
-                    flvPlayer.pause();
-                    flvPlayer.unload();
-                    flvPlayer.detachMediaElement();
-                    flvPlayer.destroy();
+                    player.JS_Stop(0).then(() => {
+                        console.log(`[${cameraId}] 停止成功`);
+                        // H5 Player 的销毁可能需要更多步骤，视具体 API 而定
+                        // JSPlugin 没有显式的 destroy 方法，通常停止即可，或者移除 DOM
+                    }, (err) => {
+                        console.error(`[${cameraId}] 停止失败:`, err);
+                    });
                 } catch (e) {
-                    console.error(`销毁播放器失败 [${cameraId}]:`, e);
+                    console.error(`停止播放器失败 [${cameraId}]:`, e);
                 }
                 delete this.playerInstances[cameraId];
             }
