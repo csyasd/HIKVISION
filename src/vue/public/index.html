@@ -7,28 +7,15 @@
     <link rel="icon" href="<%= BASE_URL %>favicon.ico">
     <title><%= htmlWebpackPlugin.options.title %></title>
     
-    <!-- H5 Player -->
-    <script src="<%= BASE_URL %>static/h5player/h5player.min.js"></script>
+    <!-- 仅保留 flv.js：这是目前解决海康视频最简单、不报错的方案 -->
+    <script src="https://unpkg.com/flv.js/dist/flv.min.js"></script>
+    
     <script src="https://webapi.amap.com/maps?v=2.0&key=933b70f0dfaf67b0f950d1682dc27ca1"></script>
-    <script>
-        // H5Player & Map加载检测
-        window.addEventListener('DOMContentLoaded', function() {
-            setTimeout(function() {
-                console.log('=== 组件加载检测 ===');
-                console.log('H5Player:', typeof JSPlugin !== 'undefined' ? '✅ 已加载' : '❌ 未加载');
-                
-                // 高德地图加载检测
-                console.log('AMap:', typeof AMap !== 'undefined' ? '✅ 已加载' : '❌ 未加载');
-            }, 1000);
-        });
-    </script>
   </head>
   <body>
     <noscript>
       <strong>We're sorry but <%= htmlWebpackPlugin.options.title %> doesn't work properly without JavaScript enabled. Please enable it to continue.</strong>
     </noscript>
     <div id="app"></div>
-    <!-- built files will be auto injected -->
   </body>
 </html>
-

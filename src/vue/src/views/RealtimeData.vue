@@ -1,163 +1,385 @@
 <template>
-    <div class="realtime-data">
-        <h2>实时数据</h2>
-        <div class="data-grid">
-            <div class="data-card">
-                <h3>设备状态</h3>
-                <div class="status-item">
-                    <span class="status-label">在线设备:</span>
-                    <span class="status-value online">97</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">离线设备:</span>
-                    <span class="status-value offline">3</span>
-                </div>
-            </div>
-            
-            <div class="data-card">
-                <h3>气体监测</h3>
-                <div class="gas-item">
-                    <span class="gas-label">O2:</span>
-                    <span class="gas-value">20.9%VOL</span>
-                </div>
-                <div class="gas-item">
-                    <span class="gas-label">CH4:</span>
-                    <span class="gas-value">0%LEL</span>
-                </div>
-                <div class="gas-item">
-                    <span class="gas-label">H2S:</span>
-                    <span class="gas-value">0ppm</span>
-                </div>
-                <div class="gas-item">
-                    <span class="gas-label">CO:</span>
-                    <span class="gas-value">7ppm</span>
-                </div>
-            </div>
-            
-            <div class="data-card">
-                <h3>报警统计</h3>
-                <div class="alarm-item">
-                    <span class="alarm-label">今日报警:</span>
-                    <span class="alarm-value">5</span>
-                </div>
-                <div class="alarm-item">
-                    <span class="alarm-label">未处理:</span>
-                    <span class="alarm-value urgent">3</span>
-                </div>
-            </div>
+  <div class="video-container">
+    <h2>实时监控</h2>
+
+    <!-- 摄像头网格布局 -->
+    <div class="cameras-grid" v-if="cameras.length > 0">
+      <div 
+        v-for="camera in cameras" 
+        :key="camera.Id" 
+        class="camera-item"
+        :class="{ 'camera-error': cameraErrors[camera.Id] }"
+      >
+        <div class="camera-header">
+          <h3>{{ camera.Name || '未命名摄像头' }}</h3>
+          <div class="camera-info">
+            <span class="camera-ip">{{ camera.IP || '未知IP' }}</span>
+            <span 
+              class="camera-status" 
+              :class="getCameraStatusClass(camera.Id)"
+            >
+              {{ getCameraStatus(camera.Id) }}
+            </span>
+          </div>
         </div>
+
+        <!-- 视频播放器 (flv.js：原生 HTML5，支持滚动，延迟低) -->
+        <div class="video-wrapper">
+          <video 
+            :id="`flv_video_${camera.Id}`"
+            class="video-player"
+            muted
+            autoplay
+            playsinline
+            style="width: 100%; height: 400px; background: #000; display: block; object-fit: contain;">
+          </video>
+
+          <!-- 加载中 -->
+          <div v-if="loadingStatus[camera.Id] && !cameraErrors[camera.Id]" class="error-overlay">
+            <div class="error-content">
+              <i class="el-icon-loading"></i>
+              <h4>正在建立极速连接...</h4>
+            </div>
+          </div>
+
+          <!-- 播放失败 -->
+          <div v-if="cameraErrors[camera.Id]" class="error-overlay">
+            <div class="error-content">
+              <i class="el-icon-warning"></i>
+              <h4>视频流连接中断</h4>
+              <p>请检查后台服务或网络</p>
+              <el-button type="primary" size="mini" @click="retryPlay(camera)">重连</el-button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 云台控制 -->
+        <div class="ptz-panel">
+          <div class="ptz-title">
+            <span class="ptz-label">云台控制</span>
+            <div class="ptz-speed-wrapper">
+              <span class="speed-text">速度:</span>
+              <el-slider v-model="ptzSpeed" :min="1" :max="7" class="ptz-slider"></el-slider>
+            </div>
+          </div>
+          <div class="ptz-grid">
+            <div></div>
+            <button class="ptz-btn" @mousedown="ptz(camera, 21, 0)" @mouseup="ptz(camera, 21, 1)">↑</button>
+            <div></div>
+            <button class="ptz-btn" @mousedown="ptz(camera, 23, 0)" @mouseup="ptz(camera, 23, 1)">←</button>
+            <div class="ptz-center">⊙</div>
+            <button class="ptz-btn" @mousedown="ptz(camera, 24, 0)" @mouseup="ptz(camera, 24, 1)">→</button>
+            <div></div>
+            <button class="ptz-btn" @mousedown="ptz(camera, 22, 0)" @mouseup="ptz(camera, 22, 1)">↓</button>
+            <div></div>
+          </div>
+          <div class="ptz-extra">
+            <button class="ptz-small-btn" @mousedown="ptz(camera, 11, 0)" @mouseup="ptz(camera, 11, 1)">放大</button>
+            <button class="ptz-small-btn" @mousedown="ptz(camera, 12, 0)" @mouseup="ptz(camera, 12, 1)">缩小</button>
+            <button class="ptz-small-btn" @mousedown="ptz(camera, 13, 0)" @mouseup="ptz(camera, 13, 1)">近焦</button>
+            <button class="ptz-small-btn" @mousedown="ptz(camera, 14, 0)" @mouseup="ptz(camera, 14, 1)">远焦</button>
+          </div>
+        </div>
+      </div>
     </div>
+
+    <!-- 加载中/空状态 -->
+    <div v-else-if="loading" class="loading">
+      <i class="el-icon-loading"></i>
+      <span>正在拉取摄像头列表...</span>
+    </div>
+    <div v-else class="no-cameras">
+      <i class="el-icon-video-camera"></i>
+      <p>暂无摄像头数据</p>
+      <el-button @click="loadCameras" type="primary">重试加载</el-button>
+    </div>
+
+    <!-- 底部数据 -->
+    <div class="bottom-data-sections">
+      <div class="data-block">
+        <div class="block-header">气体监测实时数据</div>
+        <el-table :data="gasMonitoringData" border style="width: 100%" size="small">
+          <el-table-column prop="DeviceName" label="设备名称及型号"></el-table-column>
+          <el-table-column prop="WorkOrderCode" label="工单编号"></el-table-column>
+          <el-table-column prop="GasName" label="气体名称"></el-table-column>
+          <el-table-column prop="GasValue" label="检测数值"></el-table-column>
+          <el-table-column prop="Status" label="状态">
+            <template slot-scope="scope">
+              <span style="color: #67c23a; font-weight: bold;">{{ scope.row.Status }}</span>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+      <div class="data-block">
+        <div class="block-header">手环实时信息</div>
+        <el-table :data="braceletInfoData" border style="width: 100%" size="small">
+          <el-table-column prop="DeviceName" label="设备名称及型号"></el-table-column>
+          <el-table-column prop="WorkOrderCode" label="工单编号"></el-table-column>
+          <el-table-column prop="WorkerName" label="工人姓名"></el-table-column>
+          <el-table-column prop="HeartRate" label="心率"></el-table-column>
+          <el-table-column label="进离场状态">
+            <template slot-scope="scope">
+              <span :style="{ color: (scope.row.EntryExitStatus === '进入' || scope.row.EntryExitStatus === '刷卡成功') ? '#67c23a' : '#909399', fontWeight: 'bold' }">
+                {{ scope.row.EntryExitStatus }}
+              </span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="EntryTime" label="进场时间"></el-table-column>
+          <el-table-column prop="ExitTime" label="出场时间"></el-table-column>
+        </el-table>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script>
+import { PTZControl, GetRealtimeGasData, GetRealtimeBraceletInfo, SelectALLDevice } from '../api/api'
+
 export default {
-    name: 'RealtimeData',
-    data() {
-        return {
-            // 实时数据
-        }
+  data() {
+    return {
+      cameras: [],
+      players: {}, // flvjs 实例
+      loadingStatus: {},
+      cameraErrors: {},
+      loading: false,
+      ptzSpeed: 4,
+      gasMonitoringData: [],
+      braceletInfoData: [],
+      devices: [],
+      refreshTimer: null,
+      latencyCheckTimer: null,
+      API_BASE: window.location.hostname === '127.0.0.1' ? 'http://127.0.0.1:5002' : 'http://localhost:5002'
     }
+  },
+  mounted() {
+    this.loadCameras();
+    this.fetchRealtimeData();
+    this.refreshTimer = setInterval(this.fetchRealtimeData, 5000);
+    // 每 3 秒检查一次追帧
+    this.latencyCheckTimer = setInterval(this.checkLatency, 3000);
+  },
+  beforeDestroy() {
+    if (this.refreshTimer) clearInterval(this.refreshTimer);
+    if (this.latencyCheckTimer) clearInterval(this.latencyCheckTimer);
+    this.destroyAllPlayers();
+  },
+  methods: {
+    async loadCameras() {
+      try {
+        this.loading = true;
+        const response = await fetch(`${this.API_BASE}/Camera/All`);
+        if (!response.ok) throw new Error('网络请求失败');
+        this.cameras = await response.json() || [];
+        if (this.cameras.length > 0) {
+          this.$nextTick(() => {
+            this.cameras.forEach(camera => this.initPlayer(camera));
+          });
+        }
+      } catch (err) {
+        console.error('加载摄像头失败:', err);
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    // 初始化 flv.js 播放器
+    initPlayer(camera) {
+      if (!window.flvjs || !window.flvjs.isSupported()) {
+        this.$set(this.cameraErrors, camera.Id, true);
+        return;
+      }
+
+      const videoElement = document.getElementById(`flv_video_${camera.Id}`);
+      if (!videoElement) return;
+
+      // 如果已有，先销毁
+      this.destroyPlayer(camera.Id);
+
+      this.$set(this.loadingStatus, camera.Id, true);
+      this.$set(this.cameraErrors, camera.Id, false);
+
+      const playUrl = `${this.API_BASE}/api/HK/flv-stream/${camera.Id}`;
+
+      try {
+        const player = window.flvjs.createPlayer({
+          type: 'flv',
+          url: playUrl,
+          isLive: true,
+          hasAudio: false
+        }, {
+          enableStashBuffer: false, // 禁用后台缓冲区，减少延迟
+          stashInitialSize: 128,   // 最小初始缓冲区
+          enableWorker: false,      // 禁用 Worker 防止某些环境下报错
+          lazyLoad: false,
+          autoCleanupSourceBuffer: true
+        });
+
+        player.attachMediaElement(videoElement);
+        player.load();
+        
+        const playPromise = player.play();
+        if (playPromise !== undefined) {
+          playPromise.then(() => {
+            this.$set(this.loadingStatus, camera.Id, false);
+          }).catch(error => {
+            console.error('播放失败:', error);
+            this.$set(this.cameraErrors, camera.Id, true);
+          });
+        }
+
+        // 监听错误
+        player.on(window.flvjs.Events.ERROR, (errType, errDetail) => {
+          console.error(`播放器错误 [${camera.Name}]:`, errType, errDetail);
+          this.$set(this.cameraErrors, camera.Id, true);
+          this.destroyPlayer(camera.Id);
+        });
+
+        this.players[camera.Id] = player;
+      } catch (e) {
+        console.error('初始化播放器异常:', e);
+        this.$set(this.cameraErrors, camera.Id, true);
+      }
+    },
+
+    // 核心：追帧逻辑，解决延迟累积
+    checkLatency() {
+      Object.keys(this.players).forEach(id => {
+        const video = document.getElementById(`flv_video_${id}`);
+        if (video && video.buffered.length > 0) {
+          const end = video.buffered.end(0);
+          const diff = end - video.currentTime;
+          
+          // 如果延迟超过 1.5 秒，直接跳转到最新的缓冲区末尾
+          if (diff > 1.5) {
+            video.currentTime = end - 0.2;
+          } 
+          // 如果延迟在 0.5-1.5 秒，略微加速播放 (1.2倍)
+          else if (diff > 0.5) {
+            video.playbackRate = 1.2;
+          } else {
+            video.playbackRate = 1.0;
+          }
+        }
+      });
+    },
+
+    destroyPlayer(id) {
+      if (this.players[id]) {
+        try {
+          this.players[id].pause();
+          this.players[id].unload();
+          this.players[id].detachMediaElement();
+          this.players[id].destroy();
+        } catch (e) {}
+        delete this.players[id];
+      }
+    },
+
+    destroyAllPlayers() {
+      Object.keys(this.players).forEach(id => this.destroyPlayer(id));
+    },
+
+    retryPlay(camera) {
+      this.initPlayer(camera);
+    },
+
+    async fetchRealtimeData() {
+      try {
+        const [gasRes, braceletRes, deviceRes] = await Promise.all([
+          GetRealtimeGasData(),
+          GetRealtimeBraceletInfo(),
+          SelectALLDevice()
+        ]);
+        if (gasRes) this.gasMonitoringData = gasRes;
+        if (braceletRes) this.braceletInfoData = braceletRes;
+        if (deviceRes) this.devices = deviceRes;
+      } catch (error) {}
+    },
+
+    getCameraStatus(cameraId) {
+      const camera = this.cameras.find(c => c.Id === cameraId);
+      if (!camera || !camera.DeviceId) return '未知';
+      const device = this.devices.find(d => d.Id === camera.DeviceId);
+      return device ? (device.OnlineStatus || '离线') : '未知';
+    },
+
+    getCameraStatusClass(cameraId) {
+      const status = this.getCameraStatus(cameraId);
+      return status === '在线' ? 'status-online' : (status === '离线' ? 'status-offline' : 'status-unknown');
+    },
+
+    async ptz(camera, command, stop) {
+      try {
+        await PTZControl({
+          ip: camera.IP,
+          port: 8000,
+          username: 'admin',
+          password: 'wzxc2025',
+          channel: 1,
+          command: command,
+          stop: stop,
+          speed: this.ptzSpeed
+        });
+      } catch (error) {}
+    }
+  }
 }
 </script>
 
 <style scoped>
-.realtime-data {
-    padding: 24px;
-    color: var(--text-bright);
+.video-container { padding: 24px; background: transparent; }
+.video-container h2 { text-align: center; color: var(--text-bright); font-size: 28px; font-weight: 800; margin-bottom: 30px; letter-spacing: 2px; background: linear-gradient(135deg, #409eff 0%, #7948ea 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.cameras-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 30px; margin: 30px 0; }
+.camera-item { border: 1px solid var(--glass-border); border-radius: 20px; padding: 20px; background: var(--glass-bg); backdrop-filter: blur(20px); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4); position: relative; }
+.camera-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid var(--glass-border); padding-bottom: 15px; }
+.camera-header h3 { margin: 0; color: var(--text-bright); font-size: 18px; }
+.camera-ip { font-size: 13px; color: var(--text-muted); margin-right: 10px; }
+.video-wrapper { margin: 15px 0; background: #000; border-radius: 12px; overflow: hidden; position: relative; }
+.video-player { width: 100%; height: 400px; }
+.live-badge { position: absolute; top: 10px; left: 10px; background: #67c23a; color: #fff; padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: bold; z-index: 10; box-shadow: 0 0 10px rgba(103, 194, 58, 0.5); }
+.error-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; z-index: 20; }
+.error-content { text-align: center; color: #fff; }
+.error-content i { font-size: 40px; color: #f56c6c; margin-bottom: 10px; }
+.ptz-panel { background: rgba(0, 0, 0, 0.2); border-radius: 12px; padding: 15px; margin-top: 15px; }
+.ptz-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  color: var(--text-bright);
 }
-
-.realtime-data h2 {
-    font-size: 28px;
-    font-weight: 800;
-    margin-bottom: 30px;
-    letter-spacing: 2px;
-    background: linear-gradient(135deg, #409eff 0%, #7948ea 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    text-shadow: 0 0 20px rgba(64, 158, 255, 0.2);
+.ptz-label {
+  font-size: 14px;
+  font-weight: 700;
 }
-
-.data-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 24px;
+.ptz-speed-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
-
-.data-card {
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px);
-    padding: 24px;
-    border-radius: 20px;
-    border: 1px solid var(--glass-border);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-    transition: all 0.3s ease;
+.speed-text {
+  font-size: 12px;
+  color: var(--text-muted);
 }
-
-.data-card:hover {
-    border-color: rgba(64, 158, 255, 0.3);
-    box-shadow: 0 0 20px rgba(64, 158, 255, 0.1);
-    transform: translateY(-5px);
+.ptz-slider {
+  width: 80px;
 }
-
-.data-card h3 {
-    margin: 0 0 20px 0;
-    font-weight: 700;
-    color: #409eff;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    letter-spacing: 1px;
+.ptz-slider /deep/ .el-slider__runway {
+  margin: 0;
 }
-
-.status-item, .gas-item, .alarm-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.status-item:last-child, .gas-item:last-child, .alarm-item:last-child {
-    border-bottom: none;
-}
-
-.status-label, .gas-label, .alarm-label {
-    color: var(--text-muted);
-    font-size: 14px;
-}
-
-.status-value, .gas-value, .alarm-value {
-    color: var(--text-bright);
-    font-weight: 700;
-    font-size: 16px;
-    font-family: 'JetBrains Mono', monospace;
-}
-
-.status-value.online {
-    color: #67c23a;
-    text-shadow: 0 0 10px rgba(103, 194, 58, 0.3);
-}
-
-.status-value.offline {
-    color: #f56c6c;
-}
-
-.alarm-value.urgent {
-    color: #f56c6c;
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0% { opacity: 1; }
-    50% { opacity: 0.6; }
-    100% { opacity: 1; }
-}
+.ptz-grid { display: grid; grid-template-columns: repeat(3, 44px); gap: 10px; justify-content: center; margin-bottom: 15px; }
+.ptz-btn { width: 44px; height: 44px; background: rgba(255, 255, 255, 0.1); border: none; border-radius: 8px; color: #fff; cursor: pointer; }
+.ptz-btn:hover { background: #409eff; }
+.ptz-center { display: flex; align-items: center; justify-content: center; color: #555; }
+.ptz-extra { display: flex; justify-content: center; gap: 10px; }
+.ptz-small-btn { padding: 5px 10px; background: rgba(255, 255, 255, 0.1); border: none; border-radius: 4px; color: #fff; font-size: 12px; cursor: pointer; }
+.ptz-small-btn:hover { color: #409eff; }
+.bottom-data-sections { margin-top: 40px; display: flex; flex-direction: column; gap: 40px; }
+.data-block { background: var(--glass-bg); border-radius: 20px; overflow: hidden; border: 1px solid var(--glass-border); }
+.block-header { padding: 15px 20px; background: rgba(64, 158, 255, 0.1); color: #409eff; font-weight: bold; }
+.status-online { color: #67c23a; }
+.status-offline { color: #f56c6c; }
+.status-unknown { color: #909399; }
+.loading, .no-cameras { padding: 100px; text-align: center; color: var(--text-muted); }
 </style>
-
-
-
-
-
-
-
-

@@ -34,8 +34,14 @@ const routes = [
             {
                 // 实时数据
                 path: 'CameraDetail',
-                component: () => import('../views/CameraDetail.vue'),
+                component: () => import('../views/RealtimeData.vue'),
                 name: '实时数据',
+            },
+            {
+                // 摄像头播放器（iframe页面）
+                path: 'CameraPlayer',
+                component: () => import('../views/CameraPlayer.vue'),
+                name: '摄像头播放器',
             },
             {
                 // 设备管理

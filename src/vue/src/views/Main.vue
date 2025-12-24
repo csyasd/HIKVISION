@@ -68,20 +68,27 @@
                     <div class="video-panel">
                         <div class="panel-header">
                             <span class="panel-title">设备视频</span>
-                            <span class="more-videos">更多视频</span>
+                            <span class="more-videos" @click="$router.push('/home/CameraDetail')">更多视频</span>
                         </div>
                         <div class="video-grid">
                             <div class="video-item" v-for="camera in cameras" :key="camera.id">
                                 <div class="video-container">
-                                    <div 
-                                        :id="`play_window_${camera.id}`"
+                                    <!-- 使用 flv.js 方案 -->
+                                    <video 
+                                        :id="`video_${camera.id}`"
                                         class="video-stream"
-                                        style="width: 100%; height: 100%; background: #000;">
+                                        muted
+                                        autoplay
+                                        playsinline
+                                        style="width: 100%; height: 100%; background: #000; object-fit: contain;">
+                                    </video>
+                                    <div class="video-loading" v-if="loadingStatus[camera.id]">
+                                        <i class="el-icon-loading"></i>
                                     </div>
-                                    <!-- <div class="video-controls">
-                                        <button class="control-btn" @click="playCamera(camera)">播放</button>
-                                        <button class="control-btn" @click="stopCamera(camera.id)">停止</button>
-                                    </div> -->
+                                    <div class="video-error" v-if="cameraErrors[camera.id]">
+                                        <i class="el-icon-warning"></i>
+                                        <span @click="playCamera(camera)">重试</span>
+                                    </div>
                                 </div>
                                 <div class="video-info">{{ camera.name }}</div>
                             </div>
@@ -181,7 +188,11 @@ export default {
             gasMonitoringData: [],
             braceletInfoData: [],
             workOrders: [],
-            playerInstances: {} // 存储视频播放器实例
+            playerInstances: {}, // 存储 flvjs 实例
+            latencyTimers: {}, // 延迟监控定时器
+            loadingStatus: {},
+            cameraErrors: {},
+            API_BASE: window.location.hostname === '127.0.0.1' ? 'http://127.0.0.1:5002' : 'http://localhost:5002'
         }
     },
     mounted() {
@@ -205,12 +216,14 @@ export default {
             this.loadBraceletInfo();
             this.loadWorkOrders();
         }, 5000);
+
+        // 每 3 秒检查一次追帧
+        this.latencyCheckTimer = setInterval(this.checkLatency, 3000);
     },
     beforeDestroy() {
-        // 组件销毁前停止所有视频播放器
-        Object.keys(this.playerInstances).forEach(id => {
-            this.stopCamera(id);
-        });
+        if (this.refreshTimer) clearInterval(this.refreshTimer);
+        if (this.latencyCheckTimer) clearInterval(this.latencyCheckTimer);
+        this.cleanupAll();
     },
     computed: {
         onlineWorkOrders() {
@@ -263,7 +276,6 @@ export default {
         async loadDevices() {
             try {
                 const res = await SelectALLDevice();
-                console.log('获取到的设备列表:', res);
                 if (res) {
                     this.devices = res;
                     
@@ -287,13 +299,10 @@ export default {
             this.markers = [];
             
             // 过滤出有有效GPS坐标的设备
-            // 后端字段名首字母大写
             const validDevices = this.devices.filter(d => 
                 d.GpsLongitude && d.GpsLatitude && 
                 !isNaN(parseFloat(d.GpsLongitude)) && !isNaN(parseFloat(d.GpsLatitude))
             );
-            
-            console.log(`有效GPS设备数量: ${validDevices.length}/${this.devices.length}`);
             
             if (validDevices.length === 0) return;
 
@@ -301,15 +310,9 @@ export default {
                 const lng = parseFloat(device.GpsLongitude);
                 const lat = parseFloat(device.GpsLatitude);
                 
-                // 格式化设备显示名称：设备名称/设备型号
                 const deviceDisplayName = device.Model && device.Model.trim() 
                     ? `${device.Name}/${device.Model}` 
                     : device.Name;
-                
-                // 简单的坐标有效性检查（中国范围内）
-                if (lng < 70 || lng > 140 || lat < 0 || lat > 60) {
-                    console.warn(`设备 ${deviceDisplayName} 坐标可能异常: ${lng}, ${lat}`);
-                }
                 
                 const marker = new AMap.Marker({
                     position: [lng, lat],
@@ -325,7 +328,6 @@ export default {
                     })
                 });
 
-                // 添加点击事件
                 marker.on('click', () => {
                     this.showDeviceInfo(device, lng, lat);
                 });
@@ -334,7 +336,6 @@ export default {
                 this.markers.push(marker);
             });
             
-            // 自动调整地图视野以包含所有标记
             if (this.markers.length > 0) {
                 this.map.setFitView();
             }
@@ -342,8 +343,7 @@ export default {
         
         showDeviceInfo(device, lng, lat) {
             const onlineStatus = device.OnlineStatus || '离线';
-            const onlineStatusColor = '#909399';
-            // 格式化设备显示名称：设备名称/设备型号
+            const onlineStatusColor = onlineStatus === '在线' ? '#67c23a' : '#909399';
             const deviceDisplayName = device.Model && device.Model.trim() 
                 ? `${device.Name}/${device.Model}` 
                 : device.Name;
@@ -352,63 +352,39 @@ export default {
                 content: `
                     <div style="color: #e6edf3; padding: 16px; background: rgba(13, 17, 23, 0.9); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; min-width: 240px; box-shadow: 0 8px 32px rgba(0,0,0,0.5);">
                         <h4 style="margin: 0 0 12px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 10px; color: #409eff; font-size: 16px; font-weight: 700;">${deviceDisplayName}</h4>
-                        <p style="margin: 6px 0; font-size: 13px; color: #666;"><b>在线状态:</b> <span style="color: ${onlineStatusColor}; font-weight: bold;">${onlineStatus}</span></p>
-                        <p style="margin: 6px 0; font-size: 13px; color: #666;"><b>IP地址:</b> ${device.IP || '未知'}</p>
-                        <p style="margin: 6px 0; font-size: 13px; color: #666;"><b>经度:</b> ${lng.toFixed(6)}</p>
-                        <p style="margin: 6px 0; font-size: 13px; color: #666;"><b>纬度:</b> ${lat.toFixed(6)}</p>
+                        <p style="margin: 6px 0; font-size: 13px; color: #ccc;"><b>在线状态:</b> <span style="color: ${onlineStatusColor}; font-weight: bold;">${onlineStatus}</span></p>
+                        <p style="margin: 6px 0; font-size: 13px; color: #ccc;"><b>IP地址:</b> ${device.IP || '未知'}</p>
+                        <p style="margin: 6px 0; font-size: 13px; color: #ccc;"><b>经度:</b> ${lng.toFixed(6)}</p>
+                        <p style="margin: 6px 0; font-size: 13px; color: #ccc;"><b>纬度:</b> ${lat.toFixed(6)}</p>
                     </div>
                 `,
                 offset: new AMap.Pixel(0, -30)
             });
-            
-            // 将Vue组件方法暴露给全局
-            window.playCameraFromMap = (id) => {
-                // 注意：这里传入的id可能是字符串，需要与cameras中的id类型匹配
-                const targetCamera = this.cameras.find(c => c.id == id);
-                if (targetCamera) {
-                    this.playCamera(targetCamera);
-                } else {
-                    console.warn(`未找到ID为 ${id} 的设备视频信息`);
-                }
-            };
             
             infoWindow.open(this.map, [lng, lat]);
         },
         
         async loadCameras() {
             try {
-                // 获取所有摄像头
                 const camerasRes = await SelectALLCamera();
-                console.log('获取到的摄像头列表:', camerasRes);
-                
                 if (!camerasRes || !Array.isArray(camerasRes)) {
                     this.cameras = [];
                     return;
                 }
                 
-                // 获取在线设备的ID列表
                 const onlineDeviceIds = this.devices
                     .filter(d => d.OnlineStatus === '在线')
                     .map(d => d.Id);
                 
-                // 筛选出在线设备的摄像头
-                // 注意：后端返回的字段名是PascalCase（首字母大写）
                 this.cameras = camerasRes
-                    .filter(camera => {
-                        // 如果摄像头有DeviceId，检查该设备是否在线
-                        if (camera.DeviceId) {
-                            return onlineDeviceIds.includes(camera.DeviceId);
-                        }
-                        return false;
-                    })
+                    .filter(camera => camera.DeviceId && onlineDeviceIds.includes(camera.DeviceId))
+                    .slice(0, 4) // 首页只展示前 4 个在线摄像头
                     .map(camera => ({
                         id: camera.Id,
                         name: camera.Name || (camera.Device ? camera.Device.Name : '未知摄像头'),
                         ip: camera.IP,
                         deviceId: camera.DeviceId
                     }));
-                
-                console.log('在线设备的摄像头列表:', this.cameras);
             } catch (error) {
                 console.error('加载摄像头列表失败:', error);
                 this.cameras = [];
@@ -418,156 +394,116 @@ export default {
         async loadGasMonitoringData() {
             try {
                 const res = await GetRealtimeGasData();
-                if (res && Array.isArray(res)) {
-                    this.gasMonitoringData = res;
-                } else {
-                    this.gasMonitoringData = [];
-                }
+                this.gasMonitoringData = (res && Array.isArray(res)) ? res : [];
             } catch (error) {
                 console.error('加载气体监测数据失败:', error);
-                this.gasMonitoringData = [];
             }
         },
         
         async loadBraceletInfo() {
             try {
                 const res = await GetRealtimeBraceletInfo();
-                if (res && Array.isArray(res)) {
-                    this.braceletInfoData = res;
-                } else {
-                    this.braceletInfoData = [];
-                }
+                this.braceletInfoData = (res && Array.isArray(res)) ? res : [];
             } catch (error) {
                 console.error('加载手环信息失败:', error);
-                this.braceletInfoData = [];
             }
         },
         
         async loadWorkOrders() {
             try {
                 const res = await GetRealtimeWorkOrders();
-                if (res) {
-                    this.workOrders = res;
-                }
+                if (res) this.workOrders = res;
             } catch (error) {
                 console.error('加载实时工单失败:', error);
             }
         },
         
+        // 使用 flv.js 播放
         async playCamera(camera) {
+            if (!window.flvjs || !window.flvjs.isSupported()) return;
+
+            const videoElement = document.getElementById(`video_${camera.id}`);
+            if (!videoElement) return;
+
+            this.stopCamera(camera.id);
+
+            this.$set(this.loadingStatus, camera.id, true);
+            this.$set(this.cameraErrors, camera.id, false);
+
+            const playUrl = `${this.API_BASE}/api/HK/flv-stream/${camera.id}`;
+
             try {
-                const playWindowId = `play_window_${camera.id}`;
-                console.log(`播放摄像头: ${camera.name} (ID: ${camera.id}), 窗口ID: ${playWindowId}`);
-                
-                // 如果已经存在该摄像头的播放器，先销毁
-                if (this.playerInstances[camera.id]) {
+                const player = window.flvjs.createPlayer({
+                    type: 'flv',
+                    url: playUrl,
+                    isLive: true,
+                    hasAudio: false
+                }, {
+                    enableStashBuffer: false,
+                    stashInitialSize: 128,
+                    enableWorker: false,
+                    lazyLoad: false,
+                    autoCleanupSourceBuffer: true
+                });
+
+                player.attachMediaElement(videoElement);
+                player.load();
+                player.play().then(() => {
+                    this.$set(this.loadingStatus, camera.id, false);
+                }).catch(() => {
+                    this.$set(this.cameraErrors, camera.id, true);
+                    this.$set(this.loadingStatus, camera.id, false);
+                });
+
+                player.on(window.flvjs.Events.ERROR, () => {
+                    this.$set(this.cameraErrors, camera.id, true);
                     this.stopCamera(camera.id);
-                }
-
-                // 检查 H5 Player 插件是否加载
-                if (typeof JSPlugin === 'undefined') {
-                    // 尝试等待插件加载
-                    const loaded = await this.waitForPlugin();
-                    if (!loaded) {
-                        console.error('H5Player 插件加载超时，请检查 h5player.min.js 是否正确引入');
-                        return;
-                    }
-                }
-
-                const playWindow = document.getElementById(playWindowId);
-                if (!playWindow) {
-                    console.warn(`未找到播放窗口: ${playWindowId}`);
-                    return;
-                }
-
-                // 创建播放器实例
-                const player = new JSPlugin({
-                    szId: playWindowId, // 容器ID
-                    szBasePath: "/static/h5player/", // 引用路径
-                    iMaxSplit: 1, // 这里的场景是每个camera一个独立播放器，所以分屏设为1
-                    iCurrentSplit: 1,
-                    openDebug: true,
-                    oStyle: {
-                        borderSelect: '#000'
-                    }
                 });
 
                 this.playerInstances[camera.id] = player;
-
-                // 播放参数
-                const realPlayUrl = `http://localhost:5002/HK/flv-stream/${camera.id}`;
-
-                // 播放
-                // mode: 0 (MSE), 1 (Decoder)
-                // 默认尝试 MSE
-                player.JS_Play(realPlayUrl, { playURL: realPlayUrl, mode: 0 }, 0).then(
-                    () => { 
-                        console.log(`[${camera.name}] 播放成功`);
-                        
-                        // 调整样式以适应容器
-                        player.JS_Resize();
-                    },
-                    (err) => { 
-                        console.error(`[${camera.name}] 播放失败:`, err);
-                    }
-                );
-
-            } catch (error) {
-                console.error('播放初始化失败:', error);
+            } catch (e) {
+                this.$set(this.cameraErrors, camera.id, true);
             }
         },
         
         stopCamera(cameraId) {
-            console.log(`停止摄像头: ${cameraId}`);
             const player = this.playerInstances[cameraId];
             if (player) {
                 try {
-                    player.JS_Stop(0).then(() => {
-                        console.log(`[${cameraId}] 停止成功`);
-                        // H5 Player 的销毁可能需要更多步骤，视具体 API 而定
-                        // JSPlugin 没有显式的 destroy 方法，通常停止即可，或者移除 DOM
-                    }, (err) => {
-                        console.error(`[${cameraId}] 停止失败:`, err);
-                    });
-                } catch (e) {
-                    console.error(`停止播放器失败 [${cameraId}]:`, e);
-                }
+                    player.pause();
+                    player.unload();
+                    player.detachMediaElement();
+                    player.destroy();
+                } catch (e) {}
                 delete this.playerInstances[cameraId];
             }
         },
 
-        async waitForPlugin() {
-            return new Promise((resolve) => {
-                if (typeof JSPlugin !== 'undefined') {
-                    resolve(true);
-                    return;
+        checkLatency() {
+            Object.keys(this.playerInstances).forEach(id => {
+                const video = document.getElementById(`video_${id}`);
+                if (video && video.buffered.length > 0) {
+                    const end = video.buffered.end(0);
+                    const diff = end - video.currentTime;
+                    if (diff > 1.5) {
+                        video.currentTime = end - 0.2;
+                    } else if (diff > 0.5) {
+                        video.playbackRate = 1.2;
+                    } else {
+                        video.playbackRate = 1.0;
+                    }
                 }
-                
-                let count = 0;
-                const interval = setInterval(() => {
-                    count++;
-                    if (typeof JSPlugin !== 'undefined') {
-                        clearInterval(interval);
-                        resolve(true);
-                    }
-                    if (count > 50) { // 5秒超时
-                        clearInterval(interval);
-                        resolve(false);
-                    }
-                }, 100);
             });
         },
 
         autoPlayAll() {
-             // 延迟执行
-            setTimeout(async () => {
-                // 等待插件加载
-                await this.waitForPlugin();
-                
-                this.cameras.forEach(camera => {
-                    this.playCamera(camera);
-                });
-            }, 1000);
+            this.cameras.forEach(camera => {
+                this.playCamera(camera);
+            });
+        },
+
+        cleanupAll() {
+            Object.keys(this.playerInstances).forEach(id => this.stopCamera(id));
         }
     }
 }
@@ -803,11 +739,11 @@ export default {
 
 /* 视频面板 */
 .video-panel {
-    background: var(--glass-bg);
+    background: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(20px);
     padding: 20px;
     border-radius: 20px;
-    border: 1px solid var(--glass-border);
+    border: 1px solid rgba(64, 158, 255, 0.2);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
     flex: 1;
     min-height: 0;
@@ -867,6 +803,8 @@ export default {
     overflow: hidden;
     border: 1px solid rgba(64, 158, 255, 0.2);
     transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
 }
 
 .video-item:hover {
@@ -877,47 +815,48 @@ export default {
 .video-container {
     position: relative;
     width: 100%;
-    height: 130px;
+    flex: 1;
+    min-height: 130px;
     background: #000;
 }
 
 .video-stream {
     width: 100%;
     height: 100%;
-    object-fit: cover;
 }
 
-
-
-.video-controls {
+.video-loading, .video-error {
     position: absolute;
-    bottom: 8px;
-    left: 8px;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
     display: flex;
-    gap: 6px;
-    opacity: 0;
-    transition: opacity 0.3s ease;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 5;
 }
 
-.video-item:hover .video-controls {
-    opacity: 1;
+.video-loading i {
+    font-size: 24px;
+    color: #409eff;
 }
 
-.control-btn {
-    background: rgba(64, 158, 255, 0.9);
-    color: white;
-    border: none;
-    padding: 6px 12px;
-    border-radius: 4px;
+.video-error {
+    flex-direction: column;
+    color: #f56c6c;
+}
+
+.video-error i {
+    font-size: 24px;
+    margin-bottom: 8px;
+}
+
+.video-error span {
     font-size: 12px;
     cursor: pointer;
-    transition: all 0.3s ease;
-    backdrop-filter: blur(5px);
-}
-
-.control-btn:hover {
-    background: rgba(64, 158, 255, 1);
-    transform: scale(1.05);
+    text-decoration: underline;
 }
 
 .video-info {
@@ -944,10 +883,10 @@ export default {
 /* 表格样式优化 */
 .gas-monitoring-table, .alarm-table {
     position: absolute;
-    background: var(--glass-bg);
+    background: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(20px);
     border-radius: 20px;
-    border: 1px solid var(--glass-border);
+    border: 1px solid rgba(64, 158, 255, 0.2);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
     max-width: 480px;
     width: 480px;
@@ -1010,7 +949,7 @@ export default {
     color: #409eff;
     font-weight: 700;
     font-size: 16px;
-    border-bottom: 1px solid var(--glass-border);
+    border-bottom: 1px solid rgba(64, 158, 255, 0.2);
     display: flex;
     align-items: center;
     gap: 12px;
@@ -1132,9 +1071,9 @@ export default {
 <style>
 /* 全局 Popover 样式，用于覆盖 Element UI 默认样式 */
 .dark-popover {
-    background: var(--glass-bg) !important;
+    background: rgba(0, 0, 0, 0.8) !important;
     backdrop-filter: blur(20px) !important;
-    border: 1px solid var(--glass-border) !important;
+    border: 1px solid rgba(64, 158, 255, 0.2) !important;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8) !important;
     padding: 0 !important;
 }
