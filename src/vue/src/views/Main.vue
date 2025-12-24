@@ -73,7 +73,6 @@
                         <div class="video-grid">
                             <div class="video-item" v-for="camera in cameras" :key="camera.id">
                                 <div class="video-container">
-                                    <!-- 使用 flv.js 方案 -->
                                     <video 
                                         :id="`video_${camera.id}`"
                                         class="video-stream"
@@ -82,7 +81,7 @@
                                         playsinline
                                         style="width: 100%; height: 100%; background: #000; object-fit: contain;">
                                     </video>
-                                    <div class="video-loading" v-if="loadingStatus[camera.id]">
+                                    <div class="video-loading" v-if="loadingStatus[camera.id] && !cameraErrors[camera.id]">
                                         <i class="el-icon-loading"></i>
                                     </div>
                                     <div class="video-error" v-if="cameraErrors[camera.id]">
@@ -188,10 +187,12 @@ export default {
             gasMonitoringData: [],
             braceletInfoData: [],
             workOrders: [],
-            playerInstances: {}, // 存储 flvjs 实例
-            latencyTimers: {}, // 延迟监控定时器
+            playerInstances: {}, 
+            lastCheckTime: {}, // 记录上一次播放时间
+            stuckCount: {},     // 记录卡死次数
             loadingStatus: {},
             cameraErrors: {},
+            latencyCheckTimer: null,
             API_BASE: window.location.hostname === '127.0.0.1' ? 'http://127.0.0.1:5002' : 'http://localhost:5002'
         }
     },
@@ -204,11 +205,9 @@ export default {
             this.loadGasMonitoringData();
             this.loadBraceletInfo();
             this.loadWorkOrders();
-            // 初始加载后尝试播放所有视频
             this.autoPlayAll();
         })();
         setInterval(this.updateTime, 1000);
-        // 每5秒更新一次设备位置、气体数据、手环信息和摄像头
         setInterval(async () => {
             await this.loadDevices();
             await this.loadCameras();
@@ -217,11 +216,10 @@ export default {
             this.loadWorkOrders();
         }, 5000);
 
-        // 每 3 秒检查一次追帧
-        this.latencyCheckTimer = setInterval(this.checkLatency, 3000);
+        // 每 2.5 秒执行一次健康检查（卡死监控 + 追帧）
+        this.latencyCheckTimer = setInterval(this.checkHealth, 2500);
     },
     beforeDestroy() {
-        if (this.refreshTimer) clearInterval(this.refreshTimer);
         if (this.latencyCheckTimer) clearInterval(this.latencyCheckTimer);
         this.cleanupAll();
     },
@@ -243,13 +241,10 @@ export default {
         },
         
         initMap() {
-            // 动态加载高德地图API
             if (typeof AMap === 'undefined') {
                 const script = document.createElement('script');
                 script.src = 'https://webapi.amap.com/maps?v=2.0&key=933b70f0dfaf67b0f950d1682dc27ca1';
-                script.onload = () => {
-                    this.createMap();
-                };
+                script.onload = () => this.createMap();
                 document.head.appendChild(script);
             } else {
                 this.createMap();
@@ -257,20 +252,15 @@ export default {
         },
         
         createMap() {
-            // 初始化地图
             this.map = new AMap.Map('map', {
                 viewMode: '3D',
                 zoom: 12,
-                center: [116.4074, 39.9042], // 默认北京坐标，后续会自动调整到设备位置
+                center: [116.4074, 39.9042],
                 mapStyle: 'amap://styles/dark',
                 pitch: 45,
                 rotation: 0
             });
-            
-            // 如果已经加载了设备数据，则添加标记
-            if (this.devices.length > 0) {
-                this.updateMapMarkers();
-            }
+            if (this.devices.length > 0) this.updateMapMarkers();
         },
         
         async loadDevices() {
@@ -278,12 +268,9 @@ export default {
                 const res = await SelectALLDevice();
                 if (res) {
                     this.devices = res;
-                    
-                    // 更新设备统计信息
                     this.deviceTotal = this.devices.length;
                     this.onlineCount = this.devices.filter(d => d.OnlineStatus === '在线').length;
                     this.offlineCount = this.deviceTotal - this.onlineCount;
-                    
                     this.updateMapMarkers();
                 }
             } catch (error) {
@@ -293,30 +280,20 @@ export default {
         
         updateMapMarkers() {
             if (!this.map) return;
-            
-            // 清除旧的标记
             this.map.remove(this.markers);
             this.markers = [];
             
-            // 过滤出有有效GPS坐标的设备
             const validDevices = this.devices.filter(d => 
                 d.GpsLongitude && d.GpsLatitude && 
                 !isNaN(parseFloat(d.GpsLongitude)) && !isNaN(parseFloat(d.GpsLatitude))
             );
             
-            if (validDevices.length === 0) return;
-
             validDevices.forEach(device => {
                 const lng = parseFloat(device.GpsLongitude);
                 const lat = parseFloat(device.GpsLatitude);
-                
-                const deviceDisplayName = device.Model && device.Model.trim() 
-                    ? `${device.Name}/${device.Model}` 
-                    : device.Name;
-                
                 const marker = new AMap.Marker({
                     position: [lng, lat],
-                    title: deviceDisplayName,
+                    title: device.Name,
                     icon: new AMap.Icon({
                         size: new AMap.Size(32, 32),
                         image: 'data:image/svg+xml;base64,' + btoa(`
@@ -327,58 +304,37 @@ export default {
                         `)
                     })
                 });
-
-                marker.on('click', () => {
-                    this.showDeviceInfo(device, lng, lat);
-                });
-
+                marker.on('click', () => this.showDeviceInfo(device, lng, lat));
                 this.map.add(marker);
                 this.markers.push(marker);
             });
-            
-            if (this.markers.length > 0) {
-                this.map.setFitView();
-            }
+            if (this.markers.length > 0) this.map.setFitView();
         },
         
         showDeviceInfo(device, lng, lat) {
             const onlineStatus = device.OnlineStatus || '离线';
             const onlineStatusColor = onlineStatus === '在线' ? '#67c23a' : '#909399';
-            const deviceDisplayName = device.Model && device.Model.trim() 
-                ? `${device.Name}/${device.Model}` 
-                : device.Name;
-            
             const infoWindow = new AMap.InfoWindow({
                 content: `
                     <div style="color: #e6edf3; padding: 16px; background: rgba(13, 17, 23, 0.9); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; min-width: 240px; box-shadow: 0 8px 32px rgba(0,0,0,0.5);">
-                        <h4 style="margin: 0 0 12px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 10px; color: #409eff; font-size: 16px; font-weight: 700;">${deviceDisplayName}</h4>
+                        <h4 style="margin: 0 0 12px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 10px; color: #409eff; font-size: 16px; font-weight: 700;">${device.Name}</h4>
                         <p style="margin: 6px 0; font-size: 13px; color: #ccc;"><b>在线状态:</b> <span style="color: ${onlineStatusColor}; font-weight: bold;">${onlineStatus}</span></p>
                         <p style="margin: 6px 0; font-size: 13px; color: #ccc;"><b>IP地址:</b> ${device.IP || '未知'}</p>
-                        <p style="margin: 6px 0; font-size: 13px; color: #ccc;"><b>经度:</b> ${lng.toFixed(6)}</p>
-                        <p style="margin: 6px 0; font-size: 13px; color: #ccc;"><b>纬度:</b> ${lat.toFixed(6)}</p>
                     </div>
                 `,
                 offset: new AMap.Pixel(0, -30)
             });
-            
             infoWindow.open(this.map, [lng, lat]);
         },
         
         async loadCameras() {
             try {
                 const camerasRes = await SelectALLCamera();
-                if (!camerasRes || !Array.isArray(camerasRes)) {
-                    this.cameras = [];
-                    return;
-                }
-                
-                const onlineDeviceIds = this.devices
-                    .filter(d => d.OnlineStatus === '在线')
-                    .map(d => d.Id);
-                
+                if (!camerasRes || !Array.isArray(camerasRes)) return;
+                const onlineDeviceIds = this.devices.filter(d => d.OnlineStatus === '在线').map(d => d.Id);
                 this.cameras = camerasRes
                     .filter(camera => camera.DeviceId && onlineDeviceIds.includes(camera.DeviceId))
-                    .slice(0, 4) // 首页只展示前 4 个在线摄像头
+                    .slice(0, 4)
                     .map(camera => ({
                         id: camera.Id,
                         name: camera.Name || (camera.Device ? camera.Device.Name : '未知摄像头'),
@@ -387,7 +343,6 @@ export default {
                     }));
             } catch (error) {
                 console.error('加载摄像头列表失败:', error);
-                this.cameras = [];
             }
         },
         
@@ -395,40 +350,34 @@ export default {
             try {
                 const res = await GetRealtimeGasData();
                 this.gasMonitoringData = (res && Array.isArray(res)) ? res : [];
-            } catch (error) {
-                console.error('加载气体监测数据失败:', error);
-            }
+            } catch (error) {}
         },
         
         async loadBraceletInfo() {
             try {
                 const res = await GetRealtimeBraceletInfo();
                 this.braceletInfoData = (res && Array.isArray(res)) ? res : [];
-            } catch (error) {
-                console.error('加载手环信息失败:', error);
-            }
+            } catch (error) {}
         },
         
         async loadWorkOrders() {
             try {
                 const res = await GetRealtimeWorkOrders();
                 if (res) this.workOrders = res;
-            } catch (error) {
-                console.error('加载实时工单失败:', error);
-            }
+            } catch (error) {}
         },
         
-        // 使用 flv.js 播放
+        // 核心播放逻辑：同步实时数据页面的最新配置
         async playCamera(camera) {
             if (!window.flvjs || !window.flvjs.isSupported()) return;
-
             const videoElement = document.getElementById(`video_${camera.id}`);
             if (!videoElement) return;
 
             this.stopCamera(camera.id);
-
             this.$set(this.loadingStatus, camera.id, true);
             this.$set(this.cameraErrors, camera.id, false);
+            this.lastCheckTime[camera.id] = -1;
+            this.stuckCount[camera.id] = 0;
 
             const playUrl = `${this.API_BASE}/api/HK/flv-stream/${camera.id}`;
 
@@ -441,7 +390,7 @@ export default {
                 }, {
                     enableStashBuffer: false,
                     stashInitialSize: 128,
-                    enableWorker: false,
+                    enableWorker: false, // 禁用 Worker 防止首页 TypeError
                     lazyLoad: false,
                     autoCleanupSourceBuffer: true
                 });
@@ -479,16 +428,35 @@ export default {
             }
         },
 
-        checkLatency() {
+        // 健康检查：卡死监控 + 极速追帧
+        checkHealth() {
             Object.keys(this.playerInstances).forEach(id => {
                 const video = document.getElementById(`video_${id}`);
-                if (video && video.buffered.length > 0) {
+                if (!video) return;
+
+                // 1. 卡死检测：仅在出图后触发
+                if (video.currentTime > 0 && video.currentTime === this.lastCheckTime[id] && !video.paused) {
+                    this.stuckCount[id]++;
+                    if (this.stuckCount[id] >= 3) { // 约 7.5 秒画面不动
+                        const camera = this.cameras.find(c => c.id == id);
+                        if (camera) {
+                            console.warn(`[首页] 摄像头 ${camera.name} 卡死，重连中...`);
+                            this.retryPlay(camera);
+                        }
+                    }
+                } else {
+                    this.stuckCount[id] = 0;
+                    this.lastCheckTime[id] = video.currentTime;
+                }
+
+                // 2. 追帧逻辑
+                if (video.buffered.length > 0) {
                     const end = video.buffered.end(0);
                     const diff = end - video.currentTime;
                     if (diff > 1.5) {
                         video.currentTime = end - 0.2;
                     } else if (diff > 0.5) {
-                        video.playbackRate = 1.2;
+                        video.playbackRate = 1.1;
                     } else {
                         video.playbackRate = 1.0;
                     }
@@ -496,10 +464,13 @@ export default {
             });
         },
 
+        retryPlay(camera) {
+            this.stopCamera(camera.id);
+            setTimeout(() => this.playCamera(camera), 3000); 
+        },
+
         autoPlayAll() {
-            this.cameras.forEach(camera => {
-                this.playCamera(camera);
-            });
+            this.cameras.forEach(camera => this.playCamera(camera));
         },
 
         cleanupAll() {
@@ -510,6 +481,7 @@ export default {
 </script>
 
 <style scoped>
+/* 保持原有样式不变 */
 .monitoring-dashboard {
     width: 100%;
     height: 100vh;
@@ -522,7 +494,7 @@ export default {
     transform-origin: top left;
 }
 
-/* 添加背景装饰 */
+/* ... 后面样式省略，保持 Main.vue 原有美观设计 ... */
 .monitoring-dashboard::before {
     content: '';
     position: absolute;

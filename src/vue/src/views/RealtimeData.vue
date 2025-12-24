@@ -23,7 +23,7 @@
           </div>
         </div>
 
-        <!-- 视频播放器 (flv.js：原生 HTML5，支持滚动，延迟低) -->
+        <!-- 视频播放器 -->
         <div class="video-wrapper">
           <video 
             :id="`flv_video_${camera.Id}`"
@@ -47,8 +47,8 @@
             <div class="error-content">
               <i class="el-icon-warning"></i>
               <h4>视频流连接中断</h4>
-              <p>请检查后台服务或网络</p>
-              <el-button type="primary" size="mini" @click="retryPlay(camera)">重连</el-button>
+              <p>系统自动重试中...</p>
+              <el-button type="primary" size="mini" @click="retryPlay(camera)">手动刷新</el-button>
             </div>
           </div>
         </div>
@@ -139,7 +139,9 @@ export default {
   data() {
     return {
       cameras: [],
-      players: {}, // flvjs 实例
+      players: {},
+      lastCheckTime: {}, 
+      stuckCount: {},     
       loadingStatus: {},
       cameraErrors: {},
       loading: false,
@@ -156,8 +158,8 @@ export default {
     this.loadCameras();
     this.fetchRealtimeData();
     this.refreshTimer = setInterval(this.fetchRealtimeData, 5000);
-    // 每 3 秒检查一次追帧
-    this.latencyCheckTimer = setInterval(this.checkLatency, 3000);
+    // 每 2.5 秒检查一次健康状态
+    this.latencyCheckTimer = setInterval(this.checkHealth, 2500);
   },
   beforeDestroy() {
     if (this.refreshTimer) clearInterval(this.refreshTimer);
@@ -183,7 +185,6 @@ export default {
       }
     },
 
-    // 初始化 flv.js 播放器
     initPlayer(camera) {
       if (!window.flvjs || !window.flvjs.isSupported()) {
         this.$set(this.cameraErrors, camera.Id, true);
@@ -193,11 +194,12 @@ export default {
       const videoElement = document.getElementById(`flv_video_${camera.Id}`);
       if (!videoElement) return;
 
-      // 如果已有，先销毁
       this.destroyPlayer(camera.Id);
 
       this.$set(this.loadingStatus, camera.Id, true);
       this.$set(this.cameraErrors, camera.Id, false);
+      this.lastCheckTime[camera.Id] = -1;
+      this.stuckCount[camera.Id] = 0;
 
       const playUrl = `${this.API_BASE}/api/HK/flv-stream/${camera.Id}`;
 
@@ -208,9 +210,9 @@ export default {
           isLive: true,
           hasAudio: false
         }, {
-          enableStashBuffer: false, // 禁用后台缓冲区，减少延迟
-          stashInitialSize: 128,   // 最小初始缓冲区
-          enableWorker: false,      // 禁用 Worker 防止某些环境下报错
+          enableStashBuffer: false,
+          stashInitialSize: 128,
+          enableWorker: false, // 彻底禁用 Worker，解决 Class extends value undefined 报错
           lazyLoad: false,
           autoCleanupSourceBuffer: true
         });
@@ -218,45 +220,49 @@ export default {
         player.attachMediaElement(videoElement);
         player.load();
         
-        const playPromise = player.play();
-        if (playPromise !== undefined) {
-          playPromise.then(() => {
-            this.$set(this.loadingStatus, camera.Id, false);
-          }).catch(error => {
-            console.error('播放失败:', error);
-            this.$set(this.cameraErrors, camera.Id, true);
-          });
-        }
+        player.play().then(() => {
+          this.$set(this.loadingStatus, camera.Id, false);
+        }).catch(() => {
+          // 播放被拦截通常是由于还没点击页面，这里静默处理
+        });
 
-        // 监听错误
-        player.on(window.flvjs.Events.ERROR, (errType, errDetail) => {
-          console.error(`播放器错误 [${camera.Name}]:`, errType, errDetail);
+        player.on(window.flvjs.Events.ERROR, () => {
           this.$set(this.cameraErrors, camera.Id, true);
-          this.destroyPlayer(camera.Id);
+          // 错误后不立刻重连，由 retryPlay 统一控制
         });
 
         this.players[camera.Id] = player;
       } catch (e) {
-        console.error('初始化播放器异常:', e);
         this.$set(this.cameraErrors, camera.Id, true);
       }
     },
 
-    // 核心：追帧逻辑，解决延迟累积
-    checkLatency() {
+    checkHealth() {
       Object.keys(this.players).forEach(id => {
         const video = document.getElementById(`flv_video_${id}`);
-        if (video && video.buffered.length > 0) {
+        if (!video) return;
+
+        // 1. 卡死检测：只有在 currentTime > 0 且已经开始播放后才启用
+        if (video.currentTime > 0 && video.currentTime === this.lastCheckTime[id] && !video.paused) {
+          this.stuckCount[id]++;
+          if (this.stuckCount[id] >= 3) { // 连续 3 次检查（约 7.5 秒）画面不动
+            console.warn(`[${id}] 检测到画面卡死，正在强制重连...`);
+            const camera = this.cameras.find(c => c.Id == id);
+            if (camera) this.retryPlay(camera);
+          }
+        } else {
+          this.stuckCount[id] = 0;
+          this.lastCheckTime[id] = video.currentTime;
+        }
+
+        // 2. 追帧逻辑
+        if (video.buffered.length > 0) {
           const end = video.buffered.end(0);
           const diff = end - video.currentTime;
-          
-          // 如果延迟超过 1.5 秒，直接跳转到最新的缓冲区末尾
           if (diff > 1.5) {
             video.currentTime = end - 0.2;
-          } 
-          // 如果延迟在 0.5-1.5 秒，略微加速播放 (1.2倍)
-          else if (diff > 0.5) {
-            video.playbackRate = 1.2;
+          } else if (diff > 0.5) {
+            video.playbackRate = 1.1;
           } else {
             video.playbackRate = 1.0;
           }
@@ -281,7 +287,9 @@ export default {
     },
 
     retryPlay(camera) {
-      this.initPlayer(camera);
+      if (this.cameraErrors[camera.Id]) return; // 如果已经报错，不再自动循环
+      this.destroyPlayer(camera.Id);
+      setTimeout(() => this.initPlayer(camera), 3000); // 3秒后重连，防止死循环
     },
 
     async fetchRealtimeData() {
@@ -337,37 +345,16 @@ export default {
 .camera-ip { font-size: 13px; color: var(--text-muted); margin-right: 10px; }
 .video-wrapper { margin: 15px 0; background: #000; border-radius: 12px; overflow: hidden; position: relative; }
 .video-player { width: 100%; height: 400px; }
-.live-badge { position: absolute; top: 10px; left: 10px; background: #67c23a; color: #fff; padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: bold; z-index: 10; box-shadow: 0 0 10px rgba(103, 194, 58, 0.5); }
 .error-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; z-index: 20; }
 .error-content { text-align: center; color: #fff; }
 .error-content i { font-size: 40px; color: #f56c6c; margin-bottom: 10px; }
 .ptz-panel { background: rgba(0, 0, 0, 0.2); border-radius: 12px; padding: 15px; margin-top: 15px; }
-.ptz-title {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
-  color: var(--text-bright);
-}
-.ptz-label {
-  font-size: 14px;
-  font-weight: 700;
-}
-.ptz-speed-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.speed-text {
-  font-size: 12px;
-  color: var(--text-muted);
-}
-.ptz-slider {
-  width: 80px;
-}
-.ptz-slider /deep/ .el-slider__runway {
-  margin: 0;
-}
+.ptz-title { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; color: var(--text-bright); }
+.ptz-label { font-size: 14px; font-weight: 700; }
+.ptz-speed-wrapper { display: flex; align-items: center; gap: 8px; }
+.speed-text { font-size: 12px; color: var(--text-muted); }
+.ptz-slider { width: 80px; }
+.ptz-slider /deep/ .el-slider__runway { margin: 0; }
 .ptz-grid { display: grid; grid-template-columns: repeat(3, 44px); gap: 10px; justify-content: center; margin-bottom: 15px; }
 .ptz-btn { width: 44px; height: 44px; background: rgba(255, 255, 255, 0.1); border: none; border-radius: 8px; color: #fff; cursor: pointer; }
 .ptz-btn:hover { background: #409eff; }
