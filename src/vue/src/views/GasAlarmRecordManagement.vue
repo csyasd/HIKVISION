@@ -657,11 +657,13 @@ export default {
         // 工单编号选择事件
         handleWorkOrderCodeSelect(item) {
             this.filterWorkOrderCode = item.value;
+            this.queryData();
         },
         
         // 工单内容选择事件
         handleWorkOrderContentSelect(item) {
             this.filterWorkOrderContent = item.value;
+            this.queryData();
         },
         
         // 显示气体曲线

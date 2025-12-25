@@ -31,7 +31,9 @@
                 :fetch-suggestions="queryWorkOrderCode"
                 placeholder="搜索工单编号"
                 clearable
-                @select="handleWorkOrderCodeSelect">
+                @select="handleWorkOrderCodeSelect"
+                @input="queryData"
+                @clear="queryData">
             </el-autocomplete>
             <el-autocomplete
                 style="width: 200px; margin-right: 10px;"
@@ -39,7 +41,9 @@
                 :fetch-suggestions="queryWorkOrderContent"
                 placeholder="搜索工单内容"
                 clearable
-                @select="handleWorkOrderContentSelect">
+                @select="handleWorkOrderContentSelect"
+                @input="queryData"
+                @clear="queryData">
             </el-autocomplete>
             <el-button @click="queryData()">查询</el-button>
             <el-button  @click="clearQuery()">清空</el-button>
@@ -697,11 +701,13 @@ export default {
         // 工单编号选择事件
         handleWorkOrderCodeSelect(item) {
             this.filterWorkOrderCode = item.value;
+            this.queryData();
         },
         
         // 工单内容选择事件
         handleWorkOrderContentSelect(item) {
             this.filterWorkOrderContent = item.value;
+            this.queryData();
         },
 
         // 显示心率曲线
@@ -713,26 +719,57 @@ export default {
 
         // 获取用于绘图的完整心率数据（从作业记录接口获取）
         fetchHeartRateData() {
-            // 使用当前的查询条件，获取作业记录（包含心率）
+            // 构建查询条件，过滤掉无效的查询条件
+            let query = [];
+            
+            // 如果有有效的工单筛选条件，使用它
+            if (this.Query && this.Query.length > 0) {
+                // 过滤掉无效的查询条件（如 "__NO_MATCH__"）
+                query = this.Query.filter(q => {
+                    return q.QueryStr && q.QueryStr !== "__NO_MATCH__" && q.QueryStr.trim() !== "";
+                });
+            }
+            
+            // 如果有工单筛选，使用工单ID
+            if (this.filterWorkOrderCode && this.filterWorkOrderCode.trim()) {
+                // 从工单列表中查找匹配的工单
+                const matchedWorkOrder = this.WorkOrderList.find(wo => wo.Code === this.filterWorkOrderCode.trim());
+                if (matchedWorkOrder) {
+                    query = [{
+                        QueryField: "WorkOrderId",
+                        QueryStr: matchedWorkOrder.Id
+                    }];
+                }
+            }
+            
             var pageData = {
-                Query: this.Query,
+                Query: query,
                 Orderby: [{ SortField: "CreateTime", IsDesc: false }], // 正序
                 CurrentPage: 0,
                 PageNumber: 500, // 获取最近500条记录
             };
 
+            console.log('心率曲线查询参数:', pageData);
+            console.log('原始Query条件:', this.Query);
+
             SelectWorkRecord(pageData).then(res => {
+                console.log('心率曲线返回数据:', res);
                 this.allCurveData = res.data || [];
+                console.log('心率曲线数据条数:', this.allCurveData.length);
                 this.chartLoading = false;
                 if (this.curveDialogVisible) {
                     this.$nextTick(() => {
+                        // 确保图表实例已初始化
+                        if (!this.chartInstance && this.$refs.heartRateChart) {
+                            this.chartInstance = echarts.init(this.$refs.heartRateChart);
+                        }
                         this.updateChart();
                     });
                 }
             }).catch(err => {
                 console.error("加载心率曲线数据失败:", err);
                 this.chartLoading = false;
-                this.$message.error("加载心率曲线数据失败");
+                this.$message.error("加载心率曲线数据失败: " + (err.message || '未知错误'));
             });
         },
 
@@ -773,32 +810,69 @@ export default {
 
         // 更新图表内容
         updateChart() {
-            if (!this.chartInstance || !this.allCurveData.length) return;
+            if (!this.chartInstance) {
+                console.warn('图表实例未初始化');
+                if (this.$refs.heartRateChart) {
+                    this.chartInstance = echarts.init(this.$refs.heartRateChart);
+                } else {
+                    console.error('图表容器不存在');
+                    return;
+                }
+            }
 
-            // 按工姓名人分组
+            if (!this.allCurveData || !this.allCurveData.length) {
+                console.warn('没有心率数据，数据条数:', this.allCurveData ? this.allCurveData.length : 0);
+                // 显示空数据提示
+                this.chartInstance.setOption({
+                    title: {
+                        text: '作业心率变化趋势',
+                        subtext: '暂无数据',
+                        left: 'center',
+                        top: 'center'
+                    }
+                }, true);
+                return;
+            }
+
+            console.log('开始更新图表，数据条数:', this.allCurveData.length);
+
+            // 按工人姓名分组
             const workerGroups = {};
             this.allCurveData.forEach(item => {
                 const name = item.WorkerName || '未知工人';
                 if (!workerGroups[name]) {
                     workerGroups[name] = [];
                 }
+                // 转换时间格式为时间戳（毫秒）
+                let timeValue = item.CreateTime;
+                if (typeof timeValue === 'string') {
+                    timeValue = new Date(timeValue).getTime();
+                }
+                const heartRate = parseInt(item.HeartRate) || 0;
+                
                 workerGroups[name].push({
-                    time: item.CreateTime,
-                    heartRate: parseInt(item.HeartRate) || 0
+                    time: timeValue,
+                    heartRate: heartRate
                 });
             });
 
-            // 获取所有唯一的时间点作为X轴（或者只取最大集合）
-            const allTimes = [...new Set(this.allCurveData.map(item => item.CreateTime))].sort();
+            console.log('工人分组:', Object.keys(workerGroups));
 
             const series = Object.keys(workerGroups).map(name => {
+                const data = workerGroups[name]
+                    .sort((a, b) => a.time - b.time) // 按时间排序
+                    .map(d => [d.time, d.heartRate]);
+                
+                console.log(`工人 ${name} 的数据点数量:`, data.length);
+                
                 return {
                     name: name,
                     type: 'line',
                     smooth: true,
-                    showSymbol: false,
-                    // 映射数据到时间轴
-                    data: workerGroups[name].map(d => [d.time, d.heartRate])
+                    showSymbol: true,
+                    symbolSize: 4,
+                    // 映射数据到时间轴，格式：[时间戳(毫秒), 心率值]
+                    data: data
                 };
             });
 

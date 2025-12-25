@@ -21,6 +21,9 @@ namespace YixiaoAdmin.WebApi.Services
         private readonly IWorkRecordServices _workRecordService;
         private readonly IGasAlarmRecordServices _gasAlarmRecordService;
         private readonly IWorkerStatusRecordServices _workerStatusRecordService;
+        private readonly IBraceletAbnormalServices _braceletAbnormalService;
+        private readonly IGasAbnormalServices _gasAbnormalService;
+        private readonly IAbnormalConfigServices _abnormalConfigService;
 
         public S7DataSaveService(
             ILogger<S7DataSaveService> logger,
@@ -29,7 +32,10 @@ namespace YixiaoAdmin.WebApi.Services
             IWorkBraceletServices workBraceletService,
             IWorkRecordServices workRecordService,
             IGasAlarmRecordServices gasAlarmRecordService,
-            IWorkerStatusRecordServices workerStatusRecordService)
+            IWorkerStatusRecordServices workerStatusRecordService,
+            IBraceletAbnormalServices braceletAbnormalService,
+            IGasAbnormalServices gasAbnormalService,
+            IAbnormalConfigServices abnormalConfigService)
         {
             _logger = logger;
             _workOrderService = workOrderService;
@@ -38,6 +44,9 @@ namespace YixiaoAdmin.WebApi.Services
             _workRecordService = workRecordService;
             _gasAlarmRecordService = gasAlarmRecordService;
             _workerStatusRecordService = workerStatusRecordService;
+            _braceletAbnormalService = braceletAbnormalService;
+            _gasAbnormalService = gasAbnormalService;
+            _abnormalConfigService = abnormalConfigService;
         }
 
         /// <summary>
@@ -81,10 +90,16 @@ namespace YixiaoAdmin.WebApi.Services
                 await ProcessWorkBracelets(order, workOrder, data);
 
                 // 4. 处理作业记录管理
-                // await ProcessWorkRecords(order, workOrder, data);
+                await ProcessWorkRecords(order, workOrder, data);
 
                 // 5. 处理气体报警记录
                 await ProcessGasAlarmRecords(workOrder, data, device);
+
+                // 6. 处理手环异常检测
+                await ProcessBraceletAbnormal(order, workOrder, data);
+
+                // 7. 处理气体异常检测
+                await ProcessGasAbnormal(workOrder, data);
 
                 _logger.LogDebug($"[数据保存] 数据保存完成 - DeviceId: {data.DeviceId}");
             }
@@ -283,8 +298,8 @@ namespace YixiaoAdmin.WebApi.Services
                         // 更新心率
                         bracelet.HeartRate = heartRate > 0 ? heartRate.ToString() : bracelet.HeartRate;
                         
-                        // 处理进场时间：如果状态变为2（刷卡成功/进场），设置进场时间
-                        if (oldStatus != 2 && workerStatus == 2)
+                        // 处理进场时间：如果状态变为3（进场），设置进场时间
+                        if (oldStatus != 3 && workerStatus == 3)
                         {
                             bracelet.EntryTime = currentTime;
                             _logger.LogDebug($"[手环处理] 工人进场，设置进场时间: {currentTime}");
@@ -435,6 +450,273 @@ namespace YixiaoAdmin.WebApi.Services
             {
                 _logger.LogError(ex, $"[气体报警异常] 处理气体报警记录时发生异常");
             }
+        }
+
+        /// <summary>
+        /// 处理手环异常检测
+        /// </summary>
+        private async Task ProcessBraceletAbnormal(ConstructionOrder order, WorkOrder workOrder, S7DataCollectionModel data)
+        {
+            try
+            {
+                // 获取心率正常范围配置
+                var heartRateConfig = await GetAbnormalConfig("HeartRate");
+                if (heartRateConfig == null || !heartRateConfig.IsEnabled)
+                {
+                    return; // 未配置或未启用，不进行异常检测
+                }
+
+                for (int i = 1; i <= 10; i++)
+                {
+                    var rawWorkerName = order.Workers_Name[i];
+                    if (!IsValidString(rawWorkerName))
+                    {
+                        continue;
+                    }
+
+                    var workerName = rawWorkerName.Trim();
+                    var workerStatus = order.Workers_Status[i];
+                    var heartRate = order.Heart_Rate[i];
+
+                    if (heartRate <= 0)
+                    {
+                        continue; // 心率无效，跳过
+                    }
+
+                    // 检查心率是否在正常范围内
+                    bool isNormal = heartRate >= heartRateConfig.MinValue && heartRate <= heartRateConfig.MaxValue;
+
+                    // 获取该工人的最新一条异常记录
+                    var lastAbnormalQuery = await _braceletAbnormalService.Query(b => 
+                        b.WorkOrderId == workOrder.Id && b.WorkerName == workerName);
+                    var lastAbnormal = lastAbnormalQuery.OrderByDescending(b => b.CreateTime).FirstOrDefault();
+
+                    if (!isNormal)
+                    {
+                        // 心率异常，每次采集都存储异常记录
+                        var abnormalRecord = new BraceletAbnormal
+                        {
+                            WorkOrderId = workOrder.Id,
+                            WorkerName = workerName,
+                            HeartRate = heartRate.ToString(),
+                            EntryExitStatus = workerStatus.ToString(),
+                            CreateTime = DateTime.Now // 确保使用当前时间
+                        };
+                        await _braceletAbnormalService.Add(abnormalRecord);
+                        _logger.LogWarning($"[手环异常] 检测到心率异常 - 工人: {workerName}, 心率: {heartRate}, 正常范围: [{heartRateConfig.MinValue}-{heartRateConfig.MaxValue}]");
+                    }
+                    else
+                    {
+                        // 心率正常，只有从异常恢复到正常时才存储一条正常记录
+                        if (lastAbnormal != null && !IsHeartRateNormal(lastAbnormal.HeartRate, heartRateConfig))
+                        {
+                            // 上次记录是异常的，现在恢复正常了，需要存储正常记录
+                            var normalRecord = new BraceletAbnormal
+                            {
+                                WorkOrderId = workOrder.Id,
+                                WorkerName = workerName,
+                                HeartRate = heartRate.ToString(),
+                                EntryExitStatus = workerStatus.ToString(),
+                                CreateTime = DateTime.Now // 确保使用当前时间
+                            };
+                            await _braceletAbnormalService.Add(normalRecord);
+                            _logger.LogInformation($"[手环异常] 心率恢复正常 - 工人: {workerName}, 心率: {heartRate}");
+                        }
+                        // 如果上次记录也是正常的，不重复存储
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"[手环异常检测异常] 处理手环异常检测时发生异常");
+            }
+        }
+
+        /// <summary>
+        /// 处理气体异常检测
+        /// </summary>
+        private async Task ProcessGasAbnormal(WorkOrder workOrder, S7DataCollectionModel data)
+        {
+            try
+            {
+                // 获取4种气体的正常范围配置
+                var gas1Config = await GetAbnormalConfig("Gas1");
+                var gas2Config = await GetAbnormalConfig("Gas2");
+                var gas3Config = await GetAbnormalConfig("Gas3");
+                var gas4Config = await GetAbnormalConfig("Gas4");
+
+                // 检查是否有任何气体异常
+                bool hasAbnormal = false;
+                bool wasAbnormal = false;
+
+                // 检查当前数据是否异常
+                if (gas1Config != null && gas1Config.IsEnabled)
+                {
+                    float gas1Value = data.Gas_Alarm[1];
+                    if (gas1Value < gas1Config.MinValue || gas1Value > gas1Config.MaxValue)
+                    {
+                        hasAbnormal = true;
+                    }
+                }
+                if (gas2Config != null && gas2Config.IsEnabled)
+                {
+                    float gas2Value = data.Gas_Alarm[2];
+                    if (gas2Value < gas2Config.MinValue || gas2Value > gas2Config.MaxValue)
+                    {
+                        hasAbnormal = true;
+                    }
+                }
+                if (gas3Config != null && gas3Config.IsEnabled)
+                {
+                    float gas3Value = data.Gas_Alarm[3];
+                    if (gas3Value < gas3Config.MinValue || gas3Value > gas3Config.MaxValue)
+                    {
+                        hasAbnormal = true;
+                    }
+                }
+                if (gas4Config != null && gas4Config.IsEnabled)
+                {
+                    float gas4Value = data.Gas_Alarm[4];
+                    if (gas4Value < gas4Config.MinValue || gas4Value > gas4Config.MaxValue)
+                    {
+                        hasAbnormal = true;
+                    }
+                }
+
+                // 获取最新一条异常记录
+                var lastAbnormalQuery = await _gasAbnormalService.Query(g => g.WorkOrderId == workOrder.Id);
+                var lastAbnormal = lastAbnormalQuery.OrderByDescending(g => g.CreateTime).FirstOrDefault();
+
+                // 检查上次记录是否异常
+                if (lastAbnormal != null)
+                {
+                    wasAbnormal = IsGasAbnormal(lastAbnormal, gas1Config, gas2Config, gas3Config, gas4Config);
+                }
+
+                if (hasAbnormal)
+                {
+                    // 当前数据异常，每次采集都存储异常记录
+                    var abnormalRecord = new GasAbnormal
+                    {
+                        WorkOrderId = workOrder.Id,
+                        Gas1 = data.Gas_Alarm[1],
+                        Gas2 = data.Gas_Alarm[2],
+                        Gas3 = data.Gas_Alarm[3],
+                        Gas4 = data.Gas_Alarm[4],
+                        Gas5 = data.Gas_Alarm[5],
+                        Gas6 = data.Gas_Alarm[6],
+                        Gas7 = data.Gas_Alarm[7],
+                        Gas8 = data.Gas_Alarm[8],
+                        Gas9 = data.Gas_Alarm[9],
+                        Gas10 = data.Gas_Alarm[10],
+                        CreateTime = DateTime.Now // 确保使用当前时间
+                    };
+                    await _gasAbnormalService.Add(abnormalRecord);
+                    _logger.LogWarning($"[气体异常] 检测到气体异常 - 工单: {workOrder.Code}");
+                }
+                else
+                {
+                    // 当前数据正常，只有从异常恢复到正常时才存储一条正常记录
+                    if (lastAbnormal != null && wasAbnormal)
+                    {
+                        // 上次记录是异常的，现在恢复正常了，需要存储正常记录
+                        var normalRecord = new GasAbnormal
+                        {
+                            WorkOrderId = workOrder.Id,
+                            Gas1 = data.Gas_Alarm[1],
+                            Gas2 = data.Gas_Alarm[2],
+                            Gas3 = data.Gas_Alarm[3],
+                            Gas4 = data.Gas_Alarm[4],
+                            Gas5 = data.Gas_Alarm[5],
+                            Gas6 = data.Gas_Alarm[6],
+                            Gas7 = data.Gas_Alarm[7],
+                            Gas8 = data.Gas_Alarm[8],
+                            Gas9 = data.Gas_Alarm[9],
+                            Gas10 = data.Gas_Alarm[10],
+                            CreateTime = DateTime.Now // 确保使用当前时间
+                        };
+                        await _gasAbnormalService.Add(normalRecord);
+                        _logger.LogInformation($"[气体异常] 气体恢复正常 - 工单: {workOrder.Code}");
+                    }
+                    // 如果上次记录也是正常的，不重复存储
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"[气体异常检测异常] 处理气体异常检测时发生异常");
+            }
+        }
+
+        /// <summary>
+        /// 获取异常配置
+        /// </summary>
+        private async Task<AbnormalConfig> GetAbnormalConfig(string configName)
+        {
+            try
+            {
+                var configs = await _abnormalConfigService.Query(c => c.ConfigName == configName);
+                return configs.FirstOrDefault();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"[配置获取异常] 获取异常配置时发生异常 - ConfigName: {configName}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 检查心率是否正常
+        /// </summary>
+        private bool IsHeartRateNormal(string heartRateStr, AbnormalConfig config)
+        {
+            if (string.IsNullOrWhiteSpace(heartRateStr) || config == null)
+            {
+                return true; // 无法判断，默认正常
+            }
+
+            if (int.TryParse(heartRateStr, out int heartRate))
+            {
+                return heartRate >= config.MinValue && heartRate <= config.MaxValue;
+            }
+
+            return true; // 解析失败，默认正常
+        }
+
+        /// <summary>
+        /// 检查气体是否异常
+        /// </summary>
+        private bool IsGasAbnormal(GasAbnormal record, AbnormalConfig gas1Config, AbnormalConfig gas2Config, AbnormalConfig gas3Config, AbnormalConfig gas4Config)
+        {
+            if (gas1Config != null && gas1Config.IsEnabled)
+            {
+                if (record.Gas1 < gas1Config.MinValue || record.Gas1 > gas1Config.MaxValue)
+                {
+                    return true;
+                }
+            }
+            if (gas2Config != null && gas2Config.IsEnabled)
+            {
+                if (record.Gas2 < gas2Config.MinValue || record.Gas2 > gas2Config.MaxValue)
+                {
+                    return true;
+                }
+            }
+            if (gas3Config != null && gas3Config.IsEnabled)
+            {
+                if (record.Gas3 < gas3Config.MinValue || record.Gas3 > gas3Config.MaxValue)
+                {
+                    return true;
+                }
+            }
+            if (gas4Config != null && gas4Config.IsEnabled)
+            {
+                if (record.Gas4 < gas4Config.MinValue || record.Gas4 > gas4Config.MaxValue)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 }

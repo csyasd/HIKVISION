@@ -22,6 +22,58 @@ namespace YixiaoAdmin.EntityFrameworkCore.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder, 1L, 1);
 
+            modelBuilder.Entity("YixiaoAdmin.Models.AbnormalConfig", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("ConfigName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ConfigType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreateUsername")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<float>("MaxValue")
+                        .HasColumnType("real");
+
+                    b.Property<float>("MinValue")
+                        .HasColumnType("real");
+
+                    b.Property<DateTime>("ModificationTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ModificationUsername")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ParentId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("SortCode")
+                        .HasColumnType("int");
+
+                    b.Property<string>("State")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Type")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AbnormalConfig");
+                });
+
             modelBuilder.Entity("YixiaoAdmin.Models.Bracelet", b =>
                 {
                     b.Property<string>("Id")
@@ -66,6 +118,57 @@ namespace YixiaoAdmin.EntityFrameworkCore.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Bracelet");
+                });
+
+            modelBuilder.Entity("YixiaoAdmin.Models.BraceletAbnormal", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreateUsername")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EntryExitStatus")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("HeartRate")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("ModificationTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ModificationUsername")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ParentId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("SortCode")
+                        .HasColumnType("int");
+
+                    b.Property<string>("State")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Type")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("WorkOrderId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("WorkerName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WorkOrderId");
+
+                    b.ToTable("BraceletAbnormal");
                 });
 
             modelBuilder.Entity("YixiaoAdmin.Models.Camera", b =>
@@ -229,6 +332,78 @@ namespace YixiaoAdmin.EntityFrameworkCore.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Device");
+                });
+
+            modelBuilder.Entity("YixiaoAdmin.Models.GasAbnormal", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreateUsername")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<float>("Gas1")
+                        .HasColumnType("real");
+
+                    b.Property<float>("Gas10")
+                        .HasColumnType("real");
+
+                    b.Property<float>("Gas2")
+                        .HasColumnType("real");
+
+                    b.Property<float>("Gas3")
+                        .HasColumnType("real");
+
+                    b.Property<float>("Gas4")
+                        .HasColumnType("real");
+
+                    b.Property<float>("Gas5")
+                        .HasColumnType("real");
+
+                    b.Property<float>("Gas6")
+                        .HasColumnType("real");
+
+                    b.Property<float>("Gas7")
+                        .HasColumnType("real");
+
+                    b.Property<float>("Gas8")
+                        .HasColumnType("real");
+
+                    b.Property<float>("Gas9")
+                        .HasColumnType("real");
+
+                    b.Property<DateTime>("ModificationTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ModificationUsername")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ParentId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("SortCode")
+                        .HasColumnType("int");
+
+                    b.Property<string>("State")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Type")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("WorkOrderId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WorkOrderId");
+
+                    b.ToTable("GasAbnormal");
                 });
 
             modelBuilder.Entity("YixiaoAdmin.Models.GasAlarmRecord", b =>
@@ -740,6 +915,15 @@ namespace YixiaoAdmin.EntityFrameworkCore.Migrations
                     b.ToTable("WorkRecord");
                 });
 
+            modelBuilder.Entity("YixiaoAdmin.Models.BraceletAbnormal", b =>
+                {
+                    b.HasOne("YixiaoAdmin.Models.WorkOrder", "WorkOrder")
+                        .WithMany()
+                        .HasForeignKey("WorkOrderId");
+
+                    b.Navigation("WorkOrder");
+                });
+
             modelBuilder.Entity("YixiaoAdmin.Models.Camera", b =>
                 {
                     b.HasOne("YixiaoAdmin.Models.Device", "Device")
@@ -756,6 +940,15 @@ namespace YixiaoAdmin.EntityFrameworkCore.Migrations
                         .HasForeignKey("CameraId");
 
                     b.Navigation("Camera");
+                });
+
+            modelBuilder.Entity("YixiaoAdmin.Models.GasAbnormal", b =>
+                {
+                    b.HasOne("YixiaoAdmin.Models.WorkOrder", "WorkOrder")
+                        .WithMany()
+                        .HasForeignKey("WorkOrderId");
+
+                    b.Navigation("WorkOrder");
                 });
 
             modelBuilder.Entity("YixiaoAdmin.Models.GasAlarmRecord", b =>

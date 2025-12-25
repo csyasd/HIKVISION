@@ -762,3 +762,16 @@ export const SelectWorkerStatusRecord = params => { return axios.post(`${BaseUrl
 export const AddWorkerStatusRecord = params => { return axios.post(`${BaseUrl}WorkerStatusRecord`, params).then(res => res.data); };
 export const EditWorkerStatusRecord = params => { return axios.put(`${BaseUrl}WorkerStatusRecord`, params).then(res => res.data); };
 export const DeleteWorkerStatusRecord = params => { return axios.delete(`${BaseUrl}WorkerStatusRecord?Id=` + params.Id).then(res => res.data); };
+
+export const SelectBraceletAbnormal = params => { return axios.post(`${BaseUrl}BraceletAbnormal/Pages`, params).then(res => res.data); };
+export const AddBraceletAbnormal = params => { return axios.post(`${BaseUrl}BraceletAbnormal`, params).then(res => res.data); };
+export const EditBraceletAbnormal = params => { return axios.put(`${BaseUrl}BraceletAbnormal`, params).then(res => res.data); };
+export const DeleteBraceletAbnormal = params => { return axios.delete(`${BaseUrl}BraceletAbnormal?Id=` + params.Id).then(res => res.data); };
+
+export const SelectGasAbnormal = params => { return axios.post(`${BaseUrl}GasAbnormal/Pages`, params).then(res => res.data); };
+export const AddGasAbnormal = params => { return axios.post(`${BaseUrl}GasAbnormal`, params).then(res => res.data); };
+export const EditGasAbnormal = params => { return axios.put(`${BaseUrl}GasAbnormal`, params).then(res => res.data); };
+export const DeleteGasAbnormal = params => { return axios.delete(`${BaseUrl}GasAbnormal?Id=` + params.Id).then(res => res.data); };
+
+export const GetAbnormalConfig = params => { return axios.get(`${BaseUrl}AbnormalConfig/GetByConfigName?configName=` + params).then(res => res.data); };
+export const SaveAbnormalConfig = params => { return axios.post(`${BaseUrl}AbnormalConfig`, params).then(res => res.data); };

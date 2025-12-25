@@ -45,6 +45,8 @@
                         <!-- <el-menu-item index="/home/WorkRecordManagement">作业记录管理</el-menu-item> -->
                         <el-menu-item index="/home/WorkerStatusRecordManagement">工人进出状态记录</el-menu-item>
                         <el-menu-item index="/home/GasAlarmRecordManagement">气体报警记录</el-menu-item>
+                        <el-menu-item index="/home/BraceletAbnormalManagement">心率异常记录</el-menu-item>
+                        <el-menu-item index="/home/GasAbnormalManagement">气体异常记录</el-menu-item>
                     </el-submenu>
 
                     <!-- 作业管理 -->

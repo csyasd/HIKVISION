@@ -44,6 +44,7 @@
             <el-button @click="queryData()">查询</el-button>
             <el-button @click="clearQuery()">清空</el-button>
             <el-button type="danger" @click="refreshTable()">刷新列表</el-button>
+            <el-button type="primary" @click="showGasConfigDialog()" icon="el-icon-setting">设置气体含量范围</el-button>
         </el-col>
         <el-table 
             :data="tableData" 
@@ -52,6 +53,7 @@
             @sort-change="sortChange" 
             :default-sort="{ prop: 'CreateTime', order: 'descending' }"  
             v-loading="operationDisabled"
+            :row-class-name="tableRowClassName"
         >
             <el-table-column type="index" width="55"></el-table-column>
             
@@ -60,24 +62,36 @@
                     <div>{{ WorkOrderList.find(x => x.Id == scope.row.WorkOrderId)?.Code || '未分配' }}</div>
                 </template>
             </el-table-column>
-
-            <el-table-column :show-overflow-tooltip="true" prop="WorkerName" label="工人姓名" width="150" ></el-table-column>
     
-            <el-table-column :show-overflow-tooltip="true" prop="HeartRate" label="心率" width="100" ></el-table-column>
-    
-            <el-table-column :show-overflow-tooltip="true" prop="EntryExitStatus" label="进离场状态" width="150" >
+            <el-table-column :show-overflow-tooltip="true" prop="Gas1" label="第一种气体含量" width="150" >
                 <template slot-scope="scope">
-                    <el-tag>
-                        {{ getEntryExitStatusText(scope.row.EntryExitStatus) }}
-                    </el-tag>
+                    {{ scope.row.Gas1 ? scope.row.Gas1.toFixed(2) : '0.00' }}
+                </template>
+            </el-table-column>
+    
+            <el-table-column :show-overflow-tooltip="true" prop="Gas2" label="第二种气体含量" width="150" >
+                <template slot-scope="scope">
+                    {{ scope.row.Gas2 ? scope.row.Gas2.toFixed(2) : '0.00' }}
+                </template>
+            </el-table-column>
+    
+            <el-table-column :show-overflow-tooltip="true" prop="Gas3" label="第三种气体含量" width="150" >
+                <template slot-scope="scope">
+                    {{ scope.row.Gas3 ? scope.row.Gas3.toFixed(2) : '0.00' }}
+                </template>
+            </el-table-column>
+    
+            <el-table-column :show-overflow-tooltip="true" prop="Gas4" label="第四种气体含量" width="150" >
+                <template slot-scope="scope">
+                    {{ scope.row.Gas4 ? scope.row.Gas4.toFixed(2) : '0.00' }}
                 </template>
             </el-table-column>
     
             <el-table-column
                 :show-overflow-tooltip="true"
                 prop="CreateTime"
-                label="记录时间"
-                width="200"
+                label="创建时间"
+                width="220"
                 sortable="custom"
             ></el-table-column>
         </el-table>
@@ -93,70 +107,53 @@
             ></el-pagination>
         </div>
         
-        <el-dialog title="添加状态记录" :visible.sync="addDialogFormVisible">
-            <el-form :model="addForm">
-                <el-form-item label="施工工单" :label-width="formLabelWidth">
-                    <el-select v-model="addForm.WorkOrderId" placeholder="请选择工单" filterable style="width: 100%;">
-                        <el-option v-for="item in WorkOrderList" :key="item.Id" :label="item.Code" :value="item.Id"></el-option>
-                    </el-select>
+        <!-- 设置气体含量范围对话框 -->
+        <el-dialog title="设置气体含量范围" :visible.sync="gasConfigDialogVisible" width="600px">
+            <el-form :model="gasConfigs" label-width="150px">
+                <el-form-item label="第一种气体 - 最小值">
+                    <el-input-number v-model="gasConfigs.Gas1.MinValue" :min="0" :precision="2" style="width: 100%;"></el-input-number>
                 </el-form-item>
-                <el-form-item label="工人姓名" :label-width="formLabelWidth">
-                    <el-input v-model="addForm.WorkerName" autocomplete="off" placeholder="请输入工人姓名"></el-input>
+                <el-form-item label="第一种气体 - 最大值">
+                    <el-input-number v-model="gasConfigs.Gas1.MaxValue" :min="0" :precision="2" style="width: 100%;"></el-input-number>
                 </el-form-item>
-                <el-form-item label="心率" :label-width="formLabelWidth">
-                    <el-input v-model="addForm.HeartRate" autocomplete="off" placeholder="请输入心率"></el-input>
+                
+                <el-divider></el-divider>
+                
+                <el-form-item label="第二种气体 - 最小值">
+                    <el-input-number v-model="gasConfigs.Gas2.MinValue" :min="0" :precision="2" style="width: 100%;"></el-input-number>
                 </el-form-item>
-                <el-form-item label="进离场状态" :label-width="formLabelWidth">
-                    <el-select v-model="addForm.EntryExitStatus" placeholder="请选择状态" style="width: 100%;">
-                        <el-option label="未进入" value="0"></el-option>
-                        <el-option label="申请进入" value="1"></el-option>
-                        <el-option label="刷卡成功" value="2"></el-option>
-                        <el-option label="进入" value="3"></el-option>
-                        <el-option label="申请签出" value="4"></el-option>
-                        <el-option label="已经签出" value="5"></el-option>
-                    </el-select>
+                <el-form-item label="第二种气体 - 最大值">
+                    <el-input-number v-model="gasConfigs.Gas2.MaxValue" :min="0" :precision="2" style="width: 100%;"></el-input-number>
                 </el-form-item>
-            </el-form>
-            <div slot="footer" class="dialog-footer">
-                <el-button @click="addDialogFormVisible = false">取 消</el-button>
-                <el-button type="primary" @click="AddConfirm()" :disabled = "operationDisabled">确 定</el-button>
-            </div>
-        </el-dialog>
-
-        <el-dialog title="编辑状态记录" :visible.sync="editDialogFormVisible">
-            <el-form :model="editForm">
-                <el-form-item label="施工工单" :label-width="formLabelWidth">
-                    <el-select v-model="editForm.WorkOrderId" placeholder="请选择工单" filterable style="width: 100%;">
-                        <el-option v-for="item in WorkOrderList" :key="item.Id" :label="item.Code" :value="item.Id"></el-option>
-                    </el-select>
+                
+                <el-divider></el-divider>
+                
+                <el-form-item label="第三种气体 - 最小值">
+                    <el-input-number v-model="gasConfigs.Gas3.MinValue" :min="0" :precision="2" style="width: 100%;"></el-input-number>
                 </el-form-item>
-                <el-form-item label="工人姓名" :label-width="formLabelWidth">
-                    <el-input v-model="editForm.WorkerName" autocomplete="off" placeholder="请输入工人姓名"></el-input>
+                <el-form-item label="第三种气体 - 最大值">
+                    <el-input-number v-model="gasConfigs.Gas3.MaxValue" :min="0" :precision="2" style="width: 100%;"></el-input-number>
                 </el-form-item>
-                <el-form-item label="心率" :label-width="formLabelWidth">
-                    <el-input v-model="editForm.HeartRate" autocomplete="off" placeholder="请输入心率"></el-input>
+                
+                <el-divider></el-divider>
+                
+                <el-form-item label="第四种气体 - 最小值">
+                    <el-input-number v-model="gasConfigs.Gas4.MinValue" :min="0" :precision="2" style="width: 100%;"></el-input-number>
                 </el-form-item>
-                <el-form-item label="进离场状态" :label-width="formLabelWidth">
-                    <el-select v-model="editForm.EntryExitStatus" placeholder="请选择状态" style="width: 100%;">
-                        <el-option label="未进入" value="0"></el-option>
-                        <el-option label="申请进入" value="1"></el-option>
-                        <el-option label="刷卡成功" value="2"></el-option>
-                        <el-option label="进入" value="3"></el-option>
-                        <el-option label="申请签出" value="4"></el-option>
-                        <el-option label="已经签出" value="5"></el-option>
-                    </el-select>
+                <el-form-item label="第四种气体 - 最大值">
+                    <el-input-number v-model="gasConfigs.Gas4.MaxValue" :min="0" :precision="2" style="width: 100%;"></el-input-number>
                 </el-form-item>
             </el-form>
             <div slot="footer" class="dialog-footer">
-                <el-button @click="editDialogFormVisible = false">取 消</el-button>
-                <el-button type="primary" @click="EditConfirm()" :disabled = "operationDisabled">确 定</el-button>
+                <el-button @click="gasConfigDialogVisible = false">取 消</el-button>
+                <el-button type="primary" @click="saveGasConfigs()" :disabled="operationDisabled">确 定</el-button>
             </div>
         </el-dialog>
     </div>
 </template>
 
 <script>
-import { SelectWorkerStatusRecord, AddWorkerStatusRecord, EditWorkerStatusRecord, DeleteWorkerStatusRecord, SelectWorkOrder, SelectALLDevice } from "../api/api";
+import { SelectGasAbnormal, SelectWorkOrder, SelectALLDevice, GetAbnormalConfig, SaveAbnormalConfig } from "../api/api";
 
 export default {
     data() {
@@ -166,23 +163,7 @@ export default {
             pageSize: 10,
             pageSizes: [10, 20, 50, 100],
             totalNumber: 0,
-            addDialogFormVisible: false,
-            editDialogFormVisible: false,
-            addForm: {
-               WorkerName: "",
-               HeartRate: "",
-               WorkOrderId: "",
-               EntryExitStatus: "",
-            },
-            editForm: {
-               Id: "",
-               WorkerName: "",
-               HeartRate: "",
-               WorkOrderId: "",
-               EntryExitStatus: "",
-            },
             operationDisabled: false,
-            formLabelWidth: "120px",
             WorkOrderList: [],
             DeviceList: [],
             Query: [],
@@ -190,12 +171,18 @@ export default {
             filterDeviceId: null,
             filterWorkOrderCode: "",
             filterWorkOrderContent: "",
+            gasConfigDialogVisible: false,
+            gasConfigs: {
+                Gas1: { ConfigType: "Gas", ConfigName: "Gas1", MinValue: 0, MaxValue: 100, IsEnabled: true },
+                Gas2: { ConfigType: "Gas", ConfigName: "Gas2", MinValue: 0, MaxValue: 100, IsEnabled: true },
+                Gas3: { ConfigType: "Gas", ConfigName: "Gas3", MinValue: 0, MaxValue: 100, IsEnabled: true },
+                Gas4: { ConfigType: "Gas", ConfigName: "Gas4", MinValue: 0, MaxValue: 100, IsEnabled: true }
+            }
         };
     },
     async mounted() {
         this.DeviceList = await SelectALLDevice();
         
-        // 默认选择在线设备的第一个
         const onlineDevices = this.DeviceList.filter(d => d.OnlineStatus === '在线');
         if (onlineDevices.length > 0) {
             this.filterDeviceId = onlineDevices[0].Id;
@@ -203,6 +190,7 @@ export default {
         
         await this.loadWorkOrderList();
         this.setDefaultWorkOrder();
+        this.loadGasConfigs();
         this.getTableData();
     },
     methods: {
@@ -210,7 +198,6 @@ export default {
             const res = await SelectWorkOrder({ Query: [], Orderby: [], CurrentPage: 0, PageNumber: 1000 });
             this.WorkOrderList = res.data || [];
         },
-        // 设置默认工单（工单状态为开始的第一个）
         setDefaultWorkOrder() {
             const filteredWorkOrders = this.getFilteredWorkOrders();
             const startedWorkOrder = filteredWorkOrders.find(wo => wo.Status === 1);
@@ -222,12 +209,94 @@ export default {
                 this.filterWorkOrderContent = "";
             }
         },
-        // 获取当前设备对应的工单列表
         getFilteredWorkOrders() {
             if (this.filterDeviceId) {
                 return this.WorkOrderList.filter(wo => wo.DeviceId === this.filterDeviceId);
             }
             return this.WorkOrderList;
+        },
+        async loadGasConfigs() {
+            try {
+                const configs = await Promise.all([
+                    GetAbnormalConfig("Gas1"),
+                    GetAbnormalConfig("Gas2"),
+                    GetAbnormalConfig("Gas3"),
+                    GetAbnormalConfig("Gas4")
+                ]);
+                
+                if (configs[0]) {
+                    this.gasConfigs.Gas1 = {
+                        ConfigType: configs[0].ConfigType || "Gas",
+                        ConfigName: configs[0].ConfigName || "Gas1",
+                        MinValue: configs[0].MinValue || 0,
+                        MaxValue: configs[0].MaxValue || 100,
+                        IsEnabled: configs[0].IsEnabled !== undefined ? configs[0].IsEnabled : true
+                    };
+                }
+                if (configs[1]) {
+                    this.gasConfigs.Gas2 = {
+                        ConfigType: configs[1].ConfigType || "Gas",
+                        ConfigName: configs[1].ConfigName || "Gas2",
+                        MinValue: configs[1].MinValue || 0,
+                        MaxValue: configs[1].MaxValue || 100,
+                        IsEnabled: configs[1].IsEnabled !== undefined ? configs[1].IsEnabled : true
+                    };
+                }
+                if (configs[2]) {
+                    this.gasConfigs.Gas3 = {
+                        ConfigType: configs[2].ConfigType || "Gas",
+                        ConfigName: configs[2].ConfigName || "Gas3",
+                        MinValue: configs[2].MinValue || 0,
+                        MaxValue: configs[2].MaxValue || 100,
+                        IsEnabled: configs[2].IsEnabled !== undefined ? configs[2].IsEnabled : true
+                    };
+                }
+                if (configs[3]) {
+                    this.gasConfigs.Gas4 = {
+                        ConfigType: configs[3].ConfigType || "Gas",
+                        ConfigName: configs[3].ConfigName || "Gas4",
+                        MinValue: configs[3].MinValue || 0,
+                        MaxValue: configs[3].MaxValue || 100,
+                        IsEnabled: configs[3].IsEnabled !== undefined ? configs[3].IsEnabled : true
+                    };
+                }
+            } catch (error) {
+                console.error("加载气体配置失败:", error);
+            }
+        },
+        showGasConfigDialog() {
+            this.loadGasConfigs();
+            this.gasConfigDialogVisible = true;
+        },
+        async saveGasConfigs() {
+            // 验证配置
+            for (let i = 1; i <= 4; i++) {
+                const config = this.gasConfigs[`Gas${i}`];
+                // 确保启用检测默认为true
+                config.IsEnabled = true;
+                if (config.MinValue >= config.MaxValue) {
+                    this.$message.error(`第${i}种气体的最小值必须小于最大值`);
+                    return;
+                }
+            }
+            
+            this.operationDisabled = true;
+            try {
+                const promises = [
+                    SaveAbnormalConfig(this.gasConfigs.Gas1),
+                    SaveAbnormalConfig(this.gasConfigs.Gas2),
+                    SaveAbnormalConfig(this.gasConfigs.Gas3),
+                    SaveAbnormalConfig(this.gasConfigs.Gas4)
+                ];
+                
+                await Promise.all(promises);
+                this.$message.success("保存成功");
+                this.gasConfigDialogVisible = false;
+            } catch (error) {
+                this.$message.error("保存失败");
+            } finally {
+                this.operationDisabled = false;
+            }
         },
         getTableData() {
             this.operationDisabled = true;
@@ -235,19 +304,16 @@ export default {
             
             let filteredWorkOrders = [...this.WorkOrderList];
             
-            // 设备筛选
             if (this.filterDeviceId) {
                 filteredWorkOrders = filteredWorkOrders.filter(wo => wo.DeviceId === this.filterDeviceId);
             }
             
-            // 工单编号筛选
             if (this.filterWorkOrderCode && this.filterWorkOrderCode.trim()) {
                 filteredWorkOrders = filteredWorkOrders.filter(wo => 
                     wo.Code && wo.Code.includes(this.filterWorkOrderCode.trim())
                 );
             }
             
-            // 工单内容筛选
             if (this.filterWorkOrderContent && this.filterWorkOrderContent.trim()) {
                 filteredWorkOrders = filteredWorkOrders.filter(wo => 
                     wo.Content && wo.Content.includes(this.filterWorkOrderContent.trim())
@@ -261,7 +327,6 @@ export default {
                     QueryStr: workOrderIds.join(","),
                 });
             } else {
-                // 如果没有匹配的工单，返回空结果
                 this.Query.push({
                     QueryField: "WorkOrderId",
                     QueryStr: "__NO_MATCH__",
@@ -275,7 +340,7 @@ export default {
                 PageNumber: this.pageSize,
             };
 
-            SelectWorkerStatusRecord(pageData).then(res => {
+            SelectGasAbnormal(pageData).then(res => {
                 this.tableData = res.data || [];
                 this.totalNumber = res.count || 0;
                 
@@ -311,57 +376,6 @@ export default {
         refreshTable() {
             this.getTableData();
         },
-        changeDialogFormVisible() {
-            this.addDialogFormVisible = true;
-        },
-        AddConfirm() {
-            this.operationDisabled = true;
-            AddWorkerStatusRecord(this.addForm).then(res => {
-                if (res) {
-                    this.$message.success("添加成功");
-                    this.addDialogFormVisible = false;
-                    this.addForm = { WorkerName: "", HeartRate: "", WorkOrderId: "", EntryExitStatus: "" };
-                    this.getTableData();
-                }
-                this.operationDisabled = false;
-            }).catch(() => {
-                this.operationDisabled = false;
-                this.$message.error("添加失败");
-            });
-        },
-        handleEdit(row) {
-            this.editForm = { ...row };
-            this.editDialogFormVisible = true;
-        },
-        EditConfirm() {
-            this.operationDisabled = true;
-            EditWorkerStatusRecord(this.editForm).then(res => {
-                if (res) {
-                    this.$message.success("修改成功");
-                    this.editDialogFormVisible = false;
-                    this.getTableData();
-                }
-                this.operationDisabled = false;
-            }).catch(() => {
-                this.operationDisabled = false;
-                this.$message.error("修改失败");
-            });
-        },
-        handleDelete(row) {
-            this.$confirm("确定删除吗?", "提示", { type: "warning" }).then(() => {
-                this.operationDisabled = true;
-                DeleteWorkerStatusRecord({ Id: row.Id }).then(res => {
-                    if (res) {
-                        this.$message.success("删除成功");
-                        this.getTableData();
-                    }
-                    this.operationDisabled = false;
-                }).catch(() => {
-                    this.operationDisabled = false;
-                    this.$message.error("删除失败");
-                });
-            });
-        },
         sortChange(column) {
             if (column.order == null) {
                 this.Orderby = [{ SortField: "CreateTime", IsDesc: true }];
@@ -369,12 +383,6 @@ export default {
                 this.Orderby = [{ SortField: column.prop, IsDesc: column.order === 'descending' }];
             }
             this.getTableData();
-        },
-        getEntryExitStatusText(status) {
-            return { '0': '未进入', '1': '申请进入', '2': '刷卡成功', '3': '进入', '4': '申请签出', '5': '已经签出' }[status] || '未知';
-        },
-        getEntryExitStatusType(status) {
-            return { '0': 'info', '1': 'warning', '2': 'success', '3': 'success', '4': 'warning', '5': 'info' }[status] || 'info';
         },
         queryWorkOrderCode(queryString, cb) {
             const filteredWorkOrders = this.getFilteredWorkOrders();
@@ -401,6 +409,39 @@ export default {
         handleDeviceChange() {
             this.setDefaultWorkOrder();
             this.queryData();
+        },
+        // 判断记录是异常还是正常
+        isAbnormalRecord(row) {
+            // 检查4种气体是否在正常范围内
+            if (this.gasConfigs.Gas1.IsEnabled) {
+                if (row.Gas1 < this.gasConfigs.Gas1.MinValue || row.Gas1 > this.gasConfigs.Gas1.MaxValue) {
+                    return true;
+                }
+            }
+            if (this.gasConfigs.Gas2.IsEnabled) {
+                if (row.Gas2 < this.gasConfigs.Gas2.MinValue || row.Gas2 > this.gasConfigs.Gas2.MaxValue) {
+                    return true;
+                }
+            }
+            if (this.gasConfigs.Gas3.IsEnabled) {
+                if (row.Gas3 < this.gasConfigs.Gas3.MinValue || row.Gas3 > this.gasConfigs.Gas3.MaxValue) {
+                    return true;
+                }
+            }
+            if (this.gasConfigs.Gas4.IsEnabled) {
+                if (row.Gas4 < this.gasConfigs.Gas4.MinValue || row.Gas4 > this.gasConfigs.Gas4.MaxValue) {
+                    return true;
+                }
+            }
+            return false; // 所有启用的气体都在正常范围内
+        },
+        // 表格行样式
+        tableRowClassName({row, rowIndex}) {
+            if (this.isAbnormalRecord(row)) {
+                return 'abnormal-row'; // 异常行 - 红色
+            } else {
+                return 'normal-row'; // 正常行 - 绿色
+            }
         }
     }
 }
@@ -415,11 +456,21 @@ export default {
 }
 </style>
 
-<style scoped>
-.container {
-    padding: 20px;
+<style>
+/* 异常行 - 红色背景 */
+.el-table .abnormal-row {
+    background-color: #fef0f0 !important;
 }
-.toolbar {
-    margin-bottom: 20px;
+.el-table .abnormal-row:hover > td {
+    background-color: #fde2e2 !important;
+}
+
+/* 正常行 - 绿色背景 */
+.el-table .normal-row {
+    background-color: #f0f9ff !important;
+}
+.el-table .normal-row:hover > td {
+    background-color: #e1f5fe !important;
 }
 </style>
+

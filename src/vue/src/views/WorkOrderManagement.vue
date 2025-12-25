@@ -11,7 +11,8 @@
                 placeholder="选择设备" 
                 style="width: 200px; margin-right: 10px;"
                 clearable
-                filterable>
+                filterable
+                @change="queryData">
                 <el-option
                     v-for="(item, i) in DeviceList"
                     :key="i"
@@ -31,7 +32,9 @@
                 :fetch-suggestions="queryWorkOrderCode"
                 placeholder="搜索编号"
                 clearable
-                @select="handleWorkOrderCodeSelect">
+                @select="handleWorkOrderCodeSelect"
+                @input="queryData"
+                @clear="queryData">
             </el-autocomplete>
             <el-autocomplete
                 style="width: 200px; margin-right: 10px;"
@@ -39,7 +42,9 @@
                 :fetch-suggestions="queryWorkOrderContent"
                 placeholder="搜索内容"
                 clearable
-                @select="handleWorkOrderContentSelect">
+                @select="handleWorkOrderContentSelect"
+                @input="queryData"
+                @clear="queryData">
             </el-autocomplete>
             <el-button @click="queryData()">查询</el-button>
             <el-button  @click="clearQuery()">清空</el-button>
@@ -81,7 +86,7 @@
                     </el-tag>
                 </template>
             </el-table-column>
-    
+
             <el-table-column
                 :show-overflow-tooltip="true"
                 prop="CreateTime"
@@ -89,6 +94,19 @@
                 width="220"
                 sortable="custom"
             ></el-table-column>
+
+            <el-table-column label="操作" width="150" fixed="right">
+                <template slot-scope="scope">
+                    <el-button
+                        type="text"
+                        size="small"
+                        :disabled="scope.row.Status !== 1 || operationDisabled"
+                        @click="handleEndWorkOrder(scope.row)"
+                    >
+                        工单结束
+                    </el-button>
+                </template>
+            </el-table-column>
         </el-table>
         <div class="block">
             <el-pagination
@@ -679,11 +697,52 @@ export default {
         // 工单编号选择事件
         handleWorkOrderCodeSelect(item) {
             this.filterCode = item.value;
+            this.queryData();
         },
         
         // 工单内容选择事件
         handleWorkOrderContentSelect(item) {
             this.filterContent = item.value;
+            this.queryData();
+        },
+        
+        // 工单结束
+        handleEndWorkOrder(row) {
+            this.$confirm('确定要结束该工单吗？', '提示', {
+                confirmButtonText: '确定',
+                cancelButtonText: '取消',
+                type: 'warning'
+            }).then(() => {
+                this.operationDisabled = true;
+                const updateData = {
+                    Id: row.Id,
+                    DeviceId: row.DeviceId,
+                    StartTime: row.StartTime,
+                    EndTime: row.EndTime || new Date().toISOString().replace('T', ' ').substring(0, 19),
+                    Code: row.Code,
+                    Content: row.Content,
+                    Status: 2  // 工单结束
+                };
+                
+                EditWorkOrder(updateData).then(res => {
+                    if (res) {
+                        this.$message({
+                            message: '工单已结束！',
+                            type: 'success',
+                        });
+                        this.getTableData();
+                    } else {
+                        this.$message.error('操作失败！');
+                    }
+                    this.operationDisabled = false;
+                }).catch((error) => {
+                    this.operationDisabled = false;
+                    this.$message.error('操作失败！');
+                    console.error(error);
+                });
+            }).catch(() => {
+                // 用户取消操作
+            });
         },
     }
 };

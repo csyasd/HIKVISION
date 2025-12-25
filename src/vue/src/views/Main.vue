@@ -990,7 +990,7 @@ export default {
 }
 
 .data-table tbody tr:hover {
-    background: rgba(64, 158, 255, 0.1);
+    background: transparent;
 }
 
 .data-table td {
@@ -1093,6 +1093,6 @@ export default {
 }
 
 .popover-table tr:hover {
-    background: rgba(64, 158, 255, 0.1);
+    background: transparent;
 }
 </style>

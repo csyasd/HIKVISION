@@ -92,6 +92,18 @@ const routes = [
                 name: '工人进出状态记录'
             },
             {
+                // 手环异常
+                path: 'BraceletAbnormalManagement',
+                component: () => import('../views/BraceletAbnormalManagement.vue'),
+                name: '手环异常'
+            },
+            {
+                // 气体异常
+                path: 'GasAbnormalManagement',
+                component: () => import('../views/GasAbnormalManagement.vue'),
+                name: '气体异常'
+            },
+            {
                 // 用户管理
                 path: 'UserManagement',
                 component: UserManagement,

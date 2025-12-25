@@ -82,6 +82,21 @@ namespace YixiaoAdmin.EntityFrameworkCore
         /// </summary>
         public DbSet<WorkerStatusRecord> WorkerStatusRecord { get; set; }
 
+        /// <summary>
+        /// 手环异常记录
+        /// </summary>
+        public DbSet<BraceletAbnormal> BraceletAbnormal { get; set; }
+
+        /// <summary>
+        /// 气体异常记录
+        /// </summary>
+        public DbSet<GasAbnormal> GasAbnormal { get; set; }
+
+        /// <summary>
+        /// 异常配置
+        /// </summary>
+        public DbSet<AbnormalConfig> AbnormalConfig { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -44,6 +44,7 @@
             <el-button @click="queryData()">查询</el-button>
             <el-button @click="clearQuery()">清空</el-button>
             <el-button type="danger" @click="refreshTable()">刷新列表</el-button>
+            <el-button type="primary" @click="showHeartRateConfigDialog()" icon="el-icon-setting">设置心率正常范围</el-button>
         </el-col>
         <el-table 
             :data="tableData" 
@@ -52,6 +53,7 @@
             @sort-change="sortChange" 
             :default-sort="{ prop: 'CreateTime', order: 'descending' }"  
             v-loading="operationDisabled"
+            :row-class-name="tableRowClassName"
         >
             <el-table-column type="index" width="55"></el-table-column>
             
@@ -93,70 +95,26 @@
             ></el-pagination>
         </div>
         
-        <el-dialog title="添加状态记录" :visible.sync="addDialogFormVisible">
-            <el-form :model="addForm">
-                <el-form-item label="施工工单" :label-width="formLabelWidth">
-                    <el-select v-model="addForm.WorkOrderId" placeholder="请选择工单" filterable style="width: 100%;">
-                        <el-option v-for="item in WorkOrderList" :key="item.Id" :label="item.Code" :value="item.Id"></el-option>
-                    </el-select>
+        <!-- 设置心率正常范围对话框 -->
+        <el-dialog title="设置心率正常范围" :visible.sync="heartRateConfigDialogVisible" width="500px">
+            <el-form :model="heartRateConfig" label-width="150px">
+                <el-form-item label="最小值">
+                    <el-input-number v-model="heartRateConfig.MinValue" :min="0" :max="300" style="width: 100%;"></el-input-number>
                 </el-form-item>
-                <el-form-item label="工人姓名" :label-width="formLabelWidth">
-                    <el-input v-model="addForm.WorkerName" autocomplete="off" placeholder="请输入工人姓名"></el-input>
-                </el-form-item>
-                <el-form-item label="心率" :label-width="formLabelWidth">
-                    <el-input v-model="addForm.HeartRate" autocomplete="off" placeholder="请输入心率"></el-input>
-                </el-form-item>
-                <el-form-item label="进离场状态" :label-width="formLabelWidth">
-                    <el-select v-model="addForm.EntryExitStatus" placeholder="请选择状态" style="width: 100%;">
-                        <el-option label="未进入" value="0"></el-option>
-                        <el-option label="申请进入" value="1"></el-option>
-                        <el-option label="刷卡成功" value="2"></el-option>
-                        <el-option label="进入" value="3"></el-option>
-                        <el-option label="申请签出" value="4"></el-option>
-                        <el-option label="已经签出" value="5"></el-option>
-                    </el-select>
+                <el-form-item label="最大值">
+                    <el-input-number v-model="heartRateConfig.MaxValue" :min="0" :max="300" style="width: 100%;"></el-input-number>
                 </el-form-item>
             </el-form>
             <div slot="footer" class="dialog-footer">
-                <el-button @click="addDialogFormVisible = false">取 消</el-button>
-                <el-button type="primary" @click="AddConfirm()" :disabled = "operationDisabled">确 定</el-button>
-            </div>
-        </el-dialog>
-
-        <el-dialog title="编辑状态记录" :visible.sync="editDialogFormVisible">
-            <el-form :model="editForm">
-                <el-form-item label="施工工单" :label-width="formLabelWidth">
-                    <el-select v-model="editForm.WorkOrderId" placeholder="请选择工单" filterable style="width: 100%;">
-                        <el-option v-for="item in WorkOrderList" :key="item.Id" :label="item.Code" :value="item.Id"></el-option>
-                    </el-select>
-                </el-form-item>
-                <el-form-item label="工人姓名" :label-width="formLabelWidth">
-                    <el-input v-model="editForm.WorkerName" autocomplete="off" placeholder="请输入工人姓名"></el-input>
-                </el-form-item>
-                <el-form-item label="心率" :label-width="formLabelWidth">
-                    <el-input v-model="editForm.HeartRate" autocomplete="off" placeholder="请输入心率"></el-input>
-                </el-form-item>
-                <el-form-item label="进离场状态" :label-width="formLabelWidth">
-                    <el-select v-model="editForm.EntryExitStatus" placeholder="请选择状态" style="width: 100%;">
-                        <el-option label="未进入" value="0"></el-option>
-                        <el-option label="申请进入" value="1"></el-option>
-                        <el-option label="刷卡成功" value="2"></el-option>
-                        <el-option label="进入" value="3"></el-option>
-                        <el-option label="申请签出" value="4"></el-option>
-                        <el-option label="已经签出" value="5"></el-option>
-                    </el-select>
-                </el-form-item>
-            </el-form>
-            <div slot="footer" class="dialog-footer">
-                <el-button @click="editDialogFormVisible = false">取 消</el-button>
-                <el-button type="primary" @click="EditConfirm()" :disabled = "operationDisabled">确 定</el-button>
+                <el-button @click="heartRateConfigDialogVisible = false">取 消</el-button>
+                <el-button type="primary" @click="saveHeartRateConfig()" :disabled="operationDisabled">确 定</el-button>
             </div>
         </el-dialog>
     </div>
 </template>
 
 <script>
-import { SelectWorkerStatusRecord, AddWorkerStatusRecord, EditWorkerStatusRecord, DeleteWorkerStatusRecord, SelectWorkOrder, SelectALLDevice } from "../api/api";
+import { SelectBraceletAbnormal, SelectWorkOrder, SelectALLDevice, GetAbnormalConfig, SaveAbnormalConfig } from "../api/api";
 
 export default {
     data() {
@@ -166,23 +124,7 @@ export default {
             pageSize: 10,
             pageSizes: [10, 20, 50, 100],
             totalNumber: 0,
-            addDialogFormVisible: false,
-            editDialogFormVisible: false,
-            addForm: {
-               WorkerName: "",
-               HeartRate: "",
-               WorkOrderId: "",
-               EntryExitStatus: "",
-            },
-            editForm: {
-               Id: "",
-               WorkerName: "",
-               HeartRate: "",
-               WorkOrderId: "",
-               EntryExitStatus: "",
-            },
             operationDisabled: false,
-            formLabelWidth: "120px",
             WorkOrderList: [],
             DeviceList: [],
             Query: [],
@@ -190,6 +132,14 @@ export default {
             filterDeviceId: null,
             filterWorkOrderCode: "",
             filterWorkOrderContent: "",
+            heartRateConfigDialogVisible: false,
+            heartRateConfig: {
+                ConfigType: "HeartRate",
+                ConfigName: "HeartRate",
+                MinValue: 60,
+                MaxValue: 100,
+                IsEnabled: true
+            }
         };
     },
     async mounted() {
@@ -203,6 +153,7 @@ export default {
         
         await this.loadWorkOrderList();
         this.setDefaultWorkOrder();
+        this.loadHeartRateConfig();
         this.getTableData();
     },
     methods: {
@@ -210,7 +161,6 @@ export default {
             const res = await SelectWorkOrder({ Query: [], Orderby: [], CurrentPage: 0, PageNumber: 1000 });
             this.WorkOrderList = res.data || [];
         },
-        // 设置默认工单（工单状态为开始的第一个）
         setDefaultWorkOrder() {
             const filteredWorkOrders = this.getFilteredWorkOrders();
             const startedWorkOrder = filteredWorkOrders.find(wo => wo.Status === 1);
@@ -222,12 +172,50 @@ export default {
                 this.filterWorkOrderContent = "";
             }
         },
-        // 获取当前设备对应的工单列表
         getFilteredWorkOrders() {
             if (this.filterDeviceId) {
                 return this.WorkOrderList.filter(wo => wo.DeviceId === this.filterDeviceId);
             }
             return this.WorkOrderList;
+        },
+        async loadHeartRateConfig() {
+            try {
+                const config = await GetAbnormalConfig("HeartRate");
+                if (config) {
+                    this.heartRateConfig = {
+                        ConfigType: config.ConfigType || "HeartRate",
+                        ConfigName: config.ConfigName || "HeartRate",
+                        MinValue: config.MinValue || 60,
+                        MaxValue: config.MaxValue || 100,
+                        IsEnabled: config.IsEnabled !== undefined ? config.IsEnabled : true
+                    };
+                }
+            } catch (error) {
+                console.error("加载心率配置失败:", error);
+            }
+        },
+        showHeartRateConfigDialog() {
+            this.loadHeartRateConfig();
+            this.heartRateConfigDialogVisible = true;
+        },
+        saveHeartRateConfig() {
+            if (this.heartRateConfig.MinValue >= this.heartRateConfig.MaxValue) {
+                this.$message.error("最小值必须小于最大值");
+                return;
+            }
+            // 确保启用检测默认为true
+            this.heartRateConfig.IsEnabled = true;
+            this.operationDisabled = true;
+            SaveAbnormalConfig(this.heartRateConfig).then(res => {
+                if (res) {
+                    this.$message.success("保存成功");
+                    this.heartRateConfigDialogVisible = false;
+                }
+                this.operationDisabled = false;
+            }).catch(() => {
+                this.operationDisabled = false;
+                this.$message.error("保存失败");
+            });
         },
         getTableData() {
             this.operationDisabled = true;
@@ -235,19 +223,16 @@ export default {
             
             let filteredWorkOrders = [...this.WorkOrderList];
             
-            // 设备筛选
             if (this.filterDeviceId) {
                 filteredWorkOrders = filteredWorkOrders.filter(wo => wo.DeviceId === this.filterDeviceId);
             }
             
-            // 工单编号筛选
             if (this.filterWorkOrderCode && this.filterWorkOrderCode.trim()) {
                 filteredWorkOrders = filteredWorkOrders.filter(wo => 
                     wo.Code && wo.Code.includes(this.filterWorkOrderCode.trim())
                 );
             }
             
-            // 工单内容筛选
             if (this.filterWorkOrderContent && this.filterWorkOrderContent.trim()) {
                 filteredWorkOrders = filteredWorkOrders.filter(wo => 
                     wo.Content && wo.Content.includes(this.filterWorkOrderContent.trim())
@@ -261,7 +246,6 @@ export default {
                     QueryStr: workOrderIds.join(","),
                 });
             } else {
-                // 如果没有匹配的工单，返回空结果
                 this.Query.push({
                     QueryField: "WorkOrderId",
                     QueryStr: "__NO_MATCH__",
@@ -275,7 +259,7 @@ export default {
                 PageNumber: this.pageSize,
             };
 
-            SelectWorkerStatusRecord(pageData).then(res => {
+            SelectBraceletAbnormal(pageData).then(res => {
                 this.tableData = res.data || [];
                 this.totalNumber = res.count || 0;
                 
@@ -311,57 +295,6 @@ export default {
         refreshTable() {
             this.getTableData();
         },
-        changeDialogFormVisible() {
-            this.addDialogFormVisible = true;
-        },
-        AddConfirm() {
-            this.operationDisabled = true;
-            AddWorkerStatusRecord(this.addForm).then(res => {
-                if (res) {
-                    this.$message.success("添加成功");
-                    this.addDialogFormVisible = false;
-                    this.addForm = { WorkerName: "", HeartRate: "", WorkOrderId: "", EntryExitStatus: "" };
-                    this.getTableData();
-                }
-                this.operationDisabled = false;
-            }).catch(() => {
-                this.operationDisabled = false;
-                this.$message.error("添加失败");
-            });
-        },
-        handleEdit(row) {
-            this.editForm = { ...row };
-            this.editDialogFormVisible = true;
-        },
-        EditConfirm() {
-            this.operationDisabled = true;
-            EditWorkerStatusRecord(this.editForm).then(res => {
-                if (res) {
-                    this.$message.success("修改成功");
-                    this.editDialogFormVisible = false;
-                    this.getTableData();
-                }
-                this.operationDisabled = false;
-            }).catch(() => {
-                this.operationDisabled = false;
-                this.$message.error("修改失败");
-            });
-        },
-        handleDelete(row) {
-            this.$confirm("确定删除吗?", "提示", { type: "warning" }).then(() => {
-                this.operationDisabled = true;
-                DeleteWorkerStatusRecord({ Id: row.Id }).then(res => {
-                    if (res) {
-                        this.$message.success("删除成功");
-                        this.getTableData();
-                    }
-                    this.operationDisabled = false;
-                }).catch(() => {
-                    this.operationDisabled = false;
-                    this.$message.error("删除失败");
-                });
-            });
-        },
         sortChange(column) {
             if (column.order == null) {
                 this.Orderby = [{ SortField: "CreateTime", IsDesc: true }];
@@ -372,9 +305,6 @@ export default {
         },
         getEntryExitStatusText(status) {
             return { '0': '未进入', '1': '申请进入', '2': '刷卡成功', '3': '进入', '4': '申请签出', '5': '已经签出' }[status] || '未知';
-        },
-        getEntryExitStatusType(status) {
-            return { '0': 'info', '1': 'warning', '2': 'success', '3': 'success', '4': 'warning', '5': 'info' }[status] || 'info';
         },
         queryWorkOrderCode(queryString, cb) {
             const filteredWorkOrders = this.getFilteredWorkOrders();
@@ -401,6 +331,25 @@ export default {
         handleDeviceChange() {
             this.setDefaultWorkOrder();
             this.queryData();
+        },
+        // 判断记录是异常还是正常
+        isAbnormalRecord(row) {
+            if (!this.heartRateConfig || !this.heartRateConfig.IsEnabled) {
+                return false; // 未配置，默认正常
+            }
+            const heartRate = parseInt(row.HeartRate);
+            if (isNaN(heartRate)) {
+                return false; // 无效数据，默认正常
+            }
+            return heartRate < this.heartRateConfig.MinValue || heartRate > this.heartRateConfig.MaxValue;
+        },
+        // 表格行样式
+        tableRowClassName({row, rowIndex}) {
+            if (this.isAbnormalRecord(row)) {
+                return 'abnormal-row'; // 异常行 - 红色
+            } else {
+                return 'normal-row'; // 正常行 - 绿色
+            }
         }
     }
 }
@@ -415,11 +364,21 @@ export default {
 }
 </style>
 
-<style scoped>
-.container {
-    padding: 20px;
+<style>
+/* 异常行 - 红色背景 */
+.el-table .abnormal-row {
+    background-color: #fef0f0 !important;
 }
-.toolbar {
-    margin-bottom: 20px;
+.el-table .abnormal-row:hover > td {
+    background-color: #fde2e2 !important;
+}
+
+/* 正常行 - 绿色背景 */
+.el-table .normal-row {
+    background-color: #f0f9ff !important;
+}
+.el-table .normal-row:hover > td {
+    background-color: #e1f5fe !important;
 }
 </style>
+
