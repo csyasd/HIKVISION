@@ -95,8 +95,16 @@
                 sortable="custom"
             ></el-table-column>
 
-            <el-table-column label="操作" width="150" fixed="right">
+            <el-table-column label="操作" width="200" fixed="right">
                 <template slot-scope="scope">
+                    <el-button
+                        type="text"
+                        size="small"
+                        :disabled="operationDisabled"
+                        @click="handleEdit(scope.row)"
+                    >
+                        编辑
+                    </el-button>
                     <el-button
                         type="text"
                         size="small"

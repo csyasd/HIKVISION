@@ -75,7 +75,7 @@
                 <!-- 主页顶部导航开始 -->
                 <el-header height="6vh">
                     <div @click="ToHome" class="logo">
-                        <span>受限空间作业安全管理平台</span>
+                        <span>川纳海智慧云安系统——危险受限作业管理专家</span>
                     </div>
                     <!-- 收起侧边导航栏按钮 -->
                     <el-tooltip effect="dark" content="显示/隐藏侧边导航栏" placement="bottom">

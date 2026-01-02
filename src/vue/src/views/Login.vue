@@ -1,6 +1,7 @@
 <template>
     <div class="container">
         <div class="login-page" style>
+            <img src="../assets/logo.png" alt="Logo" class="login-logo" />
             <div class="login-main">
                 <div class="login-title">登录</div>
                 <div class="login-input">
@@ -134,6 +135,20 @@ export default {
         radial-gradient(circle at 50% 50%, rgba(13, 17, 23, 1) 0%, #010409 100%);
     position: relative;
     overflow: hidden;
+}
+
+.login-logo {
+    position: absolute;
+    top: 30px;
+    left: 30px;
+    height: 120px;
+    width: auto;
+    z-index: 100;
+    transition: transform 0.3s ease;
+}
+
+.login-logo:hover {
+    transform: scale(1.05);
 }
 
 /* 动态能量流线 */
