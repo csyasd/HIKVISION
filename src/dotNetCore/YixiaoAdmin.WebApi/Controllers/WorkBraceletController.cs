@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.Mvc;
 using YixiaoAdmin.IServices;
 using YixiaoAdmin.Models;
 using YixiaoAdmin.Common;
+using System.Security.Claims;
+using Microsoft.IdentityModel.JsonWebTokens;
 
 namespace YixiaoAdmin.WebApi.Controllers
 {
@@ -21,11 +23,17 @@ namespace YixiaoAdmin.WebApi.Controllers
         private readonly IWorkBraceletServices _workBraceletServices;
         private readonly IDeviceServices _deviceServices;
         private readonly IWorkOrderServices _workOrderServices;
+        private readonly IUserDeviceServices _UserDeviceServices;
+        private readonly IUserServices _UserServices;
+        private readonly IRoleServices _RoleServices;
 
         public WorkBraceletController(
             IWorkBraceletServices workBraceletServices,
             IDeviceServices deviceServices,
-            IWorkOrderServices workOrderServices)
+            IWorkOrderServices workOrderServices,
+            IUserDeviceServices UserDeviceServices,
+            IUserServices UserServices,
+            IRoleServices RoleServices)
         {
             _workBraceletServices = workBraceletServices ?? 
                                        throw new ArgumentNullException(nameof(workBraceletServices));
@@ -33,6 +41,52 @@ namespace YixiaoAdmin.WebApi.Controllers
                                 throw new ArgumentNullException(nameof(deviceServices));
             _workOrderServices = workOrderServices ?? 
                                    throw new ArgumentNullException(nameof(workOrderServices));
+            _UserDeviceServices = UserDeviceServices ?? 
+                                   throw new ArgumentNullException(nameof(UserDeviceServices));
+            _UserServices = UserServices ?? 
+                                   throw new ArgumentNullException(nameof(UserServices));
+            _RoleServices = RoleServices ?? 
+                                   throw new ArgumentNullException(nameof(RoleServices));
+        }
+        
+        /// <summary>
+        /// 获取当前用户绑定的设备ID列表（如果是管理员返回null，表示返回所有设备）
+        /// </summary>
+        /// <returns>管理员返回null，普通用户返回设备ID列表</returns>
+        private async Task<List<string>> GetUserBoundDeviceIds()
+        {
+            var userId = User.FindFirst(JwtRegisteredClaimNames.Jti)?.Value;
+            
+            if (string.IsNullOrEmpty(userId))
+            {
+                return new List<string>();
+            }
+            
+            try
+            {
+                var userQuery = await _UserServices.Query(u => u.Id == userId);
+                var user = userQuery.FirstOrDefault();
+                
+                if (user != null && user.Role == null && !string.IsNullOrEmpty(user.RoleId))
+                {
+                    var role = await _RoleServices.QueryById(user.RoleId);
+                    if (role != null) user.Role = role;
+                }
+                
+                if (user != null && user.Role != null)
+                {
+                    bool isAdmin = string.Equals(user.Role.Code, "Admin", StringComparison.OrdinalIgnoreCase) ||
+                                  string.Equals(user.Role.Name, "管理员", StringComparison.OrdinalIgnoreCase) ||
+                                  (user.Role.Name?.Contains("管理") == true) ||
+                                  (user.Role.Name?.ToLower().Contains("admin") == true);
+                    
+                    if (isAdmin) return null;
+                    return await _UserDeviceServices.GetDeviceIdsByUserId(userId);
+                }
+            }
+            catch { }
+            
+            return new List<string>();
         }
 
         /// <summary>
@@ -105,8 +159,25 @@ namespace YixiaoAdmin.WebApi.Controllers
         {
             try
             {
-                // 1. 获取所有在线设备
-                var allDevices = await _deviceServices.Query();
+                // 获取当前用户绑定的设备ID列表
+                var userDeviceIds = await GetUserBoundDeviceIds();
+                
+                // 1. 获取设备列表（管理员获取所有设备，普通用户获取绑定的设备）
+                IList<Device> allDevices;
+                if (userDeviceIds == null)
+                {
+                    allDevices = await _deviceServices.Query();
+                }
+                else if (!userDeviceIds.Any())
+                {
+                    return Ok(new List<BraceletInfoItem>());
+                }
+                else
+                {
+                    var allDevicesList = await _deviceServices.Query();
+                    allDevices = allDevicesList.Where(d => userDeviceIds.Contains(d.Id)).ToList();
+                }
+                
                 var onlineDevices = allDevices.Where(d => d.OnlineStatus == "在线").ToList();
 
                 if (!onlineDevices.Any())

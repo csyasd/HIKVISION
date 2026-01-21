@@ -133,7 +133,7 @@
 </template>
 
 <script>
-import { PTZControl, GetRealtimeGasData, GetRealtimeBraceletInfo, SelectALLDevice } from '../api/api'
+import { PTZControl, GetRealtimeGasData, GetRealtimeBraceletInfo, SelectALLDevice, SelectALLCamera } from '../api/api'
 
 export default {
   data() {
@@ -170,9 +170,9 @@ export default {
     async loadCameras() {
       try {
         this.loading = true;
-        const response = await fetch(`${this.API_BASE}/Camera/All`);
-        if (!response.ok) throw new Error('网络请求失败');
-        this.cameras = await response.json() || [];
+        // 使用api.js中的SelectALLCamera方法，它会自动添加Authorization header
+        const camerasRes = await SelectALLCamera();
+        this.cameras = camerasRes || [];
         if (this.cameras.length > 0) {
           this.$nextTick(() => {
             this.cameras.forEach(camera => this.initPlayer(camera));
@@ -180,6 +180,7 @@ export default {
         }
       } catch (err) {
         console.error('加载摄像头失败:', err);
+        this.$message.error('加载摄像头失败: ' + (err.message || '未知错误'));
       } finally {
         this.loading = false;
       }

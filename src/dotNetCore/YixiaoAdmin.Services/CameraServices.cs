@@ -28,43 +28,58 @@ namespace YixiaoAdmin.Services
             //初始化查询表达式
             Expression<Func<Camera, bool>> whereExpression = PredicateBuilder.True<Camera>();
 
-            foreach (QueryFieldModel item in queryPageModel.Query)
+            // 判断是否存在查询条件
+            if (queryPageModel.Query != null)
             {
-                //根据属性名获取属性
-                var property = typeof(Camera).GetProperty(item.QueryField);
-                if (property == null)
+                foreach (QueryFieldModel item in queryPageModel.Query)
                 {
-                    continue;
+                    //根据属性名获取属性
+                    var property = typeof(Camera).GetProperty(item.QueryField);
+                    if (property == null)
+                    {
+                        continue;
+                    }
+                    if (item.QueryStr == null || item.QueryStr == "")
+                    {
+                        continue;
+                    }
+                    if (item.QueryField == "Name")
+                    {
+                        whereExpression = PredicateBuilder.And(whereExpression, (x) => x.Name.Contains(item.QueryStr));
+                    }
+                    else if (item.QueryField == "Model")
+                    {
+                        whereExpression = PredicateBuilder.And(whereExpression, (x) => x.Model.Contains(item.QueryStr));
+                    }
+                    else if (item.QueryField == "DeviceId")
+                    {
+                        // 支持多个设备ID查询（用逗号分隔），用于设备权限过滤
+                        if (item.QueryStr.Contains(","))
+                        {
+                            var deviceIds = item.QueryStr.Split(',', StringSplitOptions.RemoveEmptyEntries);
+                            if (deviceIds.Length > 0)
+                            {
+                                whereExpression = PredicateBuilder.And(whereExpression, (x) => deviceIds.Contains(x.DeviceId));
+                            }
+                        }
+                        else
+                        {
+                            whereExpression = PredicateBuilder.And(whereExpression, (x) => x.DeviceId == item.QueryStr);
+                        }
+                    }
+                    else if (item.QueryField == "IP")
+                    {
+                        whereExpression = PredicateBuilder.And(whereExpression, (x) => x.IP.Contains(item.QueryStr));
+                    }
+                    else if (item.QueryField == "DeviceCode")
+                    {
+                        whereExpression = PredicateBuilder.And(whereExpression, (x) => x.DeviceCode.Contains(item.QueryStr));
+                    }
+                    else if (item.QueryField == "CreateTime")
+                    {
+                        whereExpression = PredicateBuilder.And(whereExpression, (x) => x.CreateTime.Date == Convert.ToDateTime(item.QueryStr.Trim())); 
+                    }
                 }
-                if (item.QueryStr == null || item.QueryStr == "")
-                {
-                    continue;
-                }
-                if (item.QueryField == "Name")
-                {
-                    whereExpression = PredicateBuilder.And(whereExpression, (x) => x.Name.Contains(item.QueryStr));
-                }
-                else if (item.QueryField == "Model")
-                {
-                    whereExpression = PredicateBuilder.And(whereExpression, (x) => x.Model.Contains(item.QueryStr));
-                }
-                else if (item.QueryField == "DeviceId")
-                {
-                    whereExpression = PredicateBuilder.And(whereExpression, (x) => x.DeviceId == item.QueryStr);
-                }
-                else if (item.QueryField == "IP")
-                {
-                    whereExpression = PredicateBuilder.And(whereExpression, (x) => x.IP.Contains(item.QueryStr));
-                }
-                else if (item.QueryField == "DeviceCode")
-                {
-                    whereExpression = PredicateBuilder.And(whereExpression, (x) => x.DeviceCode.Contains(item.QueryStr));
-                }
-                else if (item.QueryField == "CreateTime")
-                {
-                    whereExpression = PredicateBuilder.And(whereExpression, (x) => x.CreateTime.Date == Convert.ToDateTime(item.QueryStr.Trim())); 
-                }
-
             }
             //获取查询语句
             var query = await _CameraRepository.Query(whereExpression, queryPageModel.Orderby, queryPageModel.CurrentPage, queryPageModel.PageNumber);

@@ -97,9 +97,26 @@ namespace YixiaoAdmin.EntityFrameworkCore
         /// </summary>
         public DbSet<AbnormalConfig> AbnormalConfig { get; set; }
 
+        /// <summary>
+        /// 用户设备关联
+        /// </summary>
+        public DbSet<UserDevice> UserDevice { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            // 配置UserDevice实体的外键关系
+            modelBuilder.Entity<UserDevice>()
+                .HasOne(ud => ud.User)
+                .WithMany(u => u.UserDevices)
+                .HasForeignKey(ud => ud.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<UserDevice>()
+                .HasOne(ud => ud.Device)
+                .WithMany(d => d.UserDevices)
+                .HasForeignKey(ud => ud.DeviceId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             //配置级联删除的样例
             //modelBuilder.Entity<PalletIdentificationCard>().HasMany(b => b.PalletIdentificationCardSubOrder).WithOne(p => p.PalletIdentificationCard)

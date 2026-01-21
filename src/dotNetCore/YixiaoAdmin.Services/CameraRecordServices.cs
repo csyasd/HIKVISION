@@ -28,29 +28,46 @@ namespace YixiaoAdmin.Services
             //初始化查询表达式
             Expression<Func<CameraRecord, bool>> whereExpression = PredicateBuilder.True<CameraRecord>();
 
-            foreach (QueryFieldModel item in queryPageModel.Query)
+            // 判断是否存在查询条件
+            if (queryPageModel.Query != null)
             {
-                //根据属性名获取属性
-                var property = typeof(CameraRecord).GetProperty(item.QueryField);
-                if (property == null)
+                foreach (QueryFieldModel item in queryPageModel.Query)
                 {
-                    continue;
+                    //根据属性名获取属性
+                    var property = typeof(CameraRecord).GetProperty(item.QueryField);
+                    if (property == null)
+                    {
+                        continue;
+                    }
+                    if (item.QueryStr == null || item.QueryStr == "")
+                    {
+                        continue;
+                    }
+                    if (item.QueryField == "Name")
+                    {
+                        whereExpression = PredicateBuilder.And(whereExpression, (x) => x.Name == item.QueryStr);
+                    }
+                    else if (item.QueryField == "CreateTime")
+                    {
+                        whereExpression = PredicateBuilder.And(whereExpression, (x) => x.CreateTime.Date == Convert.ToDateTime(item.QueryStr.Trim())); 
+                    }
+                    else if (item.QueryField == "CameraId")
+                    {
+                        // 支持多个摄像头ID查询（用逗号分隔），用于设备权限过滤
+                        if (item.QueryStr.Contains(","))
+                        {
+                            var cameraIds = item.QueryStr.Split(',', StringSplitOptions.RemoveEmptyEntries);
+                            if (cameraIds.Length > 0)
+                            {
+                                whereExpression = PredicateBuilder.And(whereExpression, (x) => cameraIds.Contains(x.CameraId));
+                            }
+                        }
+                        else
+                        {
+                            whereExpression = PredicateBuilder.And(whereExpression, (x) => x.CameraId == item.QueryStr);
+                        }
+                    }
                 }
-                if (item.QueryStr == null || item.QueryStr == "")
-                {
-                    continue;
-                }
-                if (item.QueryField == "Name")
-                {
-
-                    whereExpression = PredicateBuilder.And(whereExpression, (x) => x.Name == item.QueryStr);
-                }
-
-                else if (item.QueryField == "CreateTime")
-                {
-                    whereExpression = PredicateBuilder.And(whereExpression, (x) => x.CreateTime.Date == Convert.ToDateTime(item.QueryStr.Trim())); 
-                }
-
             }
             //获取查询语句
             var query = await _CameraRecordRepository.Query(whereExpression, queryPageModel.Orderby, queryPageModel.CurrentPage, queryPageModel.PageNumber);

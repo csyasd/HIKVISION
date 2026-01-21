@@ -58,8 +58,8 @@
                         <el-menu-item index="/home/WorkOrderManagement">施工工单</el-menu-item>
                     </el-submenu>
 
-                    <!-- 系统管理 -->
-                    <el-submenu index="6">
+                    <!-- 系统管理 - 仅管理员可见 -->
+                    <el-submenu index="6" v-if="isAdmin">
                         <template slot="title">
                             <i class="el-icon-setting"></i>
                             <span>系统管理</span>
@@ -145,6 +145,7 @@ export default {
             isMessage: false, //是否收到消息
             isFold: true,
             accessList: [],
+            isAdmin: false, // 是否是管理员
         }
     },
     methods: {
@@ -215,15 +216,30 @@ export default {
             try {
                 const accessStr = localStorage.getItem('access');
                 if (accessStr && accessStr !== 'undefined') {
-                    const parsedAccess = JSON.parse(accessStr);
-                    this.accessList = parsedAccess.RoleRights || [];
+                    const role = JSON.parse(accessStr);
+                    this.accessList = role.RoleRights || [];
+                    
+                    // 调试信息：输出角色信息
+                    console.log('当前用户角色信息:', role);
+                    console.log('角色名称:', role.Name);
+                    console.log('角色Code:', role.Code);
+                    console.log('角色权限列表:', role.RoleRights);
+                    
+                    // 检查是否是管理员角色
+                    // 只检查角色Code是否为"Admin"（区分大小写）
+                    if (role) {
+                        this.isAdmin = role.Code === 'Admin';
+                        console.log('是否为管理员:', this.isAdmin);
+                    }
                 } else {
                     this.accessList = [];
+                    this.isAdmin = false;
                     console.warn('用户权限信息未找到，使用默认权限');
                 }
             } catch (error) {
                 console.error('解析用户权限失败:', error);
                 this.accessList = [];
+                this.isAdmin = false;
             }
         },
         JudgeUserAccess(accessStr) {

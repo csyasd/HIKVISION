@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 
 namespace YixiaoAdmin.Models
@@ -52,5 +53,10 @@ namespace YixiaoAdmin.Models
         /// 在线状态 (在线/离线)
         /// </summary>
         public string OnlineStatus { get; set; }
+
+        /// <summary>
+        /// 用户设备关联列表
+        /// </summary>
+        public List<UserDevice> UserDevices { get; set; }
     }
 }

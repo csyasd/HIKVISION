@@ -77,20 +77,59 @@ export default {
                 pass: this.password,
             };
             Login(data).then((res) => {
-                console.log(res);
-                if (res?.status != 200) {
+                console.log('登录完整响应:', res);
+                console.log('登录响应status:', res.status);
+                console.log('登录响应data:', res.data);
+                
+                // axios返回的数据结构：res.data 包含实际数据
+                // 检查响应状态
+                if (res?.status === 404) {
                     this.$message.error('账号或密码错误！');
                     this.operateDisable = false;
                     return;
                 }
+                
+                // axios返回的数据在res.data中
+                const responseData = res.data || res;
+                console.log('使用的响应数据:', responseData);
+                
+                if (!responseData) {
+                    this.$message.error('登录响应数据为空！');
+                    this.operateDisable = false;
+                    return;
+                }
 
-                let access = res.role;
+                // 获取角色信息 - 优先从res.data获取
+                let access = res.data?.role || responseData.role;
+                console.log('角色信息:', access);
+                console.log('角色信息类型:', typeof access);
+                console.log('角色信息JSON:', JSON.stringify(access));
 
-                localStorage.setItem('access', JSON.stringify(access));
+                if (access) {
+                    localStorage.setItem('access', JSON.stringify(access));
+                    console.log('角色信息已保存到localStorage:', JSON.stringify(access));
+                    // 验证保存是否成功
+                    const saved = localStorage.getItem('access');
+                    console.log('验证localStorage保存:', saved);
+                } else {
+                    console.error('角色信息为空，响应数据:', responseData);
+                    this.$message.error('获取角色信息失败！');
+                    this.operateDisable = false;
+                    return;
+                }
 
-                let token = res.token;
+                // 获取token - 优先从res.data获取
+                let token = res.data?.token || responseData.token;
 
-                localStorage.setItem('token', token);
+                if (token) {
+                    localStorage.setItem('token', token);
+                    console.log('Token已保存');
+                } else {
+                    console.error('Token为空');
+                    this.$message.error('获取Token失败！');
+                    this.operateDisable = false;
+                    return;
+                }
 
                 //提示登录成功
                 this.$notify({

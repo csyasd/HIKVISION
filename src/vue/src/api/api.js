@@ -183,6 +183,24 @@ export const DeleteDevice = (params) => {
 		params: params
 	}).then(res => res.data).catch(error => console.log(error));
 }
+
+// 设备用户绑定相关API
+export const GetUserIdsByDeviceId = (params) => {
+	return axios({
+		method: 'Get',
+		url: BaseUrl + 'Device/GetUserIdsByDeviceId',
+		params: params
+	}).then(res => res.data).catch(error => console.log(error));
+}
+
+export const BindUsersToDevice = (params) => {
+	return axios({
+		method: 'Post',
+		url: BaseUrl + 'Device/BindUsers',
+		data: params
+	}).then(res => res.data).catch(error => console.log(error));
+}
+
 export const SelectRight = (params) => {
 	console.log(params)
 	return axios({

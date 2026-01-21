@@ -17,6 +17,9 @@ namespace YixiaoAdmin.Models
         public string RoleId { get; set; }
         public Role Role { get; set; }
 
-      
+        /// <summary>
+        /// 用户设备关联列表
+        /// </summary>
+        public List<UserDevice> UserDevices { get; set; }
     }
 }
