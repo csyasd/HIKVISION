@@ -80,6 +80,36 @@
             <button class="ptz-small-btn" @mousedown="ptz(camera, 14, 0)" @mouseup="ptz(camera, 14, 1)">远焦</button>
           </div>
         </div>
+
+        <!-- 语音对讲 -->
+        <div class="intercom-panel">
+          <div class="intercom-header">
+            <span class="intercom-label">语音对讲</span>
+          </div>
+          <div class="intercom-controls">
+            <button 
+              class="intercom-btn"
+              :class="getIntercomBtnClass(camera.Id)"
+              @click="toggleIntercom(camera)"
+              :disabled="intercomStatus[camera.Id] === 'connecting'"
+            >
+              <i :class="getIntercomIcon(camera.Id)"></i>
+              {{ getIntercomText(camera.Id) }}
+            </button>
+            <div v-if="intercomStatus[camera.Id] === 'active'" class="intercom-volume">
+              <span class="vol-text">音量:</span>
+              <el-slider v-model="intercomVolume" :min="0" :max="100" :show-tooltip="false" class="vol-slider" @input="updateVolume"></el-slider>
+            </div>
+          </div>
+          <div v-if="intercomStatus[camera.Id]" class="intercom-tip" :class="'tip-' + intercomStatus[camera.Id]">
+            <i v-if="intercomStatus[camera.Id] === 'connecting'" class="el-icon-loading"></i>
+            <i v-else-if="intercomStatus[camera.Id] === 'active'" class="el-icon-microphone"></i>
+            <i v-else-if="intercomStatus[camera.Id] === 'error'" class="el-icon-warning"></i>
+            <span v-if="intercomStatus[camera.Id] === 'connecting'">正在建立对讲连接...</span>
+            <span v-else-if="intercomStatus[camera.Id] === 'active'">对讲中 — 请对着麦克风说话</span>
+            <span v-else-if="intercomStatus[camera.Id] === 'error'">{{ intercomError[camera.Id] || '对讲连接失败' }}</span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -151,7 +181,17 @@ export default {
       devices: [],
       refreshTimer: null,
       latencyCheckTimer: null,
-      API_BASE: BaseUrl.replace(/\/$/, '')
+      API_BASE: BaseUrl.replace(/\/$/, ''),
+      // 语音对讲
+      intercomStatus: {},
+      intercomError: {},
+      intercomWs: {},
+      intercomAudioCtx: {},
+      intercomStream: {},
+      intercomProcessor: {},
+      intercomVolume: 80,
+      intercomGainNode: {},
+      intercomNextPlayTime: {}
     }
   },
   mounted() {
@@ -165,6 +205,8 @@ export default {
     if (this.refreshTimer) clearInterval(this.refreshTimer);
     if (this.latencyCheckTimer) clearInterval(this.latencyCheckTimer);
     this.destroyAllPlayers();
+    // 清理对讲
+    this.cameras.forEach(camera => this.stopIntercom(camera.Id));
   },
   methods: {
     async loadCameras() {
@@ -331,6 +373,192 @@ export default {
           speed: this.ptzSpeed
         });
       } catch (error) {}
+    },
+
+    // ====== 语音对讲 ======
+    toggleIntercom(camera) {
+      const status = this.intercomStatus[camera.Id];
+      if (status === 'active' || status === 'connecting') {
+        this.stopIntercom(camera.Id);
+      } else {
+        this.startIntercom(camera);
+      }
+    },
+
+    async startIntercom(camera) {
+      const cameraId = camera.Id;
+      this.$set(this.intercomStatus, cameraId, 'connecting');
+      this.$set(this.intercomError, cameraId, '');
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 }
+        });
+        this.$set(this.intercomStream, cameraId, stream);
+
+        let audioCtx;
+        try {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 8000 });
+        } catch (e) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        this.$set(this.intercomAudioCtx, cameraId, audioCtx);
+
+        const gainNode = audioCtx.createGain();
+        gainNode.gain.value = this.intercomVolume / 100;
+        gainNode.connect(audioCtx.destination);
+        this.$set(this.intercomGainNode, cameraId, gainNode);
+
+        const wsProtocol = this.API_BASE.startsWith('https') ? 'wss' : 'ws';
+        const wsHost = this.API_BASE.replace(/^https?:\/\//, '');
+        const wsUrl = `${wsProtocol}://${wsHost}/api/HK/voice-talk/${cameraId}`;
+
+        const ws = new WebSocket(wsUrl);
+        ws.binaryType = 'arraybuffer';
+        this.$set(this.intercomWs, cameraId, ws);
+        this.$set(this.intercomNextPlayTime, cameraId, 0);
+
+        ws.onopen = () => {
+          this.startAudioCapture(cameraId, stream, audioCtx);
+        };
+
+        ws.onmessage = (event) => {
+          if (typeof event.data === 'string') {
+            try {
+              const msg = JSON.parse(event.data);
+              if (msg.type === 'status' && msg.status === 'connected') {
+                this.$set(this.intercomStatus, cameraId, 'active');
+                this.$message.success('对讲已连接');
+              } else if (msg.type === 'error') {
+                this.$set(this.intercomStatus, cameraId, 'error');
+                this.$set(this.intercomError, cameraId, msg.message);
+                this.$message.error(msg.message);
+              }
+            } catch (e) {}
+          } else if (event.data instanceof ArrayBuffer) {
+            this.playReceivedAudio(cameraId, event.data);
+          }
+        };
+
+        ws.onerror = () => {
+          this.$set(this.intercomStatus, cameraId, 'error');
+          this.$set(this.intercomError, cameraId, 'WebSocket 连接错误');
+        };
+
+        ws.onclose = () => {
+          if (this.intercomStatus[cameraId] === 'active') {
+            this.$set(this.intercomStatus, cameraId, 'idle');
+          }
+          this.cleanupIntercom(cameraId);
+        };
+      } catch (error) {
+        this.$set(this.intercomStatus, cameraId, 'error');
+        let msg = '启动对讲失败';
+        if (error.name === 'NotAllowedError') msg = '麦克风权限被拒绝';
+        else if (error.name === 'NotFoundError') msg = '未检测到麦克风';
+        else msg = error.message || msg;
+        this.$set(this.intercomError, cameraId, msg);
+        this.$message.error(msg);
+      }
+    },
+
+    startAudioCapture(cameraId, stream, audioCtx) {
+      const source = audioCtx.createMediaStreamSource(stream);
+      const processor = audioCtx.createScriptProcessor(2048, 1, 1);
+      const targetRate = 8000;
+      const actualRate = audioCtx.sampleRate;
+      const needResample = Math.abs(actualRate - targetRate) > 100;
+
+      processor.onaudioprocess = (event) => {
+        const ws = this.intercomWs[cameraId];
+        if (!ws || ws.readyState !== WebSocket.OPEN) return;
+        let input = event.inputBuffer.getChannelData(0);
+        if (needResample) {
+          const ratio = actualRate / targetRate;
+          const len = Math.floor(input.length / ratio);
+          const buf = new Float32Array(len);
+          for (let i = 0; i < len; i++) buf[i] = input[Math.floor(i * ratio)];
+          input = buf;
+        }
+        const int16 = new Int16Array(input.length);
+        for (let i = 0; i < input.length; i++) {
+          const s = Math.max(-1, Math.min(1, input[i]));
+          int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+        }
+        ws.send(int16.buffer);
+      };
+
+      source.connect(processor);
+      const silent = audioCtx.createGain();
+      silent.gain.value = 0;
+      processor.connect(silent);
+      silent.connect(audioCtx.destination);
+      this.$set(this.intercomProcessor, cameraId, { processor, source, silentGain: silent });
+    },
+
+    playReceivedAudio(cameraId, arrayBuffer) {
+      const audioCtx = this.intercomAudioCtx[cameraId];
+      const gainNode = this.intercomGainNode[cameraId];
+      if (!audioCtx || !gainNode) return;
+      const int16 = new Int16Array(arrayBuffer);
+      const f32 = new Float32Array(int16.length);
+      for (let i = 0; i < int16.length; i++) f32[i] = int16[i] / 32768.0;
+      const buf = audioCtx.createBuffer(1, f32.length, 8000);
+      buf.getChannelData(0).set(f32);
+      const src = audioCtx.createBufferSource();
+      src.buffer = buf;
+      src.connect(gainNode);
+      const now = audioCtx.currentTime;
+      let next = this.intercomNextPlayTime[cameraId] || 0;
+      if (next < now) next = now + 0.05;
+      src.start(next);
+      this.$set(this.intercomNextPlayTime, cameraId, next + buf.duration);
+    },
+
+    stopIntercom(cameraId) {
+      const ws = this.intercomWs[cameraId];
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        try { ws.send(JSON.stringify({ type: 'stop' })); ws.close(); } catch (e) {}
+      }
+      this.cleanupIntercom(cameraId);
+      this.$set(this.intercomStatus, cameraId, 'idle');
+    },
+
+    cleanupIntercom(cameraId) {
+      const p = this.intercomProcessor[cameraId];
+      if (p) { try { p.source.disconnect(); p.processor.disconnect(); p.silentGain.disconnect(); } catch (e) {} this.$delete(this.intercomProcessor, cameraId); }
+      const s = this.intercomStream[cameraId];
+      if (s) { s.getTracks().forEach(t => t.stop()); this.$delete(this.intercomStream, cameraId); }
+      const ctx = this.intercomAudioCtx[cameraId];
+      if (ctx && ctx.state !== 'closed') { try { ctx.close(); } catch (e) {} this.$delete(this.intercomAudioCtx, cameraId); }
+      const ws = this.intercomWs[cameraId];
+      if (ws) { try { if (ws.readyState <= 1) ws.close(); } catch (e) {} this.$delete(this.intercomWs, cameraId); }
+      this.$delete(this.intercomGainNode, cameraId);
+      this.$delete(this.intercomNextPlayTime, cameraId);
+    },
+
+    updateVolume() {
+      Object.keys(this.intercomGainNode).forEach(id => {
+        const g = this.intercomGainNode[id];
+        if (g) g.gain.value = this.intercomVolume / 100;
+      });
+    },
+
+    getIntercomBtnClass(id) {
+      const s = this.intercomStatus[id];
+      return { 'intercom-active': s === 'active', 'intercom-connecting': s === 'connecting', 'intercom-error': s === 'error' };
+    },
+    getIntercomIcon(id) {
+      const s = this.intercomStatus[id];
+      if (s === 'active') return 'el-icon-turn-off-microphone';
+      if (s === 'connecting') return 'el-icon-loading';
+      return 'el-icon-microphone';
+    },
+    getIntercomText(id) {
+      const s = this.intercomStatus[id];
+      if (s === 'active') return '结束对讲';
+      if (s === 'connecting') return '连接中...';
+      return '开始对讲';
     }
   }
 }
@@ -370,4 +598,26 @@ export default {
 .status-offline { color: #f56c6c; }
 .status-unknown { color: #909399; }
 .loading, .no-cameras { padding: 100px; text-align: center; color: var(--text-muted); }
+
+/* 语音对讲 */
+.intercom-panel { background: rgba(0,0,0,0.2); border-radius: 12px; padding: 15px; margin-top: 15px; border: 1px solid rgba(255,255,255,0.05); }
+.intercom-header { margin-bottom: 10px; }
+.intercom-label { font-size: 14px; font-weight: 700; color: var(--text-bright); }
+.intercom-controls { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
+.intercom-btn { display: flex; align-items: center; gap: 6px; padding: 8px 20px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.05); color: #fff; font-size: 13px; cursor: pointer; transition: all 0.3s; white-space: nowrap; }
+.intercom-btn:hover { background: rgba(64,158,255,0.2); border-color: #409eff; color: #409eff; }
+.intercom-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.intercom-btn.intercom-active { background: rgba(245,108,108,0.2); border-color: #f56c6c; color: #f56c6c; animation: ic-pulse 2s ease-in-out infinite; }
+.intercom-btn.intercom-connecting { background: rgba(230,162,60,0.15); border-color: #e6a23c; color: #e6a23c; }
+.intercom-btn.intercom-error { border-color: rgba(245,108,108,0.5); color: rgba(245,108,108,0.8); }
+.intercom-btn i { font-size: 15px; }
+@keyframes ic-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(245,108,108,0.4); } 50% { box-shadow: 0 0 0 6px rgba(245,108,108,0); } }
+.intercom-volume { display: flex; align-items: center; gap: 6px; }
+.vol-text { font-size: 12px; color: var(--text-muted); }
+.vol-slider { width: 80px; }
+.vol-slider /deep/ .el-slider__runway { margin: 0; }
+.intercom-tip { margin-top: 8px; padding: 6px 10px; border-radius: 6px; font-size: 12px; display: flex; align-items: center; gap: 5px; }
+.intercom-tip.tip-connecting { background: rgba(230,162,60,0.1); color: #e6a23c; }
+.intercom-tip.tip-active { background: rgba(103,194,58,0.1); color: #67c23a; }
+.intercom-tip.tip-error { background: rgba(245,108,108,0.1); color: #f56c6c; }
 </style>

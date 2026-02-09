@@ -1,14 +1,18 @@
-﻿using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using System;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.WebSockets;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Net;
+using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using YixiaoAdmin.IServices;
 
@@ -66,6 +70,41 @@ namespace YixiaoAdmin.WebApi.Controllers
         [DllImport("HCNetSDK.dll")]
         public static extern bool NET_DVR_Logout(int lUserID);
 
+        // ====== 语音对讲函数 ======
+        /// <summary>
+        /// 语音数据回调委托（MR模式：手动录音，不自动采集本地麦克风）
+        /// </summary>
+        /// <param name="lVoiceComHandle">语音对讲句柄</param>
+        /// <param name="pRecvDataBuffer">接收的音频数据缓冲区</param>
+        /// <param name="dwBufSize">缓冲区大小</param>
+        /// <param name="byAudioFlag">音频标志：0-设备端音频数据</param>
+        /// <param name="pUser">用户数据</param>
+        public delegate void fVoiceDataCallBack(
+            int lVoiceComHandle,
+            IntPtr pRecvDataBuffer,
+            uint dwBufSize,
+            byte byAudioFlag,
+            IntPtr pUser);
+
+        [DllImport("HCNetSDK.dll")]
+        public static extern int NET_DVR_StartVoiceCom_MR_V30(
+            int lUserID,
+            uint dwVoiceChan,
+            fVoiceDataCallBack cbVoiceDataCallBack,
+            IntPtr pUser);
+
+        [DllImport("HCNetSDK.dll")]
+        public static extern bool NET_DVR_VoiceComSendData(
+            int lVoiceComHandle,
+            byte[] pSendBuf,
+            uint dwBufSize);
+
+        [DllImport("HCNetSDK.dll")]
+        public static extern bool NET_DVR_StopVoiceCom(int lVoiceComHandle);
+
+        [DllImport("HCNetSDK.dll")]
+        public static extern uint NET_DVR_GetLastError();
+
         [StructLayout(LayoutKind.Sequential)]
         public struct NET_DVR_DEVICEINFO_V30
         {
@@ -88,6 +127,19 @@ namespace YixiaoAdmin.WebApi.Controllers
         private static readonly object _loginLock = new object();
         private static int _loggedInUserId = -1;
         private static NET_DVR_DEVICEINFO_V30 _deviceInfoCache;
+
+        // ====== 语音对讲会话管理 ======
+        private static readonly ConcurrentDictionary<string, VoiceTalkSession> _activeVoiceSessions = new();
+
+        private class VoiceTalkSession
+        {
+            public int VoiceHandle { get; set; } = -1;
+            public string CameraId { get; set; }
+            public ConcurrentQueue<byte[]> AudioFromDevice { get; set; } = new();
+            public fVoiceDataCallBack Callback { get; set; }
+            public GCHandle CallbackGcHandle { get; set; }
+            public bool IsActive { get; set; }
+        }
 
         public HKController(IConfiguration configuration, IWebHostEnvironment environment, ICameraServices cameraServices)
         {
@@ -924,6 +976,340 @@ namespace YixiaoAdmin.WebApi.Controllers
                     }
                 }
             }
+        }
+        // ====== G.711 A-law 编解码器 ======
+        private static class G711
+        {
+            /// <summary>
+            /// PCM 16-bit 有符号 → G.711 A-law 8-bit
+            /// </summary>
+            public static byte LinearToAlaw(short pcmVal)
+            {
+                int sign = (~pcmVal >> 8) & 0x80;
+                if (sign == 0)
+                    pcmVal = (short)-pcmVal;
+                if (pcmVal > 32635)
+                    pcmVal = 32635;
+
+                byte compressedByte;
+                if (pcmVal >= 256)
+                {
+                    int exponent = 7;
+                    for (int expMask = 0x4000; (pcmVal & expMask) == 0 && exponent > 1; expMask >>= 1)
+                        exponent--;
+                    int mantissa = (pcmVal >> (exponent + 3)) & 0x0F;
+                    compressedByte = (byte)((exponent << 4) | mantissa);
+                }
+                else
+                {
+                    compressedByte = (byte)(pcmVal >> 4);
+                }
+
+                return (byte)((compressedByte | sign) ^ 0x55);
+            }
+
+            /// <summary>
+            /// G.711 A-law 8-bit → PCM 16-bit 有符号
+            /// </summary>
+            public static short AlawToLinear(byte alawByte)
+            {
+                alawByte ^= 0x55;
+                int sign = alawByte & 0x80;
+                int exponent = (alawByte >> 4) & 0x07;
+                int mantissa = alawByte & 0x0F;
+
+                int sample;
+                if (exponent != 0)
+                    sample = ((mantissa << 4) | 0x108) << (exponent - 1);
+                else
+                    sample = (mantissa << 4) | 0x08;
+
+                return (short)(sign == 0 ? sample : -sample);
+            }
+
+            /// <summary>
+            /// 批量 PCM Int16 → G.711 A-law
+            /// </summary>
+            public static byte[] EncodePcmToAlaw(byte[] pcmData)
+            {
+                int sampleCount = pcmData.Length / 2;
+                byte[] alawData = new byte[sampleCount];
+                for (int i = 0; i < sampleCount; i++)
+                {
+                    short pcmSample = (short)(pcmData[i * 2] | (pcmData[i * 2 + 1] << 8));
+                    alawData[i] = LinearToAlaw(pcmSample);
+                }
+                return alawData;
+            }
+
+            /// <summary>
+            /// 批量 G.711 A-law → PCM Int16
+            /// </summary>
+            public static byte[] DecodeAlawToPcm(byte[] alawData)
+            {
+                byte[] pcmData = new byte[alawData.Length * 2];
+                for (int i = 0; i < alawData.Length; i++)
+                {
+                    short pcmSample = AlawToLinear(alawData[i]);
+                    pcmData[i * 2] = (byte)(pcmSample & 0xFF);
+                    pcmData[i * 2 + 1] = (byte)((pcmSample >> 8) & 0xFF);
+                }
+                return pcmData;
+            }
+        }
+
+        // ====== 语音对讲 WebSocket 端点 ======
+        /// <summary>
+        /// 语音对讲 WebSocket 端点
+        /// 前端通过 WebSocket 连接后，实现浏览器与摄像头之间的双向语音通信
+        /// 协议：
+        /// - 二进制帧：PCM Int16 LE 8000Hz 单声道音频数据
+        /// - 文本帧：JSON 控制消息 {"type":"start|stop|status|error","message":"..."}
+        /// </summary>
+        [HttpGet("voice-talk/{cameraId}")]
+        public async Task VoiceTalk(string cameraId)
+        {
+            if (!HttpContext.WebSockets.IsWebSocketRequest)
+            {
+                HttpContext.Response.StatusCode = 400;
+                await HttpContext.Response.WriteAsync("需要 WebSocket 连接");
+                return;
+            }
+
+            using var ws = await HttpContext.WebSockets.AcceptWebSocketAsync();
+
+            try
+            {
+                // 1. 检查是否已有该摄像头的对讲会话
+                if (_activeVoiceSessions.ContainsKey(cameraId))
+                {
+                    await SendWsJson(ws, new { type = "error", message = "该摄像头已有对讲会话，请先关闭后重试" });
+                    await ws.CloseAsync(WebSocketCloseStatus.PolicyViolation, "已有活跃会话", CancellationToken.None);
+                    return;
+                }
+
+                // 2. 确保SDK登录
+                var loginResult = EnsureLogin();
+                if (!loginResult.Success)
+                {
+                    await SendWsJson(ws, new { type = "error", message = $"摄像头登录失败: {loginResult.Message}" });
+                    return;
+                }
+
+                // 3. 创建对讲会话
+                var session = new VoiceTalkSession { CameraId = cameraId };
+
+                // 创建回调（接收设备端音频）
+                session.Callback = (handle, buffer, size, audioFlag, user) =>
+                {
+                    // audioFlag == 0: 来自设备的音频数据
+                    if (audioFlag == 0 && size > 0)
+                    {
+                        byte[] audioData = new byte[size];
+                        Marshal.Copy(buffer, audioData, 0, (int)size);
+                        session.AudioFromDevice.Enqueue(audioData);
+                    }
+                };
+
+                // 防止回调被 GC 回收
+                session.CallbackGcHandle = GCHandle.Alloc(session.Callback);
+
+                // 4. 启动语音对讲（MR模式：手动录音）
+                int voiceHandle = NET_DVR_StartVoiceCom_MR_V30(
+                    _loggedInUserId,
+                    1, // 语音通道号
+                    session.Callback,
+                    IntPtr.Zero);
+
+                if (voiceHandle < 0)
+                {
+                    uint errorCode = NET_DVR_GetLastError();
+                    session.CallbackGcHandle.Free();
+                    await SendWsJson(ws, new { type = "error", message = $"启动对讲失败，SDK错误码: {errorCode}" });
+                    return;
+                }
+
+                session.VoiceHandle = voiceHandle;
+                session.IsActive = true;
+                _activeVoiceSessions.TryAdd(cameraId, session);
+
+                await SendWsJson(ws, new { type = "status", status = "connected", message = "对讲已连接" });
+
+                // 5. 双向音频传输
+                using var cts = new CancellationTokenSource();
+
+                // 任务A：接收浏览器音频 → 发送到摄像头
+                var receiveTask = Task.Run(async () =>
+                {
+                    var buffer = new byte[8192];
+                    try
+                    {
+                        while (!cts.Token.IsCancellationRequested && ws.State == WebSocketState.Open)
+                        {
+                            var result = await ws.ReceiveAsync(new ArraySegment<byte>(buffer), cts.Token);
+
+                            if (result.MessageType == WebSocketMessageType.Close)
+                                break;
+
+                            if (result.MessageType == WebSocketMessageType.Binary && result.Count > 0)
+                            {
+                                // 接收到的是 PCM Int16 LE 8000Hz 数据，转换为 G.711 A-law 发送到摄像头
+                                var pcmData = new byte[result.Count];
+                                Array.Copy(buffer, pcmData, result.Count);
+
+                                var alawData = G711.EncodePcmToAlaw(pcmData);
+
+                                // 分帧发送（每帧160字节 = 20ms，这是G.711的标准帧大小）
+                                const int frameSize = 160;
+                                for (int offset = 0; offset < alawData.Length; offset += frameSize)
+                                {
+                                    int remaining = Math.Min(frameSize, alawData.Length - offset);
+                                    var frame = new byte[remaining];
+                                    Array.Copy(alawData, offset, frame, 0, remaining);
+                                    NET_DVR_VoiceComSendData(voiceHandle, frame, (uint)remaining);
+                                }
+                            }
+                            else if (result.MessageType == WebSocketMessageType.Text)
+                            {
+                                // 处理控制消息
+                                var msgBytes = new byte[result.Count];
+                                Array.Copy(buffer, msgBytes, result.Count);
+                                var msgText = Encoding.UTF8.GetString(msgBytes);
+
+                                try
+                                {
+                                    var msg = JsonSerializer.Deserialize<JsonElement>(msgText);
+                                    var msgType = msg.GetProperty("type").GetString();
+                                    if (msgType == "stop")
+                                        break;
+                                }
+                                catch { }
+                            }
+                        }
+                    }
+                    catch (OperationCanceledException) { }
+                    catch (WebSocketException) { }
+                }, cts.Token);
+
+                // 任务B：从摄像头接收音频 → 发送到浏览器
+                var sendTask = Task.Run(async () =>
+                {
+                    try
+                    {
+                        while (!cts.Token.IsCancellationRequested && ws.State == WebSocketState.Open)
+                        {
+                            if (session.AudioFromDevice.TryDequeue(out var alawData))
+                            {
+                                // 将 G.711 A-law 转换为 PCM Int16 发送给浏览器
+                                var pcmData = G711.DecodeAlawToPcm(alawData);
+
+                                if (ws.State == WebSocketState.Open)
+                                {
+                                    await ws.SendAsync(
+                                        new ArraySegment<byte>(pcmData),
+                                        WebSocketMessageType.Binary,
+                                        true,
+                                        cts.Token);
+                                }
+                            }
+                            else
+                            {
+                                await Task.Delay(10, cts.Token);
+                            }
+                        }
+                    }
+                    catch (OperationCanceledException) { }
+                    catch (WebSocketException) { }
+                }, cts.Token);
+
+                // 等待任一任务完成（连接断开或用户停止）
+                await Task.WhenAny(receiveTask, sendTask);
+                cts.Cancel();
+
+                // 等待两个任务都完成
+                try { await Task.WhenAll(receiveTask, sendTask); } catch { }
+            }
+            catch (Exception ex)
+            {
+                try
+                {
+                    if (ws.State == WebSocketState.Open)
+                        await SendWsJson(ws, new { type = "error", message = $"对讲异常: {ex.Message}" });
+                }
+                catch { }
+            }
+            finally
+            {
+                // 6. 清理对讲会话
+                if (_activeVoiceSessions.TryRemove(cameraId, out var session))
+                {
+                    if (session.VoiceHandle >= 0)
+                    {
+                        NET_DVR_StopVoiceCom(session.VoiceHandle);
+                    }
+                    if (session.CallbackGcHandle.IsAllocated)
+                    {
+                        session.CallbackGcHandle.Free();
+                    }
+                    session.IsActive = false;
+                }
+
+                // 关闭WebSocket
+                try
+                {
+                    if (ws.State == WebSocketState.Open)
+                        await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "对讲结束", CancellationToken.None);
+                }
+                catch { }
+            }
+        }
+
+        /// <summary>
+        /// 获取对讲状态
+        /// </summary>
+        [HttpGet("voice-talk-status/{cameraId}")]
+        public IActionResult GetVoiceTalkStatus(string cameraId)
+        {
+            bool isActive = _activeVoiceSessions.ContainsKey(cameraId);
+            return Ok(new
+            {
+                cameraId,
+                isActive,
+                message = isActive ? "对讲进行中" : "无活跃对讲"
+            });
+        }
+
+        /// <summary>
+        /// 强制停止对讲
+        /// </summary>
+        [HttpPost("voice-talk-stop/{cameraId}")]
+        public IActionResult ForceStopVoiceTalk(string cameraId)
+        {
+            if (_activeVoiceSessions.TryRemove(cameraId, out var session))
+            {
+                if (session.VoiceHandle >= 0)
+                {
+                    NET_DVR_StopVoiceCom(session.VoiceHandle);
+                }
+                if (session.CallbackGcHandle.IsAllocated)
+                {
+                    session.CallbackGcHandle.Free();
+                }
+                session.IsActive = false;
+                return Ok(new { success = true, message = "对讲已停止" });
+            }
+            return Ok(new { success = true, message = "无活跃对讲" });
+        }
+
+        /// <summary>
+        /// 发送 WebSocket JSON 消息
+        /// </summary>
+        private static async Task SendWsJson(WebSocket ws, object data)
+        {
+            if (ws.State != WebSocketState.Open) return;
+            var json = JsonSerializer.Serialize(data);
+            var bytes = Encoding.UTF8.GetBytes(json);
+            await ws.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
         }
     }
 }

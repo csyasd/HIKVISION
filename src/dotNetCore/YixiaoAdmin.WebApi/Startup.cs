@@ -268,6 +268,21 @@ namespace YixiaoAdmin.WebApi
             // CORS必须在路由之前配置
             app.UseCors("FrontendCorsPolicy");
 
+            // 启用WebSocket支持（用于语音对讲）
+            var webSocketOptions = new Microsoft.AspNetCore.Builder.WebSocketOptions
+            {
+                KeepAliveInterval = TimeSpan.FromSeconds(30)
+            };
+            // 添加允许的WebSocket来源
+            if (corsAllowedOrigins != null)
+            {
+                foreach (var origin in corsAllowedOrigins)
+                {
+                    webSocketOptions.AllowedOrigins.Add(origin);
+                }
+            }
+            app.UseWebSockets(webSocketOptions);
+
             app.UseDefaultFiles();
             app.UseStaticFiles();
             app.UseStaticFiles(new StaticFileOptions
