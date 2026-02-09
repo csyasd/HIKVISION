@@ -1,17 +1,29 @@
 <template>
   <div class="video-container">
-    <h2>实时监控</h2>
-
+    <div class="header-container">
+      <h2>{{ displayTitle }}</h2>
+      <div class="header-tools">
+        <el-select v-model="selectedCameraId" placeholder="筛选摄像头名称" clearable class="camera-selector">
+          <el-option
+            v-for="item in cameras"
+            :key="item.Id"
+            :label="item.Name || (item.Device && item.Device.Name) || '未命名摄像头'"
+            :value="item.Id">
+          </el-option>
+        </el-select>
+      </div>
+    </div>
+    
     <!-- 摄像头网格布局 -->
-    <div class="cameras-grid" v-if="cameras.length > 0">
+    <div class="cameras-grid" v-if="filteredCameras.length > 0">
       <div 
-        v-for="camera in cameras" 
+        v-for="camera in filteredCameras" 
         :key="camera.Id" 
         class="camera-item"
         :class="{ 'camera-error': cameraErrors[camera.Id] }"
       >
         <div class="camera-header">
-          <h3>{{ camera.Name || '未命名摄像头' }}</h3>
+          <h3>{{ camera.Name || (camera.Device && camera.Device.Name) || '未命名摄像头' }}</h3>
           <div class="camera-info">
             <span class="camera-ip">{{ camera.IP || '未知IP' }}</span>
             <span 
@@ -23,91 +35,112 @@
           </div>
         </div>
 
-        <!-- 视频播放器 -->
-        <div class="video-wrapper">
-          <video 
-            :id="`flv_video_${camera.Id}`"
-            class="video-player"
-            muted
-            autoplay
-            playsinline
-            style="width: 100%; height: 400px; background: #000; display: block; object-fit: contain;">
-          </video>
-
-          <!-- 加载中 -->
-          <div v-if="loadingStatus[camera.Id] && !cameraErrors[camera.Id]" class="error-overlay">
-            <div class="error-content">
-              <i class="el-icon-loading"></i>
-              <h4>正在建立极速连接...</h4>
+        <!-- 3列布局框架 -->
+        <div class="camera-dashboard">
+          <!-- 左侧：工单数据 -->
+          <div class="dashboard-sidebar sidebar-left">
+            <div class="sidebar-section">
+              <div class="section-title">实时气体监测</div>
+              <div class="section-content">
+                <div v-for="(gas, index) in getFilteredGas(camera.DeviceId)" :key="'gas-'+index" class="data-item">
+                  <span class="data-name">{{ gas.GasName }}:</span>
+                  <span class="data-value">{{ gas.GasValue }}</span>
+                </div>
+                <div v-if="getFilteredGas(camera.DeviceId).length === 0" class="no-data-text">暂无在线监测数据</div>
+              </div>
+            </div>
+            <div class="sidebar-section">
+              <div class="section-title">手环工人信息</div>
+              <div class="section-content">
+                <div v-for="(bracelet, index) in getFilteredBracelet(camera.DeviceId)" :key="'bracelet-'+index" class="data-item bracelet-item">
+                  <div class="worker-name">{{ bracelet.WorkerName }}</div>
+                  <div class="heart-rate">
+                    <i class="el-icon-headset"></i> {{ bracelet.HeartRate }} bpm
+                  </div>
+                </div>
+                <div v-if="getFilteredBracelet(camera.DeviceId).length === 0" class="no-data-text">暂无在线工人信息</div>
+              </div>
             </div>
           </div>
 
-          <!-- 播放失败 -->
-          <div v-if="cameraErrors[camera.Id]" class="error-overlay">
-            <div class="error-content">
-              <i class="el-icon-warning"></i>
-              <h4>视频流连接中断</h4>
-              <p>系统自动重试中...</p>
-              <el-button type="primary" size="mini" @click="retryPlay(camera)">手动刷新</el-button>
-            </div>
-          </div>
-        </div>
+          <!-- 中间：视频播放 -->
+          <div class="dashboard-center">
+            <div class="video-wrapper" :id="`video_wrapper_${camera.Id}`">
+              <video 
+                :id="`flv_video_${camera.Id}`"
+                class="video-player"
+                muted
+                autoplay
+                playsinline
+                style="width: 100%; height: 100%; background: #000; display: block; object-fit: contain;">
+              </video>
 
-        <!-- 云台控制 -->
-        <div class="ptz-panel">
-          <div class="ptz-title">
-            <span class="ptz-label">云台控制</span>
-            <div class="ptz-speed-wrapper">
-              <span class="speed-text">速度:</span>
-              <el-slider v-model="ptzSpeed" :min="1" :max="7" class="ptz-slider"></el-slider>
-            </div>
-          </div>
-          <div class="ptz-grid">
-            <div></div>
-            <button class="ptz-btn" @mousedown="ptz(camera, 21, 0)" @mouseup="ptz(camera, 21, 1)">↑</button>
-            <div></div>
-            <button class="ptz-btn" @mousedown="ptz(camera, 23, 0)" @mouseup="ptz(camera, 23, 1)">←</button>
-            <div class="ptz-center">⊙</div>
-            <button class="ptz-btn" @mousedown="ptz(camera, 24, 0)" @mouseup="ptz(camera, 24, 1)">→</button>
-            <div></div>
-            <button class="ptz-btn" @mousedown="ptz(camera, 22, 0)" @mouseup="ptz(camera, 22, 1)">↓</button>
-            <div></div>
-          </div>
-          <div class="ptz-extra">
-            <button class="ptz-small-btn" @mousedown="ptz(camera, 11, 0)" @mouseup="ptz(camera, 11, 1)">放大</button>
-            <button class="ptz-small-btn" @mousedown="ptz(camera, 12, 0)" @mouseup="ptz(camera, 12, 1)">缩小</button>
-            <button class="ptz-small-btn" @mousedown="ptz(camera, 13, 0)" @mouseup="ptz(camera, 13, 1)">近焦</button>
-            <button class="ptz-small-btn" @mousedown="ptz(camera, 14, 0)" @mouseup="ptz(camera, 14, 1)">远焦</button>
-          </div>
-        </div>
+              <!-- 全屏按钮 -->
+              <div class="fullscreen-btn" @click="toggleFullScreen(camera.Id)">
+                <i class="el-icon-full-screen"></i>
+              </div>
 
-        <!-- 语音对讲 -->
-        <div class="intercom-panel">
-          <div class="intercom-header">
-            <span class="intercom-label">语音对讲</span>
-          </div>
-          <div class="intercom-controls">
-            <button 
-              class="intercom-btn"
-              :class="getIntercomBtnClass(camera.Id)"
-              @click="toggleIntercom(camera)"
-              :disabled="intercomStatus[camera.Id] === 'connecting'"
-            >
-              <i :class="getIntercomIcon(camera.Id)"></i>
-              {{ getIntercomText(camera.Id) }}
-            </button>
-            <div v-if="intercomStatus[camera.Id] === 'active'" class="intercom-volume">
-              <span class="vol-text">音量:</span>
-              <el-slider v-model="intercomVolume" :min="0" :max="100" :show-tooltip="false" class="vol-slider" @input="updateVolume"></el-slider>
+              <!-- 加载中 -->
+              <div v-if="loadingStatus[camera.Id] && !cameraErrors[camera.Id]" class="error-overlay">
+                <div class="error-content">
+                  <i class="el-icon-loading"></i>
+                  <h4>正在建立极速连接...</h4>
+                </div>
+              </div>
+
+              <!-- 播放失败 -->
+              <div v-if="cameraErrors[camera.Id]" class="error-overlay">
+                <div class="error-content">
+                  <i class="el-icon-warning"></i>
+                  <h4>视频流连接中断</h4>
+                  <el-button type="primary" size="mini" @click="retryPlay(camera)">手动刷新</el-button>
+                </div>
+              </div>
             </div>
           </div>
-          <div v-if="intercomStatus[camera.Id]" class="intercom-tip" :class="'tip-' + intercomStatus[camera.Id]">
-            <i v-if="intercomStatus[camera.Id] === 'connecting'" class="el-icon-loading"></i>
-            <i v-else-if="intercomStatus[camera.Id] === 'active'" class="el-icon-microphone"></i>
-            <i v-else-if="intercomStatus[camera.Id] === 'error'" class="el-icon-warning"></i>
-            <span v-if="intercomStatus[camera.Id] === 'connecting'">正在建立对讲连接...</span>
-            <span v-else-if="intercomStatus[camera.Id] === 'active'">对讲中 — 请对着麦克风说话</span>
-            <span v-else-if="intercomStatus[camera.Id] === 'error'">{{ intercomError[camera.Id] || '对讲连接失败' }}</span>
+
+          <!-- 右侧：控制面板 -->
+          <div class="dashboard-sidebar sidebar-right">
+            <!-- 云台控制 -->
+            <div class="ptz-panel mini-panel">
+              <div class="ptz-title">
+                <span class="ptz-label">云台控制</span>
+                <el-slider v-model="ptzSpeed" :min="1" :max="7" class="ptz-slider-mini"></el-slider>
+              </div>
+              <div class="ptz-grid">
+                <div></div>
+                <button class="ptz-btn" @mousedown="ptz(camera, 21, 0)" @mouseup="ptz(camera, 21, 1)">↑</button>
+                <div></div>
+                <button class="ptz-btn" @mousedown="ptz(camera, 23, 0)" @mouseup="ptz(camera, 23, 1)">←</button>
+                <div class="ptz-center">⊙</div>
+                <button class="ptz-btn" @mousedown="ptz(camera, 24, 0)" @mouseup="ptz(camera, 24, 1)">→</button>
+                <div></div>
+                <button class="ptz-btn" @mousedown="ptz(camera, 22, 0)" @mouseup="ptz(camera, 22, 1)">↓</button>
+                <div></div>
+              </div>
+              <div class="ptz-extra">
+                <button class="ptz-small-btn" @mousedown="ptz(camera, 11, 0)" @mouseup="ptz(camera, 11, 1)">放大</button>
+                <button class="ptz-small-btn" @mousedown="ptz(camera, 12, 0)" @mouseup="ptz(camera, 12, 1)">缩小</button>
+              </div>
+            </div>
+
+            <!-- 语音对讲 -->
+            <div class="intercom-panel mini-panel">
+              <div class="intercom-controls-mini">
+                <button 
+                  class="intercom-btn-mini"
+                  :class="getIntercomBtnClass(camera.Id)"
+                  @click="toggleIntercom(camera)"
+                  :disabled="intercomStatus[camera.Id] === 'connecting'"
+                >
+                  <i :class="getIntercomIcon(camera.Id)"></i>
+                </button>
+                <div class="intercom-vol-wrap">
+                  <el-slider v-model="intercomVolume" :min="0" :max="100" class="vol-slider-mini" vertical height="60px" @input="updateVolume"></el-slider>
+                </div>
+              </div>
+              <div v-if="intercomStatus[camera.Id] === 'active'" class="intercom-status-dot pulse">对讲中</div>
+            </div>
           </div>
         </div>
       </div>
@@ -124,46 +157,12 @@
       <el-button @click="loadCameras" type="primary">重试加载</el-button>
     </div>
 
-    <!-- 底部数据 -->
-    <div class="bottom-data-sections">
-      <div class="data-block">
-        <div class="block-header">气体监测实时数据</div>
-        <el-table :data="gasMonitoringData" border style="width: 100%" size="small">
-          <el-table-column prop="DeviceName" label="设备名称及型号"></el-table-column>
-          <el-table-column prop="WorkOrderCode" label="工单编号"></el-table-column>
-          <el-table-column prop="GasName" label="气体名称"></el-table-column>
-          <el-table-column prop="GasValue" label="检测数值"></el-table-column>
-          <el-table-column prop="Status" label="状态">
-            <template slot-scope="scope">
-              <span style="color: #67c23a; font-weight: bold;">{{ scope.row.Status }}</span>
-            </template>
-          </el-table-column>
-        </el-table>
-      </div>
-      <div class="data-block">
-        <div class="block-header">手环实时信息</div>
-        <el-table :data="braceletInfoData" border style="width: 100%" size="small">
-          <el-table-column prop="DeviceName" label="设备名称及型号"></el-table-column>
-          <el-table-column prop="WorkOrderCode" label="工单编号"></el-table-column>
-          <el-table-column prop="WorkerName" label="工人姓名"></el-table-column>
-          <el-table-column prop="HeartRate" label="心率"></el-table-column>
-          <el-table-column label="进离场状态">
-            <template slot-scope="scope">
-              <span :style="{ color: (scope.row.EntryExitStatus === '进入' || scope.row.EntryExitStatus === '刷卡成功') ? '#67c23a' : '#909399', fontWeight: 'bold' }">
-                {{ scope.row.EntryExitStatus }}
-              </span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="EntryTime" label="进场时间"></el-table-column>
-          <el-table-column prop="ExitTime" label="出场时间"></el-table-column>
-        </el-table>
-      </div>
-    </div>
+
   </div>
 </template>
 
 <script>
-import { PTZControl, GetRealtimeGasData, GetRealtimeBraceletInfo, SelectALLDevice, SelectALLCamera, BaseUrl } from '../api/api'
+import { PTZControl, GetRealtimeGasData, GetRealtimeBraceletInfo, GetRealtimeWorkOrders, SelectALLDevice, SelectALLCamera, BaseUrl } from '../api/api'
 
 export default {
   data() {
@@ -179,6 +178,7 @@ export default {
       gasMonitoringData: [],
       braceletInfoData: [],
       devices: [],
+      selectedCameraId: null,
       refreshTimer: null,
       latencyCheckTimer: null,
       API_BASE: BaseUrl.replace(/\/$/, ''),
@@ -191,7 +191,42 @@ export default {
       intercomProcessor: {},
       intercomVolume: 80,
       intercomGainNode: {},
-      intercomNextPlayTime: {}
+      intercomNextPlayTime: {},
+      workOrders: []
+    }
+  },
+  computed: {
+    filteredCameras() {
+      if (!this.selectedCameraId) return this.cameras;
+      return this.cameras.filter(c => c.Id == this.selectedCameraId);
+    },
+    displayTitle() {
+      if (this.selectedCameraId) {
+        const cam = this.cameras.find(c => c.Id == this.selectedCameraId);
+        const name = cam ? (cam.Name || (cam.Device && cam.Device.Name) || '未命名摄像头') : '';
+        return cam ? `正在监控: ${name}` : '实时监控';
+      }
+      return '实时监控';
+    }
+  },
+  watch: {
+    selectedCameraId(newVal) {
+      this.destroyAllPlayers();
+      this.$nextTick(() => {
+        this.filteredCameras.forEach(camera => this.initPlayer(camera));
+      });
+    },
+    '$route.query.cameraId': {
+      handler(val) {
+        if (val) {
+          if (this.selectedCameraId !== val) {
+            this.selectedCameraId = val;
+          }
+        } else {
+          this.selectedCameraId = null;
+        }
+      },
+      immediate: true
     }
   },
   mounted() {
@@ -215,9 +250,10 @@ export default {
         // 使用api.js中的SelectALLCamera方法，它会自动添加Authorization header
         const camerasRes = await SelectALLCamera();
         this.cameras = camerasRes || [];
+        
         if (this.cameras.length > 0) {
           this.$nextTick(() => {
-            this.cameras.forEach(camera => this.initPlayer(camera));
+            this.filteredCameras.forEach(camera => this.initPlayer(camera));
           });
         }
       } catch (err) {
@@ -337,15 +373,63 @@ export default {
 
     async fetchRealtimeData() {
       try {
-        const [gasRes, braceletRes, deviceRes] = await Promise.all([
+        const [gasRes, braceletRes, deviceRes, workOrderRes] = await Promise.all([
           GetRealtimeGasData(),
           GetRealtimeBraceletInfo(),
-          SelectALLDevice()
+          SelectALLDevice(),
+          GetRealtimeWorkOrders()
         ]);
         if (gasRes) this.gasMonitoringData = gasRes;
         if (braceletRes) this.braceletInfoData = braceletRes;
         if (deviceRes) this.devices = deviceRes;
+        if (workOrderRes) this.workOrders = workOrderRes;
       } catch (error) {}
+    },
+
+    toggleFullScreen(cameraId) {
+      const videoWrapper = document.getElementById(`video_wrapper_${cameraId}`);
+      if (!videoWrapper) return;
+
+      if (!document.fullscreenElement) {
+        if (videoWrapper.requestFullscreen) {
+          videoWrapper.requestFullscreen();
+        } else if (videoWrapper.mozRequestFullScreen) { /* Firefox */
+          videoWrapper.mozRequestFullScreen();
+        } else if (videoWrapper.webkitRequestFullscreen) { /* Chrome, Safari and Opera */
+          videoWrapper.webkitRequestFullscreen();
+        } else if (videoWrapper.msRequestFullscreen) { /* IE/Edge */
+          videoWrapper.msRequestFullscreen();
+        }
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        } else if (document.mozCancelFullScreen) {
+          document.mozCancelFullScreen();
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen();
+        } else if (document.msExitFullscreen) {
+          document.msExitFullscreen();
+        }
+      }
+    },
+
+    getOnlineWorkOrder(deviceId) {
+      if (!deviceId) return null;
+      return this.workOrders.find(w => w.DeviceId === deviceId && (w.Status === '执行中' || w.Status === '在线'));
+    },
+
+    getFilteredGas(deviceId) {
+      if (!deviceId) return [];
+      const order = this.getOnlineWorkOrder(deviceId);
+      if (!order) return [];
+      return this.gasMonitoringData.filter(g => g.WorkOrderCode === order.WorkOrderCode || g.DeviceId === deviceId);
+    },
+
+    getFilteredBracelet(deviceId) {
+      if (!deviceId) return [];
+      const order = this.getOnlineWorkOrder(deviceId);
+      if (!order) return [];
+      return this.braceletInfoData.filter(b => b.WorkOrderCode === order.WorkOrderCode || b.DeviceId === deviceId);
     },
 
     getCameraStatus(cameraId) {
@@ -576,59 +660,91 @@ export default {
 </script>
 
 <style scoped>
-.video-container { padding: 24px; background: transparent; }
-.video-container h2 { text-align: center; color: var(--text-bright); font-size: 28px; font-weight: 800; margin-bottom: 30px; letter-spacing: 2px; background: linear-gradient(135deg, #409eff 0%, #7948ea 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-.cameras-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 30px; margin: 30px 0; }
-.camera-item { border: 1px solid var(--glass-border); border-radius: 20px; padding: 20px; background: var(--glass-bg); backdrop-filter: blur(20px); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4); position: relative; }
-.camera-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid var(--glass-border); padding-bottom: 15px; }
-.camera-header h3 { margin: 0; color: var(--text-bright); font-size: 18px; }
-.camera-ip { font-size: 13px; color: var(--text-muted); margin-right: 10px; }
-.video-wrapper { margin: 15px 0; background: #000; border-radius: 12px; overflow: hidden; position: relative; }
-.video-player { width: 100%; height: 400px; }
-.error-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; z-index: 20; }
-.error-content { text-align: center; color: #fff; }
-.error-content i { font-size: 40px; color: #f56c6c; margin-bottom: 10px; }
-.ptz-panel { background: rgba(0, 0, 0, 0.2); border-radius: 12px; padding: 15px; margin-top: 15px; }
-.ptz-title { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; color: var(--text-bright); }
-.ptz-label { font-size: 14px; font-weight: 700; }
-.ptz-speed-wrapper { display: flex; align-items: center; gap: 8px; }
-.speed-text { font-size: 12px; color: var(--text-muted); }
-.ptz-slider { width: 80px; }
-.ptz-slider /deep/ .el-slider__runway { margin: 0; }
-.ptz-grid { display: grid; grid-template-columns: repeat(3, 44px); gap: 10px; justify-content: center; margin-bottom: 15px; }
-.ptz-btn { width: 44px; height: 44px; background: rgba(255, 255, 255, 0.1); border: none; border-radius: 8px; color: #fff; cursor: pointer; }
-.ptz-btn:hover { background: #409eff; }
-.ptz-center { display: flex; align-items: center; justify-content: center; color: #555; }
-.ptz-extra { display: flex; justify-content: center; gap: 10px; }
-.ptz-small-btn { padding: 5px 10px; background: rgba(255, 255, 255, 0.1); border: none; border-radius: 4px; color: #fff; font-size: 12px; cursor: pointer; }
-.ptz-small-btn:hover { color: #409eff; }
-.bottom-data-sections { margin-top: 40px; display: flex; flex-direction: column; gap: 40px; }
-.data-block { background: var(--glass-bg); border-radius: 20px; overflow: hidden; border: 1px solid var(--glass-border); }
-.block-header { padding: 15px 20px; background: rgba(64, 158, 255, 0.1); color: #409eff; font-weight: bold; }
-.status-online { color: #67c23a; }
-.status-offline { color: #f56c6c; }
+.video-container { padding: 24px; background: transparent; min-height: 100vh; }
+.header-container { display: flex; align-items: center; justify-content: center; position: relative; margin-bottom: 30px; }
+.header-tools { position: absolute; left: 0; top: 50%; transform: translateY(-50%); }
+.camera-selector { width: 220px; }
+.camera-selector /deep/ .el-input__inner { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: #fff; border-radius: 10px; }
+.video-container h2 { text-align: center; color: var(--text-bright); font-size: 28px; font-weight: 800; margin: 0; letter-spacing: 2px; background: linear-gradient(135deg, #409eff 0%, #7948ea 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.cameras-grid { display: grid; grid-template-columns: 1fr; gap: 40px; margin: 30px 0; }
+
+.camera-item { border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 24px; background: rgba(20, 20, 20, 0.6); backdrop-filter: blur(30px); box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5); position: relative; }
+.camera-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); padding-bottom: 15px; }
+.camera-header h3 { margin: 0; color: #fff; font-size: 20px; font-weight: 600; }
+.camera-ip { font-size: 14px; color: rgba(255, 255, 255, 0.4); margin-right: 15px; }
+
+/* Dashboard Layout */
+.camera-dashboard { display: flex; gap: 20px; height: 450px; background: #000; border-radius: 16px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.08); }
+
+.dashboard-sidebar { width: 220px; flex-shrink: 0; padding: 20px; background: rgba(255, 255, 255, 0.02); display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
+.sidebar-left { border-right: 1px solid rgba(255, 255, 255, 0.05); }
+.sidebar-right { border-left: 1px solid rgba(255, 255, 255, 0.05); width: 180px; }
+.dashboard-center { flex: 1; position: relative; background: #000; }
+
+/* Sections */
+.sidebar-section { display: flex; flex-direction: column; gap: 10px; }
+.section-title { font-size: 13px; font-weight: 700; color: #409eff; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.8; }
+.section-content { display: flex; flex-direction: column; gap: 12px; }
+
+.data-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: rgba(255, 255, 255, 0.03); border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.05); }
+.data-name { font-size: 12px; color: rgba(255, 255, 255, 0.5); }
+.data-value { font-size: 14px; color: #fff; font-family: 'Inter', sans-serif; font-weight: 600; }
+
+.bracelet-item { flex-direction: column; align-items: flex-start; gap: 6px; }
+.worker-name { font-size: 14px; color: #fff; font-weight: 600; }
+.heart-rate { font-size: 13px; color: #f56c6c; display: flex; align-items: center; gap: 4px; }
+.no-data-text { font-size: 12px; color: rgba(255, 255, 255, 0.3); text-align: center; margin-top: 10px; }
+
+/* Video & Fullscreen */
+.video-wrapper { width: 100%; height: 100%; position: relative; }
+.fullscreen-btn { position: absolute; bottom: 15px; right: 15px; width: 36px; height: 36px; background: rgba(0, 0, 0, 0.5); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff; cursor: pointer; transition: all 0.3s; z-index: 30; border: 1px solid rgba(255, 255, 255, 0.1); }
+.fullscreen-btn:hover { background: #409eff; transform: scale(1.1); }
+.fullscreen-btn i { font-size: 20px; }
+
+/* Mini Panels */
+.mini-panel { background: transparent; padding: 0; margin: 0; }
+.ptz-title { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+.ptz-label { font-size: 13px; font-weight: 700; color: rgba(255, 255, 255, 0.6); }
+.ptz-slider-mini { width: 60px; }
+.ptz-slider-mini /deep/ .el-slider__runway { margin: 8px 0; height: 4px; }
+
+.ptz-grid { display: grid; grid-template-columns: repeat(3, 36px); gap: 8px; justify-content: center; margin-bottom: 15px; }
+.ptz-btn { width: 36px; height: 36px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; color: #fff; cursor: pointer; transition: all 0.2s; font-size: 16px; }
+.ptz-btn:hover { background: #409eff; border-color: #409eff; }
+.ptz-center { display: flex; align-items: center; justify-content: center; color: rgba(255, 255, 255, 0.2); }
+.ptz-extra { display: flex; justify-content: center; gap: 8px; }
+.ptz-small-btn { flex: 1; padding: 6px 0; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 4px; color: #fff; font-size: 11px; cursor: pointer; transition: all 0.2s; text-align: center; }
+.ptz-small-btn:hover { background: rgba(64, 158, 255, 0.2); border-color: #409eff; color: #409eff; }
+
+/* Intercom Mini */
+.intercom-panel { margin-top: 10px; padding-top: 15px; border-top: 1px solid rgba(255, 255, 255, 0.05); }
+.intercom-controls-mini { display: flex; justify-content: space-between; align-items: center; }
+.intercom-btn-mini { width: 44px; height: 44px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.05); color: #fff; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; position: relative; }
+.intercom-btn-mini:hover { border-color: #409eff; color: #409eff; transform: scale(1.05); }
+.intercom-btn-mini i { font-size: 20px; }
+.intercom-btn-mini.intercom-active { background: #f56c6c; border-color: #f56c6c; box-shadow: 0 0 15px rgba(245, 108, 108, 0.5); }
+.intercom-vol-wrap { width: 40px; }
+.vol-slider-mini /deep/ .el-slider__runway { background-color: rgba(255, 255, 255, 0.1); }
+
+.intercom-status-dot { margin-top: 10px; font-size: 11px; color: #67c23a; text-align: center; display: flex; align-items: center; justify-content: center; gap: 5px; }
+.intercom-status-dot::before { content: ''; width: 6px; height: 6px; background: #67c23a; border-radius: 50%; }
+
+.pulse { animation: pulse-animation 2s infinite; }
+@keyframes pulse-animation { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+.status-online { color: #67c23a; font-weight: bold; }
+.status-offline { color: #f56c6c; opacity: 0.8; }
 .status-unknown { color: #909399; }
 .loading, .no-cameras { padding: 100px; text-align: center; color: var(--text-muted); }
+.error-overlay { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.85); display: flex; align-items: center; justify-content: center; z-index: 20; }
+.error-content { text-align: center; padding: 20px; }
+.error-content i { font-size: 48px; color: #f56c6c; margin-bottom: 15px; display: block; }
+.error-content h4 { color: #fff; margin: 0 0 15px 0; font-weight: 400; }
 
-/* 语音对讲 */
-.intercom-panel { background: rgba(0,0,0,0.2); border-radius: 12px; padding: 15px; margin-top: 15px; border: 1px solid rgba(255,255,255,0.05); }
-.intercom-header { margin-bottom: 10px; }
-.intercom-label { font-size: 14px; font-weight: 700; color: var(--text-bright); }
-.intercom-controls { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
-.intercom-btn { display: flex; align-items: center; gap: 6px; padding: 8px 20px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.05); color: #fff; font-size: 13px; cursor: pointer; transition: all 0.3s; white-space: nowrap; }
-.intercom-btn:hover { background: rgba(64,158,255,0.2); border-color: #409eff; color: #409eff; }
-.intercom-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-.intercom-btn.intercom-active { background: rgba(245,108,108,0.2); border-color: #f56c6c; color: #f56c6c; animation: ic-pulse 2s ease-in-out infinite; }
-.intercom-btn.intercom-connecting { background: rgba(230,162,60,0.15); border-color: #e6a23c; color: #e6a23c; }
-.intercom-btn.intercom-error { border-color: rgba(245,108,108,0.5); color: rgba(245,108,108,0.8); }
-.intercom-btn i { font-size: 15px; }
-@keyframes ic-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(245,108,108,0.4); } 50% { box-shadow: 0 0 0 6px rgba(245,108,108,0); } }
-.intercom-volume { display: flex; align-items: center; gap: 6px; }
-.vol-text { font-size: 12px; color: var(--text-muted); }
-.vol-slider { width: 80px; }
-.vol-slider /deep/ .el-slider__runway { margin: 0; }
-.intercom-tip { margin-top: 8px; padding: 6px 10px; border-radius: 6px; font-size: 12px; display: flex; align-items: center; gap: 5px; }
-.intercom-tip.tip-connecting { background: rgba(230,162,60,0.1); color: #e6a23c; }
-.intercom-tip.tip-active { background: rgba(103,194,58,0.1); color: #67c23a; }
-.intercom-tip.tip-error { background: rgba(245,108,108,0.1); color: #f56c6c; }
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .cameras-grid { grid-template-columns: 1fr; }
+  .camera-dashboard { height: auto; min-height: 400px; }
+}
+
 </style>

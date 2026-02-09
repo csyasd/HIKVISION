@@ -71,7 +71,7 @@
                             <span class="more-videos" @click="$router.push('/home/CameraDetail')">更多视频</span>
                         </div>
                         <div class="video-grid">
-                            <div class="video-item" v-for="camera in cameras" :key="camera.id">
+                            <div class="video-item" v-for="camera in cameras" :key="camera.id" @click="toRealtime(camera.id)" style="cursor: pointer;">
                                 <div class="video-container">
                                     <video 
                                         :id="`video_${camera.id}`"
@@ -503,6 +503,13 @@ export default {
 
         cleanupAll() {
             Object.keys(this.playerInstances).forEach(id => this.stopCamera(id));
+        },
+
+        toRealtime(cameraId) {
+            this.$router.push({
+                path: '/home/CameraDetail',
+                query: { cameraId: cameraId }
+            });
         }
     }
 }
