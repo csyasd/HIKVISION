@@ -29,7 +29,7 @@ export default {
         const cameraIP = this.$route.query.ip;
         const cameraPort = this.$route.query.port || 80;
         const cameraUsername = this.$route.query.username || 'admin';
-        const cameraPassword = this.$route.query.password || 'wzxc2025';
+        const cameraPassword = this.$route.query.password || 'Cnh321456$';
         const cameraChannel = this.$route.query.channel || 1;
         const cameraName = this.$route.query.name || '摄像头';
         
@@ -207,7 +207,7 @@ export default {
                 const szIP = this.camera.IP;
                 const szPort = this.camera.Port || 80;
                 const szUsername = this.camera.Username || 'admin';
-                const szPassword = this.camera.Password || 'wzxc2025';
+                const szPassword = this.camera.Password || 'Cnh321456$';
                 const szProtoType = 1; // http
                 
                 console.log(`正在登录设备: ${szIP}:${szPort}, 用户名: ${szUsername}`);

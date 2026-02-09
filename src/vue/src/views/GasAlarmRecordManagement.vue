@@ -69,27 +69,27 @@
                 </template>
             </el-table-column>
     
-            <el-table-column :show-overflow-tooltip="true" prop="Gas1" label="第一种气体含量" width="150" >
+            <el-table-column :show-overflow-tooltip="true" prop="Gas1" label="一氧化碳 (ppm)" width="150" >
                 <template slot-scope="scope">
-                    {{ scope.row.Gas1 ? scope.row.Gas1.toFixed(2) : '0.00' }}
+                    {{ scope.row.Gas1 ? scope.row.Gas1.toFixed(2) : '0.00' }} ppm
                 </template>
             </el-table-column>
     
-            <el-table-column :show-overflow-tooltip="true" prop="Gas2" label="第二种气体含量" width="150" >
+            <el-table-column :show-overflow-tooltip="true" prop="Gas2" label="硫化氢 (ppm)" width="150" >
                 <template slot-scope="scope">
-                    {{ scope.row.Gas2 ? scope.row.Gas2.toFixed(2) : '0.00' }}
+                    {{ scope.row.Gas2 ? scope.row.Gas2.toFixed(2) : '0.00' }} ppm
                 </template>
             </el-table-column>
     
-            <el-table-column :show-overflow-tooltip="true" prop="Gas3" label="第三种气体含量" width="150" >
+            <el-table-column :show-overflow-tooltip="true" prop="Gas3" label="甲烷 (%LEL)" width="150" >
                 <template slot-scope="scope">
-                    {{ scope.row.Gas3 ? scope.row.Gas3.toFixed(2) : '0.00' }}
+                    {{ scope.row.Gas3 ? scope.row.Gas3.toFixed(2) : '0.00' }} %LEL
                 </template>
             </el-table-column>
     
-            <el-table-column :show-overflow-tooltip="true" prop="Gas4" label="第四种气体含量" width="150" >
+            <el-table-column :show-overflow-tooltip="true" prop="Gas4" label="二氧化硫 (ppm)" width="150" >
                 <template slot-scope="scope">
-                    {{ scope.row.Gas4 ? scope.row.Gas4.toFixed(2) : '0.00' }}
+                    {{ scope.row.Gas4 ? scope.row.Gas4.toFixed(2) : '0.00' }} ppm
                 </template>
             </el-table-column>
     
@@ -126,24 +126,20 @@
                 </el-select>
             </el-form-item>
 
-            <el-form-item label="第一种气体含量" :label-width="formLabelWidth">
-                <el-input-number v-model="addForm.Gas1" :precision="2" :step="0.01" :min="0" placeholder="请输入第一种气体含量"></el-input-number>
+            <el-form-item label="一氧化碳 (ppm)" :label-width="formLabelWidth">
+                <el-input-number v-model="addForm.Gas1" :precision="2" :step="0.01" :min="0" placeholder="请输入一氧化碳含量"></el-input-number>
             </el-form-item>
 
-            <el-form-item label="第二种气体含量" :label-width="formLabelWidth">
-                <el-input-number v-model="addForm.Gas2" :precision="2" :step="0.01" :min="0" placeholder="请输入第二种气体含量"></el-input-number>
+            <el-form-item label="硫化氢 (ppm)" :label-width="formLabelWidth">
+                <el-input-number v-model="addForm.Gas2" :precision="2" :step="0.01" :min="0" placeholder="请输入硫化氢含量"></el-input-number>
             </el-form-item>
 
-            <el-form-item label="第三种气体含量" :label-width="formLabelWidth">
-                <el-input-number v-model="addForm.Gas3" :precision="2" :step="0.01" :min="0" placeholder="请输入第三种气体含量"></el-input-number>
+            <el-form-item label="甲烷 (%LEL)" :label-width="formLabelWidth">
+                <el-input-number v-model="addForm.Gas3" :precision="2" :step="0.01" :min="0" placeholder="请输入甲烷含量"></el-input-number>
             </el-form-item>
 
-            <el-form-item label="第四种气体含量" :label-width="formLabelWidth">
-                <el-input-number v-model="addForm.Gas4" :precision="2" :step="0.01" :min="0" placeholder="请输入第四种气体含量"></el-input-number>
-            </el-form-item>
-
-            <el-form-item label="第四种气体含量" :label-width="formLabelWidth">
-                <el-input-number v-model="addForm.Gas4" :precision="2" :step="0.01" :min="0" placeholder="请输入第四种气体含量"></el-input-number>
+            <el-form-item label="二氧化硫 (ppm)" :label-width="formLabelWidth">
+                <el-input-number v-model="addForm.Gas4" :precision="2" :step="0.01" :min="0" placeholder="请输入二氧化硫含量"></el-input-number>
             </el-form-item>
 
             </el-form>
@@ -167,24 +163,20 @@
                 </el-select>
             </el-form-item>
 
-            <el-form-item label="第一种气体含量" :label-width="formLabelWidth">
-                <el-input-number v-model="editForm.Gas1" :precision="2" :step="0.01" :min="0" placeholder="请输入第一种气体含量"></el-input-number>
+            <el-form-item label="一氧化碳 (ppm)" :label-width="formLabelWidth">
+                <el-input-number v-model="editForm.Gas1" :precision="2" :step="0.01" :min="0" placeholder="请输入一氧化碳含量"></el-input-number>
             </el-form-item>
 
-            <el-form-item label="第二种气体含量" :label-width="formLabelWidth">
-                <el-input-number v-model="editForm.Gas2" :precision="2" :step="0.01" :min="0" placeholder="请输入第二种气体含量"></el-input-number>
+            <el-form-item label="硫化氢 (ppm)" :label-width="formLabelWidth">
+                <el-input-number v-model="editForm.Gas2" :precision="2" :step="0.01" :min="0" placeholder="请输入硫化氢含量"></el-input-number>
             </el-form-item>
 
-            <el-form-item label="第三种气体含量" :label-width="formLabelWidth">
-                <el-input-number v-model="editForm.Gas3" :precision="2" :step="0.01" :min="0" placeholder="请输入第三种气体含量"></el-input-number>
+            <el-form-item label="甲烷 (%LEL)" :label-width="formLabelWidth">
+                <el-input-number v-model="editForm.Gas3" :precision="2" :step="0.01" :min="0" placeholder="请输入甲烷含量"></el-input-number>
             </el-form-item>
 
-            <el-form-item label="第四种气体含量" :label-width="formLabelWidth">
-                <el-input-number v-model="editForm.Gas4" :precision="2" :step="0.01" :min="0" placeholder="请输入第四种气体含量"></el-input-number>
-            </el-form-item>
-
-            <el-form-item label="第四种气体含量" :label-width="formLabelWidth">
-                <el-input-number v-model="editForm.Gas4" :precision="2" :step="0.01" :min="0" placeholder="请输入第四种气体含量"></el-input-number>
+            <el-form-item label="二氧化硫 (ppm)" :label-width="formLabelWidth">
+                <el-input-number v-model="editForm.Gas4" :precision="2" :step="0.01" :min="0" placeholder="请输入二氧化硫含量"></el-input-number>
             </el-form-item>
 
             </el-form>
@@ -199,7 +191,10 @@
             <div v-loading="chartLoading">
                 <div style="margin-bottom: 20px; text-align: center;">
                     <el-checkbox-group v-model="selectedGases" @change="updateChart">
-                        <el-checkbox v-for="i in 4" :key="i" :label="i">Gas {{i}}</el-checkbox>
+                        <el-checkbox :label="1">一氧化碳</el-checkbox>
+                        <el-checkbox :label="2">硫化氢</el-checkbox>
+                        <el-checkbox :label="3">甲烷</el-checkbox>
+                        <el-checkbox :label="4">二氧化硫</el-checkbox>
                     </el-checkbox-group>
                 </div>
                 <div ref="gasChart" style="width: 100%; height: 500px; background: white; border-radius: 12px; padding: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.5);"></div>
@@ -740,9 +735,16 @@ export default {
             const times = this.allCurveData.map(item => item.CreateTime);
             const series = [];
             
+            const gasNamesMap = {
+                1: '一氧化碳 (ppm)',
+                2: '硫化氢 (ppm)',
+                3: '甲烷 (%LEL)',
+                4: '二氧化硫 (ppm)'
+            };
+            
             this.selectedGases.forEach(gasIndex => {
                 series.push({
-                    name: `Gas ${gasIndex}`,
+                    name: gasNamesMap[gasIndex],
                     type: 'line',
                     smooth: true,
                     showSymbol: false,
@@ -758,7 +760,7 @@ export default {
                     trigger: 'axis'
                 },
                 legend: {
-                    data: this.selectedGases.map(i => `Gas ${i}`)
+                    data: this.selectedGases.map(i => gasNamesMap[i])
                 },
                 grid: {
                     left: '3%',

@@ -16,6 +16,6 @@ namespace YixiaoAdmin.EntityFrameworkCore
 
     public class DbConfig
     {
-       public  static readonly string ConnectString = "Server=120.26.121.126;Database=HIKVISION;User ID=sa;Password=asqmkj147@";
+       public  static readonly string ConnectString = "Server=115.175.44.78;Database=HIKVISION;User ID=sa;Password=asqmkj147@";
     }
 }

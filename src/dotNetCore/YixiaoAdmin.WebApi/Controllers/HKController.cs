@@ -29,7 +29,7 @@ namespace YixiaoAdmin.WebApi.Controllers
             public string Ip { get; set; } = "192.168.1.64";
             public int Port { get; set; } = 8000;
             public string UserName { get; set; } = "admin";
-            public string Password { get; set; } = "wzxc2025";
+            public string Password { get; set; } = "Cnh321456$";
         }
 
         private class StartStreamResult
@@ -99,7 +99,8 @@ namespace YixiaoAdmin.WebApi.Controllers
 
             if (string.IsNullOrWhiteSpace(_ffmpegExecutablePath))
             {
-                _ffmpegExecutablePath = Path.Combine(_environment.ContentRootPath ?? AppContext.BaseDirectory, "ffmpeg", "ffmpeg.exe");
+                string extension = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? ".exe" : "";
+                _ffmpegExecutablePath = Path.Combine(_environment.ContentRootPath ?? AppContext.BaseDirectory, "ffmpeg", "ffmpeg" + extension);
             }
 
             _deviceOptions = _configuration.GetSection("Hikvision:Device").Get<HikvisionDeviceOptions>() ?? new HikvisionDeviceOptions();
@@ -113,7 +114,7 @@ namespace YixiaoAdmin.WebApi.Controllers
             }
             if (string.IsNullOrWhiteSpace(_deviceOptions.Password))
             {
-                _deviceOptions.Password = "wzxc2025";
+                _deviceOptions.Password = "Cnh321456$";
             }
         }
 
@@ -297,7 +298,7 @@ namespace YixiaoAdmin.WebApi.Controllers
 
         // ====== 登录接口 ======
         [HttpGet("login")]
-        public IActionResult Login(string ip = "192.168.1.64", int port = 8000, string user = "admin", string password = "wzxc2025")
+        public IActionResult Login(string ip = "192.168.1.64", int port = 8000, string user = "admin", string password = "Cnh321456$")
         {
             try
             {
@@ -812,7 +813,7 @@ namespace YixiaoAdmin.WebApi.Controllers
                 // 2. 构建RTSP URL
                 // 注意：这里需要根据实际摄像头配置调整，Camera模型可能需要添加Username和Password字段
                 var username = "admin";  // TODO: 从Camera模型获取
-                var password = "wzxc2025";  // TODO: 从Camera模型获取
+                var password = "Cnh321456$";  // TODO: 从Camera模型获取
                 var port = 554;
                 var channel = 1;
                 var rtspUrl = $"rtsp://{username}:{password}@{camera.IP}:{port}/Streaming/Channels/{channel}01";
@@ -831,6 +832,16 @@ namespace YixiaoAdmin.WebApi.Controllers
                     ? "ffmpeg" 
                     : _ffmpegExecutablePath;
 
+                // 检查 FFmpeg 可执行文件是否存在
+                if (ffmpegPath != "ffmpeg" && !System.IO.File.Exists(ffmpegPath))
+                {
+                    Response.StatusCode = 500;
+                    await Response.WriteAsync($"错误: 未找到 FFmpeg 可执行文件。配置路径: {ffmpegPath}");
+                    return;
+                }
+
+                // 5. 检查摄像头网络连通性（可选，可能耗时，先尝试启动）
+                
                 var arguments = $"-rtsp_transport tcp -fflags nobuffer -flags low_delay -i \"{rtspUrl}\" " +
                                 $"-c:v libx264 -preset ultrafast -tune zerolatency " +
                                 $"-profile:v baseline -level 3.0 -pix_fmt yuv420p " +
@@ -838,7 +849,7 @@ namespace YixiaoAdmin.WebApi.Controllers
                                 $"-an " +  // 禁用音频以减少延迟
                                 $"-f flv -";
 
-                // 5. 启动FFmpeg进程
+                // 6. 启动FFmpeg进程
                 ffmpegProcess = new Process
                 {
                     StartInfo = new ProcessStartInfo
@@ -852,19 +863,27 @@ namespace YixiaoAdmin.WebApi.Controllers
                     }
                 };
 
-                // 6. 错误日志处理（异步，避免阻塞主流）
+                // 7. 错误日志处理（异步，避免阻塞主流）
+                StringBuilder ffmpegError = new StringBuilder();
                 ffmpegProcess.ErrorDataReceived += (sender, e) =>
                 {
                     if (!string.IsNullOrEmpty(e.Data))
                     {
+                        ffmpegError.AppendLine(e.Data);
                         System.Diagnostics.Debug.WriteLine($"[FLV-{cameraId}] {e.Data}");
                     }
                 };
 
-                ffmpegProcess.Start();
+                if (!ffmpegProcess.Start())
+                {
+                    Response.StatusCode = 500;
+                    await Response.WriteAsync($"错误: 无法启动 FFmpeg 进程。路径: {ffmpegPath}");
+                    return;
+                }
+                
                 ffmpegProcess.BeginErrorReadLine();
 
-                // 7. 将FFmpeg输出流式传输到HTTP响应
+                // 8. 将FFmpeg输出流式传输到HTTP响应
                 await ffmpegProcess.StandardOutput.BaseStream.CopyToAsync(Response.Body, HttpContext.RequestAborted);
             }
             catch (TaskCanceledException)
@@ -884,7 +903,7 @@ namespace YixiaoAdmin.WebApi.Controllers
             }
             finally
             {
-                // 8. 清理FFmpeg进程
+                // 9. 清理FFmpeg进程
                 if (ffmpegProcess != null)
                 {
                     try

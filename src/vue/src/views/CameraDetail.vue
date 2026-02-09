@@ -134,7 +134,7 @@
 </template>
 
 <script>
-import { PTZControl, GetRealtimeGasData, GetRealtimeBraceletInfo, SelectALLDevice } from '../api/api'
+import { SelectALLCamera, PTZControl, SelectWorkOrder, SelectALLDevice, GetRealtimeGasData, GetRealtimeBraceletInfo, BaseUrl } from '../api/api'
 
 export default {
     data() {
@@ -145,7 +145,7 @@ export default {
             streamStatus: {},
             loading: false,
             statusText: '正在初始化...',
-            API_BASE: window.location.hostname === '127.0.0.1' ? 'http://127.0.0.1:5002' : 'http://localhost:5002',
+            API_BASE: BaseUrl.replace(/\/$/, ''),
             ptzSpeed: 4,  // 云台速度 1-7
             h5PlayerLoaded: false,  // 播放器加载状态
             gasMonitoringData: [],
@@ -182,7 +182,29 @@ export default {
                 ]);
                 
                 if (gasRes && Array.isArray(gasRes)) {
-                    this.gasMonitoringData = gasRes;
+                    const gasNamesMap = {
+                        "Gas1": "一氧化碳",
+                        "Gas2": "硫化氢",
+                        "Gas3": "甲烷",
+                        "Gas4": "二氧化硫"
+                    };
+                    const gasUnitsMap = {
+                        "Gas1": "ppm",
+                        "Gas2": "ppm",
+                        "Gas3": "%LEL",
+                        "Gas4": "ppm"
+                    };
+                    this.gasMonitoringData = gasRes.map(item => {
+                        const originalName = item.GasName;
+                        if (gasNamesMap[originalName]) {
+                            return {
+                                ...item,
+                                GasName: gasNamesMap[originalName],
+                                GasValue: `${item.GasValue} ${gasUnitsMap[originalName]}`
+                            };
+                        }
+                        return item;
+                    });
                 }
                 
                 if (braceletRes && Array.isArray(braceletRes)) {
@@ -559,7 +581,7 @@ export default {
                     ip: camera.IP,
                     port: 8000,
                     username: 'admin',
-                    password: 'wzxc2025',
+                    password: 'Cnh321456$',
                     channel: 1,
                     command: command,
                     stop: stop,

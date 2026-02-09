@@ -169,7 +169,7 @@
 </template>
 
 <script>
-import { SelectALLDevice, GetRealtimeGasData, GetRealtimeBraceletInfo, SelectALLCamera, GetRealtimeWorkOrders } from '@/api/api.js';
+import { SelectALLDevice, GetRealtimeGasData, GetRealtimeBraceletInfo, SelectALLCamera, GetRealtimeWorkOrders, BaseUrl } from '@/api/api.js';
 
 export default {
     name: 'MonitoringDashboard',
@@ -193,7 +193,7 @@ export default {
             loadingStatus: {},
             cameraErrors: {},
             latencyCheckTimer: null,
-            API_BASE: window.location.hostname === '127.0.0.1' ? 'http://127.0.0.1:5002' : 'http://localhost:5002'
+            API_BASE: BaseUrl.replace(/\/$/, '')
         }
     },
     mounted() {
@@ -349,8 +349,36 @@ export default {
         async loadGasMonitoringData() {
             try {
                 const res = await GetRealtimeGasData();
-                this.gasMonitoringData = (res && Array.isArray(res)) ? res : [];
-            } catch (error) {}
+                if (res && Array.isArray(res)) {
+                    const gasNamesMap = {
+                        "Gas1": "一氧化碳",
+                        "Gas2": "硫化氢",
+                        "Gas3": "甲烷",
+                        "Gas4": "二氧化硫"
+                    };
+                    const gasUnitsMap = {
+                        "Gas1": "ppm",
+                        "Gas2": "ppm",
+                        "Gas3": "%LEL",
+                        "Gas4": "ppm"
+                    };
+                    this.gasMonitoringData = res.map(item => {
+                        const originalName = item.GasName;
+                        if (gasNamesMap[originalName]) {
+                            return {
+                                ...item,
+                                GasName: gasNamesMap[originalName],
+                                GasValue: `${item.GasValue} ${gasUnitsMap[originalName]}`
+                            };
+                        }
+                        return item;
+                    });
+                } else {
+                    this.gasMonitoringData = [];
+                }
+            } catch (error) {
+                console.error('加载气体监测数据失败:', error);
+            }
         },
         
         async loadBraceletInfo() {

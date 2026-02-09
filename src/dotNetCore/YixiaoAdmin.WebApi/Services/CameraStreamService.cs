@@ -230,7 +230,7 @@ namespace YixiaoAdmin.WebApi.Services
             {
                 // 从配置或摄像头信息中获取登录凭据
                 string username = _configuration.GetValue<string>("Hikvision:Device:UserName") ?? "admin";
-                string password = _configuration.GetValue<string>("Hikvision:Device:Password") ?? "wzxc2025";
+                string password = _configuration.GetValue<string>("Hikvision:Device:Password") ?? "Cnh321456$";
                 int port = _configuration.GetValue<int>("Hikvision:Device:Port", 8000);
 
                 var deviceInfo = new NET_DVR_DEVICEINFO_V30();
@@ -274,7 +274,7 @@ namespace YixiaoAdmin.WebApi.Services
 
                 // 构建RTSP URL
                 string username = _configuration.GetValue<string>("Hikvision:Device:UserName") ?? "admin";
-                string password = _configuration.GetValue<string>("Hikvision:Device:Password") ?? "wzxc2025";
+                string password = _configuration.GetValue<string>("Hikvision:Device:Password") ?? "Cnh321456$";
                 string rtspUrl = $"rtsp://{username}:{password}@{camera.IP}:554/Streaming/Channels/101";
 
                 // FFmpeg参数 - 优化为低延迟直播流
@@ -363,7 +363,7 @@ namespace YixiaoAdmin.WebApi.Services
 
                 // RTSP源地址
                 string username = _configuration.GetValue<string>("Hikvision:Device:UserName") ?? "admin";
-                string password = _configuration.GetValue<string>("Hikvision:Device:Password") ?? "wzxc2025";
+                string password = _configuration.GetValue<string>("Hikvision:Device:Password") ?? "Cnh321456$";
                 string rtspUrl = $"rtsp://{username}:{password}@{camera.IP}:554/Streaming/Channels/101";
 
                 // RTMP推流地址（推送到SRS）

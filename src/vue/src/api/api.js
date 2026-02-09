@@ -1,8 +1,8 @@
 
 import axios from 'axios';
 
-let BaseUrl = 'http://localhost:5002/';
-
+// let BaseUrl = 'http://localhost:5002/';
+export const BaseUrl = 'http://115.175.44.78:4356/';
 
 
 // 设置请求拦截器

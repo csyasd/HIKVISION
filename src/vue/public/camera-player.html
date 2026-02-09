@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,7 +11,9 @@
             padding: 0;
             box-sizing: border-box;
         }
-        body, html {
+
+        body,
+        html {
             width: 100%;
             height: 100%;
             overflow: hidden;
@@ -18,6 +21,7 @@
             margin: 0;
             padding: 0;
         }
+
         #camera-player-container {
             width: 100%;
             height: 100%;
@@ -25,11 +29,13 @@
             background: #000;
             overflow: hidden;
         }
+
         #divPlugin {
             width: 100%;
             height: 100%;
             display: block;
         }
+
         .loading {
             position: absolute;
             top: 50%;
@@ -39,6 +45,7 @@
             text-align: center;
             z-index: 10;
         }
+
         .loading p {
             margin-top: 10px;
         }
@@ -48,11 +55,12 @@
     <!-- WebVideoCtrl SDK -->
     <script id="videonode" src="/static/webVideoCtrl.js"></script>
 </head>
+
 <body>
     <div id="camera-player-container">
         <!-- WebVideoCtrl全局插件容器 -->
         <div id="divPlugin"></div>
-        
+
         <!-- 加载状态提示 -->
         <div id="loading" class="loading">
             <div style="font-size: 24px;">⏳</div>
@@ -61,7 +69,7 @@
     </div>
 
     <script>
-        (function() {
+        (function () {
             // 从URL参数获取摄像头信息
             const urlParams = new URLSearchParams(window.location.search);
             const camera = {
@@ -69,7 +77,7 @@
                 ip: urlParams.get('ip') || '',
                 port: parseInt(urlParams.get('port')) || 80,
                 username: urlParams.get('username') || 'admin',
-                password: urlParams.get('password') || 'wzxc2025',
+                password: urlParams.get('password') || 'Cnh321456$',
                 channel: parseInt(urlParams.get('channel')) || 1,
                 name: urlParams.get('name') || '摄像头'
             };
@@ -84,10 +92,10 @@
             let ptzSpeed = 4;
 
             // 监听来自父窗口的PTZ控制消息
-            window.addEventListener('message', function(event) {
+            window.addEventListener('message', function (event) {
                 // 验证消息来源（可选）
                 // if (event.origin !== window.location.origin) return;
-                
+
                 if (event.data && event.data.type === 'ptz') {
                     const { command, stop, speed } = event.data;
                     ptzSpeed = speed || ptzSpeed;
@@ -108,28 +116,28 @@
                 }
 
                 console.log('开始初始化WebVideoCtrl插件...');
-                
+
                 WebVideoCtrl.I_InitPlugin({
                     bWndFull: true,
                     iWndowType: 1,  // 单窗口
                     szBasePath: '/static/',
-                    cbSelWnd: function(xmlDoc) {
+                    cbSelWnd: function (xmlDoc) {
                         if (typeof $ !== 'undefined' && xmlDoc) {
                             const wndIndex = parseInt($(xmlDoc).find("SelectWnd").eq(0).text(), 10);
                             console.log('当前选择的窗口编号：' + wndIndex);
                         }
                     },
-                    cbDoubleClickWnd: function(iWndIndex, bFullScreen) {
+                    cbDoubleClickWnd: function (iWndIndex, bFullScreen) {
                         console.log('窗口' + iWndIndex + ' ' + (bFullScreen ? '全屏' : '还原'));
                     },
-                    cbEvent: function(iEventType, iParam1, iParam2) {
+                    cbEvent: function (iEventType, iParam1, iParam2) {
                         if (2 == iEventType) {
                             console.log('窗口' + iParam1 + '回放结束');
                         } else if (-1 == iEventType) {
                             console.log('设备' + iParam1 + '网络错误');
                         }
                     },
-                    cbInitPluginComplete: function() {
+                    cbInitPluginComplete: function () {
                         console.log('✅ WebVideoCtrl插件初始化完成');
                         webVideoCtrlLoaded = true;
                         setTimeout(insertPlugin, 100);
@@ -144,22 +152,22 @@
                 }
 
                 console.log('开始插入插件...');
-                
+
                 // 确保容器有尺寸
                 const container = document.getElementById('divPlugin');
                 if (container) {
                     container.style.width = '100%';
                     container.style.height = '100%';
                 }
-                
-                WebVideoCtrl.I_InsertOBJECTPlugin("divPlugin").then(function() {
+
+                WebVideoCtrl.I_InsertOBJECTPlugin("divPlugin").then(function () {
                     console.log('✅ 插件插入成功');
-                    
+
                     // 等待插件完全初始化
-                    setTimeout(function() {
+                    setTimeout(function () {
                         checkPluginReady();
                     }, 3000);
-                }).catch(function(error) {
+                }).catch(function (error) {
                     console.error('插件插入失败:', error);
                     document.getElementById('loading').innerHTML = '<p style="color: red;">插件插入失败</p>';
                 });
@@ -172,15 +180,15 @@
                     return;
                 }
 
-                WebVideoCtrl.I_CheckPluginVersion().then(function() {
+                WebVideoCtrl.I_CheckPluginVersion().then(function () {
                     console.log('✅ 插件就绪检查通过');
-                    setTimeout(function() {
+                    setTimeout(function () {
                         document.getElementById('loading').style.display = 'none';
                         playCamera();
                     }, 2000);
-                }).catch(function() {
+                }).catch(function () {
                     console.log('⚠️ 插件就绪检查失败，但继续尝试');
-                    setTimeout(function() {
+                    setTimeout(function () {
                         document.getElementById('loading').style.display = 'none';
                         playCamera();
                     }, 2000);
@@ -190,26 +198,26 @@
             // 播放摄像头
             function playCamera() {
                 console.log('准备播放摄像头: ' + camera.name + '(' + camera.ip + ')');
-                
+
                 const deviceIdentify = camera.ip + '_' + camera.port;
                 const wndIndex = 0;
-                
+
                 // 先登录设备
-                loginDevice(deviceIdentify).then(function() {
-                    setTimeout(function() {
+                loginDevice(deviceIdentify).then(function () {
+                    setTimeout(function () {
                         const iChannelID = camera.channel;
                         const iStreamType = 1; // 主码流
-                        
+
                         WebVideoCtrl.I_StartRealPlay(deviceIdentify, {
                             iWndIndex: wndIndex,
                             iStreamType: iStreamType,
                             iChannelID: iChannelID,
                             bZeroChannel: false,
-                            success: function() {
+                            success: function () {
                                 console.log('✅ ' + camera.name + ' 播放成功');
                                 // 调整窗口大小
                                 if (typeof WebVideoCtrl !== 'undefined') {
-                                    setTimeout(function() {
+                                    setTimeout(function () {
                                         const container = document.getElementById('divPlugin');
                                         if (container) {
                                             WebVideoCtrl.I_Resize(container.offsetWidth, container.offsetHeight);
@@ -219,14 +227,14 @@
                                     }, 500);
                                 }
                             },
-                            error: function(oError) {
+                            error: function (oError) {
                                 console.error('❌ ' + camera.name + ' 播放失败: ' + oError.errorCode + ' - ' + oError.errorMsg);
                                 document.getElementById('loading').innerHTML = '<p style="color: red;">播放失败: ' + (oError.errorMsg || '未知错误') + '</p>';
                                 document.getElementById('loading').style.display = 'block';
                             }
                         });
                     }, 1000);
-                }).catch(function(error) {
+                }).catch(function (error) {
                     console.error('设备登录失败:', error);
                     document.getElementById('loading').innerHTML = '<p style="color: red;">设备登录失败</p>';
                     document.getElementById('loading').style.display = 'block';
@@ -235,23 +243,23 @@
 
             // 登录设备
             function loginDevice(deviceIdentify) {
-                return new Promise(function(resolve, reject) {
+                return new Promise(function (resolve, reject) {
                     const szIP = camera.ip;
                     const szPort = camera.port;
                     const szUsername = camera.username;
                     const szPassword = camera.password;
                     const szProtoType = 1; // http
-                    
+
                     console.log('正在登录设备: ' + szIP + ':' + szPort + ', 用户名: ' + szUsername);
-                    
+
                     WebVideoCtrl.I_Login(szIP, szProtoType, szPort, szUsername, szPassword, {
                         timeout: 15000,
-                        success: function(xmlDoc) {
+                        success: function (xmlDoc) {
                             console.log('✅ 设备登录成功: ' + deviceIdentify);
                             deviceLogins[deviceIdentify] = true;
                             resolve();
                         },
-                        error: function(oError) {
+                        error: function (oError) {
                             console.error('❌ 设备登录失败: ' + deviceIdentify + ' - ' + oError.errorCode + ' - ' + oError.errorMsg);
                             reject(oError);
                         }
@@ -265,7 +273,7 @@
                     console.warn('WebVideoCtrl未就绪或设备未登录');
                     return;
                 }
-                
+
                 try {
                     // WebVideoCtrl PTZ命令映射
                     const commandMap = {
@@ -278,16 +286,16 @@
                         13: 12,  // 聚焦+ (近焦)
                         14: 13   // 聚焦- (远焦)
                     };
-                    
+
                     const ptzIndex = commandMap[command] || command;
-                    
+
                     WebVideoCtrl.I_PTZControl(ptzIndex, stop, {
                         iWndIndex: 0,
                         iPTZSpeed: ptzSpeed,
-                        success: function() {
+                        success: function () {
                             console.log('云台控制: ' + (stop ? '停止' : '执行') + ' 命令' + command);
                         },
-                        error: function(oError) {
+                        error: function (oError) {
                             console.error('云台控制失败: ' + (oError.errorMsg || '未知错误'));
                         }
                     });
@@ -297,11 +305,11 @@
             }
 
             // 页面加载完成后初始化
-            window.addEventListener('DOMContentLoaded', function() {
+            window.addEventListener('DOMContentLoaded', function () {
                 initWebVideoCtrl();
             });
         })();
     </script>
 </body>
-</html>
 
+</html>

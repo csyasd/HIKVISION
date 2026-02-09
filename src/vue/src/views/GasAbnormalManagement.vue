@@ -63,27 +63,27 @@
                 </template>
             </el-table-column>
     
-            <el-table-column :show-overflow-tooltip="true" prop="Gas1" label="第一种气体含量" width="150" >
+            <el-table-column :show-overflow-tooltip="true" prop="Gas1" label="一氧化碳 (ppm)" width="150" >
                 <template slot-scope="scope">
-                    {{ scope.row.Gas1 ? scope.row.Gas1.toFixed(2) : '0.00' }}
+                    {{ scope.row.Gas1 ? scope.row.Gas1.toFixed(2) : '0.00' }} ppm
                 </template>
             </el-table-column>
     
-            <el-table-column :show-overflow-tooltip="true" prop="Gas2" label="第二种气体含量" width="150" >
+            <el-table-column :show-overflow-tooltip="true" prop="Gas2" label="硫化氢 (ppm)" width="150" >
                 <template slot-scope="scope">
-                    {{ scope.row.Gas2 ? scope.row.Gas2.toFixed(2) : '0.00' }}
+                    {{ scope.row.Gas2 ? scope.row.Gas2.toFixed(2) : '0.00' }} ppm
                 </template>
             </el-table-column>
     
-            <el-table-column :show-overflow-tooltip="true" prop="Gas3" label="第三种气体含量" width="150" >
+            <el-table-column :show-overflow-tooltip="true" prop="Gas3" label="甲烷 (%LEL)" width="150" >
                 <template slot-scope="scope">
-                    {{ scope.row.Gas3 ? scope.row.Gas3.toFixed(2) : '0.00' }}
+                    {{ scope.row.Gas3 ? scope.row.Gas3.toFixed(2) : '0.00' }} %LEL
                 </template>
             </el-table-column>
     
-            <el-table-column :show-overflow-tooltip="true" prop="Gas4" label="第四种气体含量" width="150" >
+            <el-table-column :show-overflow-tooltip="true" prop="Gas4" label="二氧化硫 (ppm)" width="150" >
                 <template slot-scope="scope">
-                    {{ scope.row.Gas4 ? scope.row.Gas4.toFixed(2) : '0.00' }}
+                    {{ scope.row.Gas4 ? scope.row.Gas4.toFixed(2) : '0.00' }} ppm
                 </template>
             </el-table-column>
     
@@ -110,37 +110,37 @@
         <!-- 设置气体含量范围对话框 -->
         <el-dialog title="设置气体含量范围" :visible.sync="gasConfigDialogVisible" width="600px">
             <el-form :model="gasConfigs" label-width="150px">
-                <el-form-item label="第一种气体 - 最小值">
+                <el-form-item label="一氧化碳 (ppm) - 最小值">
                     <el-input-number v-model="gasConfigs.Gas1.MinValue" :min="0" :precision="2" style="width: 100%;"></el-input-number>
                 </el-form-item>
-                <el-form-item label="第一种气体 - 最大值">
+                <el-form-item label="一氧化碳 (ppm) - 最大值">
                     <el-input-number v-model="gasConfigs.Gas1.MaxValue" :min="0" :precision="2" style="width: 100%;"></el-input-number>
                 </el-form-item>
                 
                 <el-divider></el-divider>
                 
-                <el-form-item label="第二种气体 - 最小值">
+                <el-form-item label="硫化氢 (ppm) - 最小值">
                     <el-input-number v-model="gasConfigs.Gas2.MinValue" :min="0" :precision="2" style="width: 100%;"></el-input-number>
                 </el-form-item>
-                <el-form-item label="第二种气体 - 最大值">
+                <el-form-item label="硫化氢 (ppm) - 最大值">
                     <el-input-number v-model="gasConfigs.Gas2.MaxValue" :min="0" :precision="2" style="width: 100%;"></el-input-number>
                 </el-form-item>
                 
                 <el-divider></el-divider>
                 
-                <el-form-item label="第三种气体 - 最小值">
+                <el-form-item label="甲烷 (%LEL) - 最小值">
                     <el-input-number v-model="gasConfigs.Gas3.MinValue" :min="0" :precision="2" style="width: 100%;"></el-input-number>
                 </el-form-item>
-                <el-form-item label="第三种气体 - 最大值">
+                <el-form-item label="甲烷 (%LEL) - 最大值">
                     <el-input-number v-model="gasConfigs.Gas3.MaxValue" :min="0" :precision="2" style="width: 100%;"></el-input-number>
                 </el-form-item>
                 
                 <el-divider></el-divider>
                 
-                <el-form-item label="第四种气体 - 最小值">
+                <el-form-item label="二氧化硫 (ppm) - 最小值">
                     <el-input-number v-model="gasConfigs.Gas4.MinValue" :min="0" :precision="2" style="width: 100%;"></el-input-number>
                 </el-form-item>
-                <el-form-item label="第四种气体 - 最大值">
+                <el-form-item label="二氧化硫 (ppm) - 最大值">
                     <el-input-number v-model="gasConfigs.Gas4.MaxValue" :min="0" :precision="2" style="width: 100%;"></el-input-number>
                 </el-form-item>
             </el-form>
@@ -275,7 +275,8 @@ export default {
                 // 确保启用检测默认为true
                 config.IsEnabled = true;
                 if (config.MinValue >= config.MaxValue) {
-                    this.$message.error(`第${i}种气体的最小值必须小于最大值`);
+                    const gasNames = ["", "一氧化碳", "硫化氢", "甲烷", "二氧化硫"];
+                    this.$message.error(`${gasNames[i]}的最小值必须小于最大值`);
                     return;
                 }
             }

@@ -133,7 +133,7 @@
 </template>
 
 <script>
-import { PTZControl, GetRealtimeGasData, GetRealtimeBraceletInfo, SelectALLDevice, SelectALLCamera } from '../api/api'
+import { PTZControl, GetRealtimeGasData, GetRealtimeBraceletInfo, SelectALLDevice, SelectALLCamera, BaseUrl } from '../api/api'
 
 export default {
   data() {
@@ -151,7 +151,7 @@ export default {
       devices: [],
       refreshTimer: null,
       latencyCheckTimer: null,
-      API_BASE: window.location.hostname === '127.0.0.1' ? 'http://127.0.0.1:5002' : 'http://localhost:5002'
+      API_BASE: BaseUrl.replace(/\/$/, '')
     }
   },
   mounted() {
@@ -324,7 +324,7 @@ export default {
           ip: camera.IP,
           port: 8000,
           username: 'admin',
-          password: 'wzxc2025',
+          password: 'Cnh321456$',
           channel: 1,
           command: command,
           stop: stop,
