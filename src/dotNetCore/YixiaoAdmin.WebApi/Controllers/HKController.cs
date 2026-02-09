@@ -1024,7 +1024,7 @@ namespace YixiaoAdmin.WebApi.Controllers
                 else
                     sample = (mantissa << 4) | 0x08;
 
-                return (short)(sign == 0 ? sample : -sample);
+                return (short)(sign != 0 ? sample : -sample);
             }
 
             /// <summary>

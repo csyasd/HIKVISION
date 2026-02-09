@@ -419,23 +419,25 @@ export default {
         this.$set(this.intercomNextPlayTime, cameraId, 0);
 
         ws.onopen = () => {
-          this.startAudioCapture(cameraId, stream, audioCtx);
+          console.log('[对讲] WebSocket 已连接，等待服务器确认...');
         };
 
         ws.onmessage = (event) => {
           if (typeof event.data === 'string') {
             try {
               const msg = JSON.parse(event.data);
+              console.log('[对讲] 收到:', msg.type, msg.message || msg.status || '');
               if (msg.type === 'status' && msg.status === 'connected') {
                 this.$set(this.intercomStatus, cameraId, 'active');
                 this.$message.success('对讲已连接');
+                this.startAudioCapture(cameraId, stream, audioCtx);
               } else if (msg.type === 'error') {
                 this.$set(this.intercomStatus, cameraId, 'error');
                 this.$set(this.intercomError, cameraId, msg.message);
                 this.$message.error(msg.message);
               }
             } catch (e) {}
-          } else if (event.data instanceof ArrayBuffer) {
+          } else if (event.data instanceof ArrayBuffer && event.data.byteLength > 0) {
             this.playReceivedAudio(cameraId, event.data);
           }
         };
@@ -469,9 +471,11 @@ export default {
       const actualRate = audioCtx.sampleRate;
       const needResample = Math.abs(actualRate - targetRate) > 100;
 
+      let sendCount = 0;
       processor.onaudioprocess = (event) => {
         const ws = this.intercomWs[cameraId];
         if (!ws || ws.readyState !== WebSocket.OPEN) return;
+        if (this.intercomStatus[cameraId] !== 'active') return;
         let input = event.inputBuffer.getChannelData(0);
         if (needResample) {
           const ratio = actualRate / targetRate;
@@ -485,7 +489,11 @@ export default {
           const s = Math.max(-1, Math.min(1, input[i]));
           int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
         }
-        ws.send(int16.buffer);
+        try {
+          ws.send(int16.buffer);
+          sendCount++;
+          if (sendCount % 20 === 1) console.log(`[对讲] 已发送 ${sendCount} 包音频`);
+        } catch (e) {}
       };
 
       source.connect(processor);
@@ -499,7 +507,11 @@ export default {
     playReceivedAudio(cameraId, arrayBuffer) {
       const audioCtx = this.intercomAudioCtx[cameraId];
       const gainNode = this.intercomGainNode[cameraId];
-      if (!audioCtx || !gainNode) return;
+      if (!audioCtx || !gainNode || audioCtx.state === 'closed') return;
+      if (!this._recvCount) this._recvCount = {};
+      if (!this._recvCount[cameraId]) this._recvCount[cameraId] = 0;
+      this._recvCount[cameraId]++;
+      if (this._recvCount[cameraId] % 20 === 1) console.log(`[对讲] 收到 ${this._recvCount[cameraId]} 包摄像头音频`);
       const int16 = new Int16Array(arrayBuffer);
       const f32 = new Float32Array(int16.length);
       for (let i = 0; i < int16.length; i++) f32[i] = int16[i] / 32768.0;
@@ -510,9 +522,8 @@ export default {
       src.connect(gainNode);
       const now = audioCtx.currentTime;
       let next = this.intercomNextPlayTime[cameraId] || 0;
-      if (next < now) next = now + 0.05;
-      src.start(next);
-      this.$set(this.intercomNextPlayTime, cameraId, next + buf.duration);
+      if (next < now) next = now + 0.02;
+      try { src.start(next); this.$set(this.intercomNextPlayTime, cameraId, next + buf.duration); } catch (e) {}
     },
 
     stopIntercom(cameraId) {

@@ -19,6 +19,40 @@ axios.interceptors.request.use(
 	}
 );
 
+// 设置响应拦截器 — 处理 Token 过期（401）
+axios.interceptors.response.use(
+	(response) => {
+		return response;
+	},
+	(error) => {
+		if (error.response && error.response.status === 401) {
+			console.warn('[认证过期] Token 已过期，即将跳转登录页...');
+			// 清除本地存储的过期 Token
+			localStorage.removeItem('token');
+			localStorage.removeItem('userInfo');
+			// 提示用户
+			if (typeof window !== 'undefined' && window.Vue && window.Vue.prototype.$message) {
+				window.Vue.prototype.$message.warning('登录已过期，请重新登录');
+			}
+			// 跳转到登录页（延迟200ms避免多个401同时触发多次跳转）
+			if (!window._isRedirectingToLogin) {
+				window._isRedirectingToLogin = true;
+				setTimeout(() => {
+					window._isRedirectingToLogin = false;
+					if (window.location.hash) {
+						// Hash 路由模式
+						window.location.hash = '#/login';
+					} else {
+						window.location.href = '/login';
+					}
+					window.location.reload();
+				}, 200);
+			}
+		}
+		return Promise.reject(error);
+	}
+);
+
 export const Login = (params) => {
 	return axios({
 		method: 'Get',

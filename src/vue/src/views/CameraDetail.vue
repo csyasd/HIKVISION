@@ -713,9 +713,7 @@ export default {
                 this.$set(this.intercomNextPlayTime, cameraId, 0);
 
                 ws.onopen = () => {
-                    this.log(`[对讲] WebSocket 已连接`);
-                    // 开始采集麦克风音频
-                    this.startAudioCapture(cameraId, stream, audioCtx);
+                    this.log(`[对讲] WebSocket 已连接，等待服务器确认...`);
                 };
 
                 ws.onmessage = (event) => {
@@ -727,6 +725,8 @@ export default {
                             if (msg.type === 'status' && msg.status === 'connected') {
                                 this.$set(this.intercomStatus, cameraId, 'active');
                                 this.$message.success('对讲已连接');
+                                // 后端确认对讲已建立后，才开始采集麦克风音频
+                                this.startAudioCapture(cameraId, stream, audioCtx);
                             } else if (msg.type === 'error') {
                                 this.$set(this.intercomStatus, cameraId, 'error');
                                 this.$set(this.intercomError, cameraId, msg.message);
@@ -735,7 +735,7 @@ export default {
                         } catch (e) {
                             console.error('[对讲] 解析消息失败:', e);
                         }
-                    } else if (event.data instanceof ArrayBuffer) {
+                    } else if (event.data instanceof ArrayBuffer && event.data.byteLength > 0) {
                         // 二进制音频数据（PCM Int16 LE 8000Hz 单声道）
                         this.playReceivedAudio(cameraId, event.data);
                     }
@@ -781,12 +781,21 @@ export default {
             const targetSampleRate = 8000;
             const actualSampleRate = audioCtx.sampleRate;
             const needResample = Math.abs(actualSampleRate - targetSampleRate) > 100;
+            let sendCount = 0;
 
             processor.onaudioprocess = (event) => {
                 const ws = this.intercomWs[cameraId];
                 if (!ws || ws.readyState !== WebSocket.OPEN) return;
+                if (this.intercomStatus[cameraId] !== 'active') return;
 
                 let inputData = event.inputBuffer.getChannelData(0); // Float32Array
+
+                // 检测是否有有效音频（非静音）
+                let maxVal = 0;
+                for (let i = 0; i < inputData.length; i++) {
+                    const abs = Math.abs(inputData[i]);
+                    if (abs > maxVal) maxVal = abs;
+                }
 
                 // 如果采样率不是 8000Hz，进行简单降采样
                 if (needResample) {
@@ -807,7 +816,16 @@ export default {
                 }
 
                 // 发送 PCM Int16 二进制数据
-                ws.send(int16Data.buffer);
+                try {
+                    ws.send(int16Data.buffer);
+                    sendCount++;
+                    // 每发送20个包打一次日志（约5秒一次）
+                    if (sendCount % 20 === 1) {
+                        this.log(`[对讲] 已发送 ${sendCount} 包音频, 音量: ${(maxVal * 100).toFixed(1)}%`);
+                    }
+                } catch (e) {
+                    console.error('[对讲] 发送音频失败:', e);
+                }
             };
 
             source.connect(processor);
@@ -825,7 +843,15 @@ export default {
         playReceivedAudio(cameraId, arrayBuffer) {
             const audioCtx = this.intercomAudioCtx[cameraId];
             const gainNode = this.intercomGainNode[cameraId];
-            if (!audioCtx || !gainNode) return;
+            if (!audioCtx || !gainNode || audioCtx.state === 'closed') return;
+
+            // 统计接收包数
+            if (!this._recvCount) this._recvCount = {};
+            if (!this._recvCount[cameraId]) this._recvCount[cameraId] = 0;
+            this._recvCount[cameraId]++;
+            if (this._recvCount[cameraId] % 20 === 1) {
+                this.log(`[对讲] 已收到 ${this._recvCount[cameraId]} 包摄像头音频 (${arrayBuffer.byteLength} 字节)`);
+            }
 
             // PCM Int16 LE → Float32
             const int16Data = new Int16Array(arrayBuffer);
@@ -835,21 +861,26 @@ export default {
             }
 
             // 创建 AudioBuffer 并播放
-            const audioBuffer = audioCtx.createBuffer(1, float32Data.length, 8000);
+            const sampleRate = 8000;
+            const audioBuffer = audioCtx.createBuffer(1, float32Data.length, sampleRate);
             audioBuffer.getChannelData(0).set(float32Data);
 
             const source = audioCtx.createBufferSource();
             source.buffer = audioBuffer;
             source.connect(gainNode);
 
-            // 调度连续播放
+            // 调度连续播放（确保不产生间隙）
             const currentTime = audioCtx.currentTime;
             let nextTime = this.intercomNextPlayTime[cameraId] || 0;
             if (nextTime < currentTime) {
-                nextTime = currentTime + 0.05; // 50ms 缓冲
+                nextTime = currentTime + 0.02; // 20ms 缓冲
             }
-            source.start(nextTime);
-            this.$set(this.intercomNextPlayTime, cameraId, nextTime + audioBuffer.duration);
+            try {
+                source.start(nextTime);
+                this.$set(this.intercomNextPlayTime, cameraId, nextTime + audioBuffer.duration);
+            } catch (e) {
+                // AudioContext 可能已关闭
+            }
         },
 
         // 停止对讲
