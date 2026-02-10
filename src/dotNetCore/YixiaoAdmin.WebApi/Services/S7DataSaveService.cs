@@ -68,10 +68,12 @@ namespace YixiaoAdmin.WebApi.Services
                 const int orderIndex = 1;
                 var order = data.Construction_Order[orderIndex];
 
-                // 如果工单号为空或为0，跳过处理
+                // 如果工单号为空或为0，PLC无工单信息，将该设备所有进行中工单改为结束
                 if (order.Construction_Order_No <= 0)
                 {
-                    _logger.LogDebug($"[数据保存] 工单号为空或为0，跳过处理");
+                    _logger.LogDebug($"[数据保存] 工单号为空或为0，PLC无工单信息，将该设备进行中工单改为结束");
+                    await EndActiveWorkOrdersForDevice(device.Id, excludeCode: null);
+                    await UpdateDeviceData(device, data);
                     return;
                 }
 
@@ -82,6 +84,9 @@ namespace YixiaoAdmin.WebApi.Services
                     _logger.LogWarning($"[数据保存] 工单处理失败，跳过后续处理");
                     return;
                 }
+
+                // 将该设备下不在PLC读取中的其他进行中工单改为结束
+                await EndActiveWorkOrdersForDevice(device.Id, excludeCode: order.Construction_Order_No.ToString());
 
                 // 2. 更新设备数据
                 await UpdateDeviceData(device, data);
@@ -194,6 +199,35 @@ namespace YixiaoAdmin.WebApi.Services
             {
                 _logger.LogError(ex, $"[工单处理异常] 处理工单时发生异常 - 工单号: {order.Construction_Order_No}");
                 return null;
+            }
+        }
+
+        /// <summary>
+        /// 将该设备下进行中(Status=1)的工单改为结束(Status=2)，排除指定工单编号
+        /// </summary>
+        /// <param name="deviceId">设备ID</param>
+        /// <param name="excludeCode">排除的工单编号，为null时结束该设备所有进行中工单</param>
+        private async Task EndActiveWorkOrdersForDevice(string deviceId, string excludeCode)
+        {
+            try
+            {
+                var allOrders = await _workOrderService.Query();
+                var toEnd = allOrders
+                    .Where(o => o.DeviceId == deviceId && o.Status == 1)
+                    .Where(o => excludeCode == null || o.Code != excludeCode)
+                    .ToList();
+
+                foreach (var wo in toEnd)
+                {
+                    wo.Status = 2;
+                    wo.EndTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                    await _workOrderService.Update(wo);
+                    _logger.LogInformation($"[工单结束] 设备工单不在PLC读取中，已改为结束 - 设备: {deviceId}, 工单: {wo.Code}");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"[工单结束异常] 结束设备进行中工单时发生异常 - 设备: {deviceId}");
             }
         }
 
