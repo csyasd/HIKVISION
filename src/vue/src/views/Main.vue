@@ -1073,6 +1073,22 @@ export default {
         margin: 10px;
     }
 }
+
+@media (max-width: 768px) {
+    .monitoring-dashboard .header h1 { font-size: 16px !important; }
+    .content-area { flex-direction: column; padding: 8px !important; }
+    .left-panel { flex-direction: column !important; padding: 12px !important; min-height: auto !important; }
+    .right-panel { height: 350px !important; min-height: 300px !important; }
+    .video-grid { grid-template-columns: 1fr !important; gap: 10px !important; }
+    .device-summary-card { padding: 12px !important; }
+    .device-summary-card .device-count { font-size: 24px !important; }
+    .gas-monitoring-table, .alarm-table {
+        width: 100% !important; max-width: 100% !important;
+        max-height: 200px !important; font-size: 12px !important;
+    }
+    .data-table th, .data-table td { padding: 6px 8px !important; font-size: 11px !important; white-space: normal !important; word-break: break-all; }
+    .table-header { font-size: 13px !important; padding: 10px 12px !important; }
+}
 </style>
 
 <style>

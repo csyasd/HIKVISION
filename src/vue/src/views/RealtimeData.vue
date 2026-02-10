@@ -748,4 +748,23 @@ export default {
   .camera-dashboard { height: auto; min-height: 400px; }
 }
 
+@media (max-width: 768px) {
+  .video-container { padding: 12px !important; }
+  .header-container { flex-direction: column !important; gap: 12px; margin-bottom: 12px; }
+  .header-container h2 { font-size: 18px !important; }
+  .header-tools { position: static !important; transform: none; }
+  .camera-selector { width: 100% !important; }
+  .cameras-grid { gap: 20px; margin: 16px 0; }
+  .camera-item { padding: 12px !important; border-radius: 12px !important; }
+  .camera-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .camera-header h3 { font-size: 16px !important; }
+  .camera-dashboard { flex-direction: column !important; height: auto !important; min-height: 320px !important; }
+  .dashboard-sidebar { width: 100% !important; max-height: 200px; }
+  .sidebar-left { border-right: none !important; border-bottom: 1px solid rgba(255,255,255,0.05); }
+  .sidebar-right { width: 100% !important; border-left: none !important; border-top: 1px solid rgba(255,255,255,0.05); }
+  .dashboard-center { min-height: 280px; }
+  .ptz-grid { grid-template-columns: repeat(3, 32px); gap: 6px; }
+  .ptz-btn { width: 32px; height: 32px; font-size: 14px; }
+}
+
 </style>

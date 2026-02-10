@@ -358,4 +358,16 @@ export default {
 #login-btn:active {
     transform: scale(0.98);
 }
+
+@media (max-width: 768px) {
+    .login-page { flex-direction: column; padding: 20px; }
+    .login-logo { height: 80px; top: 15px; left: 50%; transform: translateX(-50%); }
+    .login-main { width: 100%; max-width: 100%; padding: 30px 20px; margin-top: 60px; border-radius: 20px; }
+    .login-title { font-size: 28px; margin-bottom: 24px; letter-spacing: 2px; }
+    .login-input { gap: 20px; }
+    .login-input >>> .el-input__inner { height: 48px; font-size: 15px; }
+    .sidentifyContent { flex-direction: column; align-items: stretch; }
+    .sidentifyContent >>> .el-input { width: 100% !important; }
+    #login-btn { height: 52px; font-size: 18px; margin-top: 30px; }
+}
 </style>

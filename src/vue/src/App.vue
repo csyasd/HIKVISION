@@ -17,6 +17,7 @@ body {
     background: radial-gradient(circle at 50% 50%, #0d1117 0%, #010409 100%);
     color: #e6edf3;
     min-height: 100vh;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 #app {
@@ -422,5 +423,25 @@ body {
     opacity: 0.4 !important;
     background: #000 !important;
     backdrop-filter: blur(2px);
+}
+
+/* ========== 手机适配 ========== */
+@media (max-width: 768px) {
+    html, body { overflow-x: hidden; -webkit-overflow-scrolling: touch; }
+    body { font-size: 14px; }
+    .container { padding: 8px !important; }
+    .toolbar { display: flex !important; flex-wrap: wrap !important; gap: 10px !important; padding: 12px !important; }
+    .toolbar .el-select, .toolbar .el-autocomplete { width: 100% !important; max-width: 100% !important; margin-right: 0 !important; flex: 1 1 100%; }
+    .toolbar .el-button { flex: 1 1 auto; min-width: 70px; }
+    .el-table { font-size: 12px; }
+    .el-table th, .el-table td { padding: 8px 6px !important; }
+    .el-table .el-table__body-wrapper { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+    .el-pagination { flex-wrap: wrap !important; padding: 10px 5px !important; justify-content: center; }
+    .el-pagination .el-pager li { min-width: 28px !important; }
+    .el-dialog { width: 95% !important; max-width: 95vw !important; margin: 10px auto !important; }
+    .el-dialog__body { padding: 15px !important; }
+    .el-form-item { margin-bottom: 12px !important; }
+    .el-form-item__label { font-size: 13px !important; }
+    .block { padding: 10px 0 !important; }
 }
 </style>

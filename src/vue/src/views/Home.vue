@@ -250,7 +250,6 @@ export default {
     mounted() {
         this.ParseUserAccess()
         this.BeginGetNewMessage()
-        // 确保菜单初始状态为展开
         this.NavigationBarState = false;
         this.isFold = true;
     },
