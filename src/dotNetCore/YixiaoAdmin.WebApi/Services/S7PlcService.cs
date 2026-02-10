@@ -153,8 +153,8 @@ namespace YixiaoAdmin.WebApi.Services
 
             try
             {
-                // 检查数据块大小（根据偏移量表，最大偏移量是38332，加上Real类型的4字节，至少需要38336字节）
-                const int requiredDbSize = 38336; // 最小需要的数据块大小
+                // 检查数据块大小（根据偏移量表，GPS_lat1[1]在38877，至少需要38880字节）
+                const int requiredDbSize = 38880; // 最小需要的数据块大小
                 _logger.LogDebug($"[数据读取] 检查数据块大小 - DB{dbNumber}, 需要至少: {requiredDbSize}字节");
                 
                 try
@@ -463,13 +463,14 @@ namespace YixiaoAdmin.WebApi.Services
                     }
                 }
 
-                // 读取GPS_lon (Real，4字节)，偏移量：38328
-                data.GPS_lon = await ReadRealAsync(plc, dbNumber, 38328) ?? 0f;
-                _logger.LogDebug($"[传感器] GPS_lon = {data.GPS_lon:F6} (偏移量: 38328)");
+                // 读取GPS_lon1 (Array[0..1] of Byte，2字节)，偏移量：38874
+                // 格式：十六进制两字节 -> 十进制 -> 度分格式(DDMM.MMMM) -> 十进制度数
+                data.GPS_lon = await ParseGpsDdmmFormat(plc, dbNumber, 38874) ?? 0f;
+                _logger.LogDebug($"[传感器] GPS_lon = {data.GPS_lon:F6} (偏移量: 38874, 2字节度分格式)");
 
-                // 读取GPS_lat (Real，4字节)，偏移量：38332
-                data.GPS_lat = await ReadRealAsync(plc, dbNumber, 38332) ?? 0f;
-                _logger.LogDebug($"[传感器] GPS_lat = {data.GPS_lat:F6} (偏移量: 38332)");
+                // 读取Gps_lat1 (Array[0..1] of Byte，2字节)，偏移量：38876
+                data.GPS_lat = await ParseGpsDdmmFormat(plc, dbNumber, 38876) ?? 0f;
+                _logger.LogDebug($"[传感器] GPS_lat = {data.GPS_lat:F6} (偏移量: 38876, 2字节度分格式)");
 
                 var totalElapsed = (DateTime.Now - startTime).TotalMilliseconds;
                 _logger.LogInformation($"[数据读取成功] 成功读取S7数据 - DeviceId: {deviceId}, IP: {data.DeviceIP}, 总耗时: {totalElapsed:F2}ms");
@@ -570,7 +571,7 @@ namespace YixiaoAdmin.WebApi.Services
                 {
                     _logger.LogError($"[数据读取异常] 地址超出范围错误！");
                     _logger.LogError($"[数据读取异常] 可能的原因：");
-                    _logger.LogError($"[数据读取异常] 1. DB{dbNumber}数据块大小不足（至少需要38336字节）");
+                    _logger.LogError($"[数据读取异常] 1. DB{dbNumber}数据块大小不足（至少需要38880字节）");
                     _logger.LogError($"[数据读取异常] 2. 数据块编号配置错误（当前配置: DB{dbNumber}）");
                     _logger.LogError($"[数据读取异常] 3. S7-1500数据块属性未设置为'非优化访问'");
                     _logger.LogError($"[数据读取异常] 解决方案：");
@@ -584,6 +585,32 @@ namespace YixiaoAdmin.WebApi.Services
             }
 
             return data;
+        }
+
+        /// <summary>
+        /// 解析GPS度分格式(DDMM.MMMM)：2字节十六进制 -> 十进制 -> 十进制度数
+        /// 转换规则：byte0*256+byte1 -> 度分值 -> 度+分/60
+        /// 例如：纬度42 3C(hex)=10812(dec) -> 108度12.00分 -> 108.2°；经度00 4E(hex)=78(dec) -> 0度78.00分 -> 1.3°
+        /// </summary>
+        private async Task<float?> ParseGpsDdmmFormat(Plc plc, int dbNumber, int startByte)
+        {
+            var bytes = await ReadBytesAsync(plc, dbNumber, startByte, 2);
+            if (bytes == null || bytes.Length < 2)
+                return null;
+
+            // 十六进制转十进制：byte0*256 + byte1 (大端序)
+            int decimalValue = bytes[0] * 256 + bytes[1];
+            if (decimalValue == 0)
+                return 0f;
+
+            // 度分格式(DDMM.MMMM)解析：前2-3位为度，后4位为分(含2位小数)
+            int degrees = decimalValue / 100;
+            double minutes = decimalValue - degrees * 100;
+
+            // 转换为十进制度数：度 + 分/60
+            float decimalDegrees = (float)(degrees + minutes / 60.0);
+            _logger.LogTrace($"[GPS解析] 偏移{startByte} 原始字节:[{bytes[0]:X2} {bytes[1]:X2}] -> 十进制:{decimalValue} -> 度分:{degrees}°{minutes:F2}' -> 十进制度:{decimalDegrees:F6}°");
+            return decimalDegrees;
         }
 
         /// <summary>

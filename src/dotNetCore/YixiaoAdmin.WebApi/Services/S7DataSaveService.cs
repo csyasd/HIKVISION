@@ -246,8 +246,8 @@ namespace YixiaoAdmin.WebApi.Services
                 // 更新GPS经纬度
                 if (data.GPS_lon != 0 || data.GPS_lat != 0)
                 {
-                    device.GpsLongitude = data.GPS_lat.ToString("F6");
-                    device.GpsLatitude = data.GPS_lon.ToString("F6");
+                    device.GpsLongitude = data.GPS_lon.ToString("F6");
+                    device.GpsLatitude = data.GPS_lat.ToString("F6");
                 }
 
                 // 更新气体报警状态（如果有报警，更新为"报警"，否则为"正常"）

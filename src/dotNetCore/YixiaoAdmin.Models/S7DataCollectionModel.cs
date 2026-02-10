@@ -145,14 +145,14 @@ namespace YixiaoAdmin.Models
         public float[] Gas_Alarm { get; set; } = new float[11];
 
         /// <summary>
-        /// GPS经度
-        /// 偏移量：38328
+        /// GPS经度（GPS_lon1 Array[0..1] of Byte，2字节度分格式DDMM.MMMM解析后）
+        /// 偏移量：38874
         /// </summary>
         public float GPS_lon { get; set; }
 
         /// <summary>
-        /// GPS纬度
-        /// 偏移量：38332
+        /// GPS纬度（Gps_lat1 Array[0..1] of Byte，2字节度分格式DDMM.MMMM解析后）
+        /// 偏移量：38876
         /// </summary>
         public float GPS_lat { get; set; }
 
