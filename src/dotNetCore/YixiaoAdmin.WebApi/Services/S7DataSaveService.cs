@@ -339,13 +339,13 @@ namespace YixiaoAdmin.WebApi.Services
         {
             try
             {
-                // 获取该工人的最新一条状态记录
+                // 获取该工人的最新一条状态记录（使用 WorkerNameExact 精确匹配，避免 "张" 匹配到 "张三丰"）
                 var queryParams = new QueryPageModel
                 {
                     Query = new QueryFieldModel[]
                     {
                         new QueryFieldModel { QueryField = "WorkOrderId", QueryStr = workOrderId },
-                        new QueryFieldModel { QueryField = "WorkerName", QueryStr = workerName }
+                        new QueryFieldModel { QueryField = "WorkerNameExact", QueryStr = workerName }
                     },
                     Orderby = new SortFieldModel[] { new SortFieldModel { SortField = "CreateTime", IsDesc = true } },
                     CurrentPage = 0,
@@ -353,11 +353,18 @@ namespace YixiaoAdmin.WebApi.Services
                 };
 
                 var lastRecordResponse = await _workerStatusRecordService.QueryPages(queryParams);
-                var lastRecord = (lastRecordResponse.data as System.Collections.Generic.IEnumerable<WorkerStatusRecord>)?.FirstOrDefault();
+                WorkerStatusRecord lastRecord = null;
+                if (lastRecordResponse.data != null)
+                {
+                    var list = lastRecordResponse.data as System.Collections.IList;
+                    if (list != null && list.Count > 0)
+                        lastRecord = list[0] as WorkerStatusRecord;
+                }
 
                 // 如果状态没变，且已经有记录了，就不存
                 if (lastRecord != null && lastRecord.EntryExitStatus == workerStatus.ToString())
                 {
+                    _logger.LogTrace($"[状态记录] 跳过-状态未变 工人: {workerName}, 状态: {workerStatus}");
                     return;
                 }
 
@@ -368,8 +375,11 @@ namespace YixiaoAdmin.WebApi.Services
                     HeartRate = heartRate > 0 ? heartRate.ToString() : null,
                     EntryExitStatus = workerStatus.ToString()
                 };
-                await _workerStatusRecordService.Add(statusRecord);
-                _logger.LogDebug($"[状态记录] 记录工人状态变更 - 工人: {workerName}, 新状态: {workerStatus}");
+                var added = await _workerStatusRecordService.Add(statusRecord);
+                if (added)
+                    _logger.LogInformation($"[状态记录] 已保存 工人: {workerName}, 工单: {workOrderId}, 新状态: {workerStatus}");
+                else
+                    _logger.LogWarning($"[状态记录] 保存失败(返回值false) 工人: {workerName}, 状态: {workerStatus}");
             }
             catch (Exception ex)
             {
@@ -389,15 +399,17 @@ namespace YixiaoAdmin.WebApi.Services
 
                 for (int i = 1; i <= 10; i++)
                 {
-                    var workerName = order.Workers_Name[i];
+                    var rawWorkerName = order.Workers_Name[i];
                     // 跳过无效的工人姓名（null、空字符串或"?"）
-                    if (!IsValidString(workerName))
+                    if (!IsValidString(rawWorkerName))
                     {
                         continue; // 跳过无效工人
                     }
 
+                    var workerName = rawWorkerName.Trim();
                     var workerStatus = order.Workers_Status[i];
                     var heartRate = order.Heart_Rate[i];
+                    var finalStatus = recordStatus ?? workerStatus.ToString();
 
                     // 每次采集都添加新记录
                     var workRecord = new WorkRecord
@@ -405,11 +417,14 @@ namespace YixiaoAdmin.WebApi.Services
                         WorkOrderId = workOrder.Id,
                         WorkerName = workerName,
                         HeartRate = heartRate > 0 ? heartRate.ToString() : null,
-                        EntryExitStatus = recordStatus ?? workerStatus.ToString() // 如果工单结束，状态为5
+                        EntryExitStatus = finalStatus // 如果工单结束，状态为5
                     };
 
                     await _workRecordService.Add(workRecord);
                     _logger.LogTrace($"[记录处理] 添加作业记录 - 工人: {workerName}, 状态: {workRecord.EntryExitStatus}, 心率: {heartRate}");
+
+                    // 补充写入工人进出状态记录（状态变更时写入，与 ProcessWorkBracelets 形成双路径，确保不遗漏）
+                    await SaveWorkerStatusRecord(workOrder.Id, workerName, heartRate, int.Parse(finalStatus));
                 }
 
                 _logger.LogDebug($"[记录处理] 作业记录添加完成 - 工单: {workOrder.Code}");

@@ -418,18 +418,19 @@ export default {
       return this.workOrders.find(w => w.DeviceId === deviceId && w.Status === 1);
     },
 
+    // 实时数据：仅显示该摄像头对应设备下在线工单的工人和气体最新记录
     getFilteredGas(deviceId) {
       if (!deviceId) return [];
       const order = this.getOnlineWorkOrder(deviceId);
       if (!order) return [];
-      return this.gasMonitoringData.filter(g => g.WorkOrderCode === order.Code || g.DeviceId === deviceId);
+      return this.gasMonitoringData.filter(g => g.DeviceId === deviceId && g.WorkOrderCode === order.Code);
     },
 
     getFilteredBracelet(deviceId) {
       if (!deviceId) return [];
       const order = this.getOnlineWorkOrder(deviceId);
       if (!order) return [];
-      return this.braceletInfoData.filter(b => b.WorkOrderCode === order.Code || b.DeviceId === deviceId);
+      return this.braceletInfoData.filter(b => b.DeviceId === deviceId && b.WorkOrderCode === order.Code);
     },
 
     getCameraStatus(cameraId) {

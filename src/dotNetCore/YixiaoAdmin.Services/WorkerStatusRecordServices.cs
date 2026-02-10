@@ -57,6 +57,10 @@ namespace YixiaoAdmin.Services
                     {
                         whereExpression = PredicateBuilder.And<WorkerStatusRecord>(whereExpression, (x) => x.WorkerName.Contains(item.QueryStr));
                     }
+                    else if (item.QueryField == "WorkerNameExact")
+                    {
+                        whereExpression = PredicateBuilder.And<WorkerStatusRecord>(whereExpression, (x) => x.WorkerName == item.QueryStr);
+                    }
                     else if (item.QueryField == "HeartRate")
                     {
                         whereExpression = PredicateBuilder.And<WorkerStatusRecord>(whereExpression, (x) => x.HeartRate.Contains(item.QueryStr));
