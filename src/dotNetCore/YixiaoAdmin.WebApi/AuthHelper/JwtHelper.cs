@@ -35,8 +35,8 @@ namespace YixiaoAdmin.WebApi.AuthHelper
                 new Claim(JwtRegisteredClaimNames.Jti, tokenModel.Uid.ToString()),
                 new Claim(JwtRegisteredClaimNames.Iat, $"{new DateTimeOffset(DateTime.Now).ToUnixTimeSeconds()}"),
                 new Claim(JwtRegisteredClaimNames.Nbf,$"{new DateTimeOffset(DateTime.Now).ToUnixTimeSeconds()}") ,
-                //过期时间：8小时（28800秒），确保一个工作日内不需要重新登录
-                new Claim (JwtRegisteredClaimNames.Exp,$"{new DateTimeOffset(DateTime.Now.AddHours(8)).ToUnixTimeSeconds()}"),
+                //过期时间：10年，改为无限时间（避免2038年溢出问题）
+                new Claim (JwtRegisteredClaimNames.Exp,$"{new DateTimeOffset(DateTime.Now.AddYears(10)).ToUnixTimeSeconds()}"),
                 new Claim(JwtRegisteredClaimNames.Iss,iss),
                 new Claim(JwtRegisteredClaimNames.Aud,aud),
                 

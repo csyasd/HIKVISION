@@ -94,6 +94,14 @@ namespace YixiaoAdmin.WebApi.Controllers
             IntPtr pUser);
 
         [DllImport("HCNetSDK.dll")]
+        public static extern int NET_DVR_StartVoiceCom_V30(
+            int lUserID,
+            uint dwVoiceChan,
+            bool bNeedCBNoEncData,
+            fVoiceDataCallBack cbVoiceDataCallBack,
+            IntPtr pUser);
+
+        [DllImport("HCNetSDK.dll")]
         public static extern bool NET_DVR_VoiceComSendData(
             int lVoiceComHandle,
             byte[] pSendBuf,
@@ -1114,10 +1122,11 @@ namespace YixiaoAdmin.WebApi.Controllers
                 // 防止回调被 GC 回收
                 session.CallbackGcHandle = GCHandle.Alloc(session.Callback);
 
-                // 4. 启动语音对讲（MR模式：手动录音）
-                int voiceHandle = NET_DVR_StartVoiceCom_MR_V30(
+                // 4. 启动语音对讲（V30模式，启用原始PCM回调）
+                int voiceHandle = NET_DVR_StartVoiceCom_V30(
                     _loggedInUserId,
                     1, // 语音通道号
+                    true, // bNeedCBNoEncData: 1- 编码前的PCM原始数据
                     session.Callback,
                     IntPtr.Zero);
 
@@ -1153,10 +1162,11 @@ namespace YixiaoAdmin.WebApi.Controllers
 
                             if (result.MessageType == WebSocketMessageType.Binary && result.Count > 0)
                             {
-                                // 接收到的是 PCM Int16 LE 8000Hz 数据，转换为 G.711 A-law 发送到摄像头
+                                // 接收到的是 PCM Int16 LE 8000Hz 数据
                                 var pcmData = new byte[result.Count];
                                 Array.Copy(buffer, pcmData, result.Count);
 
+                                // 转换为 G.711 A-law 发送到摄像头 (大部分海康设备对讲输入需要G.711)
                                 var alawData = G711.EncodePcmToAlaw(pcmData);
 
                                 // 分帧发送（每帧160字节 = 20ms，这是G.711的标准帧大小）
@@ -1198,11 +1208,10 @@ namespace YixiaoAdmin.WebApi.Controllers
                     {
                         while (!cts.Token.IsCancellationRequested && ws.State == WebSocketState.Open)
                         {
-                            if (session.AudioFromDevice.TryDequeue(out var alawData))
+                            if (session.AudioFromDevice.TryDequeue(out var pcmData))
                             {
-                                // 将 G.711 A-law 转换为 PCM Int16 发送给浏览器
-                                var pcmData = G711.DecodeAlawToPcm(alawData);
-
+                                // 因为使用了 bNeedCBNoEncData=true，回调收到的已经是 PCM 原始数据
+                                // 直接发送给浏览器
                                 if (ws.State == WebSocketState.Open)
                                 {
                                     await ws.SendAsync(

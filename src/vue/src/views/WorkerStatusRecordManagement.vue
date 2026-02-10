@@ -240,10 +240,10 @@ export default {
                 filteredWorkOrders = filteredWorkOrders.filter(wo => wo.DeviceId === this.filterDeviceId);
             }
             
-            // 工单编号筛选
+            // 工单编号筛选（改为精确匹配，避免搜索12包含1312）
             if (this.filterWorkOrderCode && this.filterWorkOrderCode.trim()) {
                 filteredWorkOrders = filteredWorkOrders.filter(wo => 
-                    wo.Code && wo.Code.includes(this.filterWorkOrderCode.trim())
+                    wo.Code && wo.Code.trim() === this.filterWorkOrderCode.trim()
                 );
             }
             

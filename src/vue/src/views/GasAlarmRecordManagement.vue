@@ -32,6 +32,7 @@
                 placeholder="搜索工单编号"
                 clearable
                 @select="handleWorkOrderCodeSelect"
+                @input="queryData"
                 @clear="queryData">
             </el-autocomplete>
             <el-autocomplete
@@ -41,6 +42,7 @@
                 placeholder="搜索工单内容"
                 clearable
                 @select="handleWorkOrderContentSelect"
+                @input="queryData"
                 @clear="queryData">
             </el-autocomplete>
             <el-button @click="queryData()">查询</el-button>
@@ -290,10 +292,10 @@ export default {
                 filteredWorkOrders = filteredWorkOrders.filter(wo => wo.DeviceId === this.filterDeviceId);
             }
             
-            // 工单编号筛选
+            // 工单编号筛选（改为精确匹配，避免搜索12包含1312）
             if (this.filterWorkOrderCode && this.filterWorkOrderCode.trim()) {
                 filteredWorkOrders = filteredWorkOrders.filter(wo => 
-                    wo.Code && wo.Code.includes(this.filterWorkOrderCode.trim())
+                    wo.Code && wo.Code.trim() === this.filterWorkOrderCode.trim()
                 );
             }
             
@@ -323,15 +325,29 @@ export default {
             
             var pageData = {
                 Query: this.Query,
-                Orderby: this.Orderby,
-                CurrentPage: this.currentPage - 1,
-                PageNumber: this.pageSize,
+                Orderby: [{ SortField: "CreateTime", IsDesc: true }], // 按创建时间降序
+                CurrentPage: 0,
+                PageNumber: 10000, // 获取足够多的数据用于前端分组
             };
             SelectGasAlarmRecord(pageData).then(res => {
-                const records = res.data || [];
-                // 只显示第一个
-                this.tableData = records.length > 0 ? [records[0]] : [];
-                this.totalNumber = records.length > 0 ? 1 : 0;
+                let allData = res.data || [];
+                
+                // 按工单分组,只保留每个工单的最新一条记录
+                const latestRecordsByWorkOrder = {};
+                allData.forEach(record => {
+                    const workOrderId = record.WorkOrderId;
+                    if (!workOrderId) return;
+                    
+                    // 如果该工单还没有记录,或当前记录更新,则保存
+                    if (!latestRecordsByWorkOrder[workOrderId] || 
+                        new Date(record.CreateTime) > new Date(latestRecordsByWorkOrder[workOrderId].CreateTime)) {
+                        latestRecordsByWorkOrder[workOrderId] = record;
+                    }
+                });
+                
+                // 将分组后的最新记录转换为数组
+                this.tableData = Object.values(latestRecordsByWorkOrder);
+                this.totalNumber = this.tableData.length;
 
                 //如果发现加载了一个空页尝试向前翻一页，针对当一页只有一条数据时将该数据删除，页面显示异常问题
                 if (this.currentPage > 1 && this.tableData.length == 0) {
@@ -367,8 +383,9 @@ export default {
         
         // 设备选择改变事件
         handleDeviceChange() {
-            // 当设备改变时，重新设置默认工单
+            // 当设备改变时，重新设置默认工单并刷新列表
             this.setDefaultWorkOrder();
+            this.queryData();
         },
         //刷新表格
         refreshTable() {
@@ -670,12 +687,44 @@ export default {
         
         // 获取用于绘图的完整数据（不分页）
         fetchFullGasData() {
-            // 使用当前的查询条件，但请求更多数据
+            this.allCurveData = []; // 清空旧数据
+            
+            // 构建查询条件
+            let filteredWorkOrders = [...this.WorkOrderList];
+            
+            // 1. 设备筛选
+            if (this.filterDeviceId) {
+                filteredWorkOrders = filteredWorkOrders.filter(wo => wo.DeviceId === this.filterDeviceId);
+            }
+            
+            // 2. 工单编号筛选（更健壮的匹配）
+            if (this.filterWorkOrderCode !== null && this.filterWorkOrderCode !== undefined && String(this.filterWorkOrderCode).trim()) {
+                const searchCode = String(this.filterWorkOrderCode).trim().toLowerCase();
+                filteredWorkOrders = filteredWorkOrders.filter(wo => {
+                    const code = wo.Code ? String(wo.Code).trim().toLowerCase() : "";
+                    return code === searchCode;
+                });
+            }
+
+            let query = [];
+            if (filteredWorkOrders.length > 0) {
+                const workOrderIds = filteredWorkOrders.map(wo => wo.Id);
+                query.push({
+                    QueryField: "WorkOrderId",
+                    QueryStr: workOrderIds.join(","),
+                });
+            } else {
+                query.push({
+                    QueryField: "WorkOrderId",
+                    QueryStr: "__NO_MATCH__",
+                });
+            }
+
             var pageData = {
-                Query: this.Query,
+                Query: query,
                 Orderby: [{ SortField: "CreateTime", IsDesc: false }], // 曲线应该正序
                 CurrentPage: 0,
-                PageNumber: 500, // 获取最近500条记录用于绘图
+                PageNumber: 1000, // 获取更多记录用于绘图
             };
             
             SelectGasAlarmRecord(pageData).then(res => {
@@ -730,7 +779,19 @@ export default {
         
         // 更新图表内容
         updateChart() {
-            if (!this.chartInstance || !this.allCurveData.length) return;
+            if (!this.chartInstance) return;
+
+            if (!this.allCurveData || !this.allCurveData.length) {
+                this.chartInstance.setOption({
+                    title: {
+                        text: '浓度变化趋势',
+                        subtext: '暂无数据',
+                        left: 'center',
+                        top: 'center'
+                    }
+                }, true);
+                return;
+            }
             
             const times = this.allCurveData.map(item => item.CreateTime);
             const series = [];
@@ -747,8 +808,15 @@ export default {
                     name: gasNamesMap[gasIndex],
                     type: 'line',
                     smooth: true,
-                    showSymbol: false,
-                    data: this.allCurveData.map(item => item[`Gas${gasIndex}`] || 0)
+                    showSymbol: true,
+                    symbolSize: 4,
+                    data: this.allCurveData.map(item => {
+                        let timeValue = item.CreateTime;
+                        if (typeof timeValue === 'string') {
+                            timeValue = new Date(timeValue).getTime();
+                        }
+                        return [timeValue, item[`Gas${gasIndex}`] || 0];
+                    })
                 });
             });
             
@@ -774,13 +842,12 @@ export default {
                     }
                 },
                 xAxis: {
-                    type: 'category',
+                    type: 'time',
                     boundaryGap: false,
-                    data: times,
                     axisLabel: {
                         formatter: function(value) {
-                            // 简化时间显示
-                            return value.split(' ')[1] || value;
+                            const date = new Date(value);
+                            return date.getHours() + ':' + String(date.getMinutes()).padStart(2, '0');
                         }
                     }
                 },

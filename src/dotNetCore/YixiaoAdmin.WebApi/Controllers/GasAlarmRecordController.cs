@@ -172,12 +172,43 @@ namespace YixiaoAdmin.WebApi.Controllers
                 return Ok(emptyResponse);
             }
             
+            // 检查前端是否已经提供了 WorkOrderId 查询条件
             var queryList = queryPageModel.Query?.ToList() ?? new List<QueryFieldModel>();
-            queryList.Add(new QueryFieldModel 
-            { 
-                QueryField = "WorkOrderId", 
-                QueryStr = string.Join(",", workOrderIds) 
-            });
+            var existingWorkOrderQuery = queryList.FirstOrDefault(q => q.QueryField == "WorkOrderId");
+            
+            if (existingWorkOrderQuery != null)
+            {
+                // 前端已提供 WorkOrderId 条件,需要与用户权限取交集
+                var requestedWorkOrderIds = existingWorkOrderQuery.QueryStr
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(id => id.Trim())
+                    .ToList();
+                
+                // 取交集:只返回用户有权限且前端请求的工单
+                var allowedWorkOrderIds = requestedWorkOrderIds
+                    .Where(id => workOrderIds.Contains(id))
+                    .ToList();
+                
+                if (allowedWorkOrderIds.Any())
+                {
+                    existingWorkOrderQuery.QueryStr = string.Join(",", allowedWorkOrderIds);
+                }
+                else
+                {
+                    // 没有交集,返回空结果
+                    existingWorkOrderQuery.QueryStr = "__NO_MATCH__";
+                }
+            }
+            else
+            {
+                // 前端未提供 WorkOrderId 条件,添加用户权限过滤
+                queryList.Add(new QueryFieldModel 
+                { 
+                    QueryField = "WorkOrderId", 
+                    QueryStr = string.Join(",", workOrderIds) 
+                });
+            }
+            
             queryPageModel.Query = queryList.ToArray();
             
             return Ok(await _GasAlarmRecordServices.QueryPages(queryPageModel));
@@ -303,51 +334,42 @@ namespace YixiaoAdmin.WebApi.Controllers
                         latestGasRecord.Gas10
                     };
 
-                    for (int i = 0; i < gasValues.Length; i++)
+                    // 定义要显示的4种特定气体及其映射
+                    var displayConfigs = new[]
                     {
-                        var gasValue = gasValues[i];
-                        // 只显示有数值的气体（大于0）
-                        if (gasValue > 0)
-                        {
-                            // 根据气体类型格式化数值和单位
-                            string formattedValue;
-                            if (i == 0) // O2
-                            {
-                                formattedValue = $"{gasValue:F1}%VOL";
-                            }
-                            else if (i == 1) // CH4
-                            {
-                                formattedValue = $"{gasValue:F1}%LEL";
-                            }
-                            else // 其他气体（ppm）
-                            {
-                                formattedValue = $"{gasValue:F1}ppm";
-                            }
+                        new { Index = 3, Name = "一氧化碳 (PPM)" },
+                        new { Index = 2, Name = "硫化氢 (PPM)" },
+                        new { Index = 1, Name = "甲烷 (%LEL)" },
+                        new { Index = 8, Name = "二氧化硫 (PPM)" }
+                    };
 
-                            // 格式化设备名称：设备名称/设备型号
-                            var deviceDisplayName = string.IsNullOrWhiteSpace(device.Model) 
-                                ? device.Name 
-                                : $"{device.Name}/{device.Model}";
-                            
-                            result.Add(new GasMonitoringItem
-                            {
-                                DeviceName = deviceDisplayName,
-                                WorkOrderCode = workOrder.Code ?? "",
-                                GasName = gasNames[i],
-                                GasValue = formattedValue,
-                                Status = "在线",
-                                CreateTime = latestGasRecord.CreateTime,
-                                DeviceId = device.Id,
-                                WorkOrderId = workOrder.Id
-                            });
-                        }
+                    foreach (var config in displayConfigs)
+                    {
+                        var gasValue = gasValues[config.Index];
+                        string formattedValue = $"{gasValue:F1}";
+
+                        // 格式化设备名称：设备名称/设备型号
+                        var deviceDisplayName = string.IsNullOrWhiteSpace(device.Model) 
+                            ? device.Name 
+                            : $"{device.Name}/{device.Model}";
+                        
+                        result.Add(new GasMonitoringItem
+                        {
+                            DeviceName = deviceDisplayName,
+                            WorkOrderCode = workOrder.Code ?? "",
+                            GasName = config.Name,
+                            GasValue = formattedValue,
+                            Status = "在线",
+                            CreateTime = latestGasRecord.CreateTime,
+                            DeviceId = device.Id,
+                            WorkOrderId = workOrder.Id
+                        });
                     }
                 }
 
                 // 按设备名称和气体名称排序
                 var sortedResult = result
                     .OrderBy(r => r.DeviceName)
-                    .ThenBy(r => r.GasName)
                     .ToList();
 
                 return Ok(sortedResult);

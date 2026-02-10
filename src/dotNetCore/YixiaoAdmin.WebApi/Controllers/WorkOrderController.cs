@@ -187,6 +187,16 @@ namespace YixiaoAdmin.WebApi.Controllers
         [HttpPost]
         public async Task<bool> Post(WorkOrder viewModel)
         {
+            // 如果新工单指定了设备，则先将该设备所有未结束的旧工单改为“工单结束”状态(2)
+            if (!string.IsNullOrEmpty(viewModel.DeviceId))
+            {
+                var existingWorkOrders = await _WorkRecordServices.Query(w => w.DeviceId == viewModel.DeviceId && w.Status != 2);
+                foreach (var oldWorkOrder in existingWorkOrders)
+                {
+                    oldWorkOrder.Status = 2; // 工单结束
+                    await _WorkRecordServices.Update(oldWorkOrder);
+                }
+            }
 
             return await _WorkRecordServices.Add(viewModel);
         }

@@ -323,10 +323,10 @@ export default {
                 filteredWorkOrders = filteredWorkOrders.filter(wo => wo.DeviceId === this.filterDeviceId);
             }
             
-            // 工单编号筛选
+            // 工单编号筛选（改为精确匹配，避免搜索12包含1312）
             if (this.filterWorkOrderCode && this.filterWorkOrderCode.trim()) {
                 filteredWorkOrders = filteredWorkOrders.filter(wo => 
-                    wo.Code && wo.Code.includes(this.filterWorkOrderCode.trim())
+                    wo.Code && wo.Code.trim() === this.filterWorkOrderCode.trim()
                 );
             }
             
@@ -356,13 +356,40 @@ export default {
             
             var pageData = {
                 Query: this.Query,
-                Orderby: this.Orderby,
-                CurrentPage: this.currentPage - 1,
-                PageNumber: this.pageSize,
+                Orderby: [{ SortField: "CreateTime", IsDesc: true }], // 按创建时间降序
+                CurrentPage: 0,
+                PageNumber: 10000, // 获取足够多的数据用于前端分组
             };
-            SelectWorkBracelet(pageData).then(res => {
-                this.tableData = res.data;
-                this.totalNumber = res.count;
+            
+            // 改用 SelectWorkRecord 获取所有历史记录
+            SelectWorkRecord(pageData).then(res => {
+                let allData = res.data || [];
+                
+                // 按工人姓名分组,只保留每个工人的最新一条记录
+                const latestRecordsByWorker = {};
+                allData.forEach(record => {
+                    const workerName = record.WorkerName;
+                    if (!workerName) return;
+                    
+                    // 如果该工人还没有记录,或当前记录更新,则保存
+                    if (!latestRecordsByWorker[workerName] || 
+                        new Date(record.CreateTime) > new Date(latestRecordsByWorker[workerName].CreateTime)) {
+                        latestRecordsByWorker[workerName] = record;
+                    }
+                });
+                
+                // 将分组后的最新记录转换为数组,并添加兼容字段
+                this.tableData = Object.values(latestRecordsByWorker).map(record => {
+                    // 为 WorkRecord 数据添加 EntryTime 和 ExitTime 字段
+                    // 根据状态判断:状态3=进场,状态5=离场
+                    const status = parseInt(record.EntryExitStatus) || 0;
+                    return {
+                        ...record,
+                        EntryTime: (status === 3 || status === 2) ? record.CreateTime : null,
+                        ExitTime: status === 5 ? record.CreateTime : null
+                    };
+                });
+                this.totalNumber = this.tableData.length;
 
                 //如果发现加载了一个空页尝试向前翻一页，针对当一页只有一条数据时将该数据删除，页面显示异常问题
                 if (this.currentPage > 1 && this.tableData.length == 0) {
@@ -398,8 +425,9 @@ export default {
         
         // 设备选择改变事件
         handleDeviceChange() {
-            // 当设备改变时，重新设置默认工单
+            // 当设备改变时，重新设置默认工单并刷新列表
             this.setDefaultWorkOrder();
+            this.queryData();
         },
         //刷新表格
         refreshTable() {
@@ -719,34 +747,46 @@ export default {
 
         // 获取用于绘图的完整心率数据（从作业记录接口获取）
         fetchHeartRateData() {
-            // 构建查询条件，过滤掉无效的查询条件
-            let query = [];
+            this.allCurveData = []; // 先清空旧数据，防止切换时显示旧曲线
             
-            // 如果有有效的工单筛选条件，使用它
-            if (this.Query && this.Query.length > 0) {
-                // 过滤掉无效的查询条件（如 "__NO_MATCH__"）
-                query = this.Query.filter(q => {
-                    return q.QueryStr && q.QueryStr !== "__NO_MATCH__" && q.QueryStr.trim() !== "";
-                });
+            // 构建查询条件
+            let filteredWorkOrders = [...this.WorkOrderList];
+            
+            // 1. 设备筛选
+            if (this.filterDeviceId) {
+                filteredWorkOrders = filteredWorkOrders.filter(wo => wo.DeviceId === this.filterDeviceId);
             }
             
-            // 如果有工单筛选，使用工单ID
-            if (this.filterWorkOrderCode && this.filterWorkOrderCode.trim()) {
-                // 从工单列表中查找匹配的工单
-                const matchedWorkOrder = this.WorkOrderList.find(wo => wo.Code === this.filterWorkOrderCode.trim());
-                if (matchedWorkOrder) {
-                    query = [{
-                        QueryField: "WorkOrderId",
-                        QueryStr: matchedWorkOrder.Id
-                    }];
-                }
+            // 2. 工单编号筛选（更健壮的匹配）
+            if (this.filterWorkOrderCode !== null && this.filterWorkOrderCode !== undefined && String(this.filterWorkOrderCode).trim()) {
+                const searchCode = String(this.filterWorkOrderCode).trim().toLowerCase();
+                filteredWorkOrders = filteredWorkOrders.filter(wo => {
+                    const code = wo.Code ? String(wo.Code).trim().toLowerCase() : "";
+                    return code === searchCode;
+                });
+            }
+
+            console.log('心率曲线筛选后的工单数量:', filteredWorkOrders.length);
+
+            let query = [];
+            if (filteredWorkOrders.length > 0) {
+                const workOrderIds = filteredWorkOrders.map(wo => wo.Id);
+                query.push({
+                    QueryField: "WorkOrderId",
+                    QueryStr: workOrderIds.join(","),
+                });
+            } else {
+                query.push({
+                    QueryField: "WorkOrderId",
+                    QueryStr: "__NO_MATCH__",
+                });
             }
             
             var pageData = {
                 Query: query,
                 Orderby: [{ SortField: "CreateTime", IsDesc: false }], // 正序
                 CurrentPage: 0,
-                PageNumber: 500, // 获取最近500条记录
+                PageNumber: 1000, 
             };
 
             console.log('心率曲线查询参数:', pageData);
@@ -840,20 +880,24 @@ export default {
             const workerGroups = {};
             this.allCurveData.forEach(item => {
                 const name = item.WorkerName || '未知工人';
-                if (!workerGroups[name]) {
-                    workerGroups[name] = [];
-                }
+                
                 // 转换时间格式为时间戳（毫秒）
                 let timeValue = item.CreateTime;
-                if (typeof timeValue === 'string') {
+                if (timeValue) {
                     timeValue = new Date(timeValue).getTime();
                 }
-                const heartRate = parseInt(item.HeartRate) || 0;
                 
-                workerGroups[name].push({
-                    time: timeValue,
-                    heartRate: heartRate
-                });
+                // 只有有效的时间和心率才加入
+                if (!isNaN(timeValue)) {
+                    if (!workerGroups[name]) {
+                        workerGroups[name] = [];
+                    }
+                    const heartRate = parseInt(item.HeartRate) || 0;
+                    workerGroups[name].push({
+                        time: timeValue,
+                        heartRate: heartRate
+                    });
+                }
             });
 
             console.log('工人分组:', Object.keys(workerGroups));

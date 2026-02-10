@@ -124,8 +124,8 @@
               </div>
             </div>
 
-            <!-- 语音对讲 -->
-            <div class="intercom-panel mini-panel">
+            <!-- 语音对讲 (根据用户要求暂时隐藏) -->
+            <div class="intercom-panel mini-panel" v-if="false">
               <div class="intercom-controls-mini">
                 <button 
                   class="intercom-btn-mini"
@@ -415,21 +415,21 @@ export default {
 
     getOnlineWorkOrder(deviceId) {
       if (!deviceId) return null;
-      return this.workOrders.find(w => w.DeviceId === deviceId && (w.Status === '执行中' || w.Status === '在线'));
+      return this.workOrders.find(w => w.DeviceId === deviceId && w.Status === 1);
     },
 
     getFilteredGas(deviceId) {
       if (!deviceId) return [];
       const order = this.getOnlineWorkOrder(deviceId);
       if (!order) return [];
-      return this.gasMonitoringData.filter(g => g.WorkOrderCode === order.WorkOrderCode || g.DeviceId === deviceId);
+      return this.gasMonitoringData.filter(g => g.WorkOrderCode === order.Code || g.DeviceId === deviceId);
     },
 
     getFilteredBracelet(deviceId) {
       if (!deviceId) return [];
       const order = this.getOnlineWorkOrder(deviceId);
       if (!order) return [];
-      return this.braceletInfoData.filter(b => b.WorkOrderCode === order.WorkOrderCode || b.DeviceId === deviceId);
+      return this.braceletInfoData.filter(b => b.WorkOrderCode === order.Code || b.DeviceId === deviceId);
     },
 
     getCameraStatus(cameraId) {

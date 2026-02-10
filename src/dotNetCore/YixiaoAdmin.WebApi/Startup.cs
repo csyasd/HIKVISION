@@ -217,6 +217,9 @@ namespace YixiaoAdmin.WebApi
             // 注册摄像头流后台服务
             services.AddHostedService<Services.CameraStreamService>();
 
+            // 注册工单自动清理后台服务
+            services.AddHostedService<Services.WorkOrderCleanupService>();
+
             // 注册S7 PLC数据采集后台服务
             services.AddSingleton<Services.S7DataCollectionService>();
             services.AddHostedService(provider => provider.GetRequiredService<Services.S7DataCollectionService>());

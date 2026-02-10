@@ -135,13 +135,43 @@ namespace YixiaoAdmin.WebApi.Controllers
                 return Ok(emptyResponse);
             }
             
-            // 添加工单ID过滤条件
+            // 检查前端是否已经提供了 WorkOrderId 查询条件
             var queryList = queryPageModel.Query?.ToList() ?? new List<QueryFieldModel>();
-            queryList.Add(new QueryFieldModel 
-            { 
-                QueryField = "WorkOrderId", 
-                QueryStr = string.Join(",", workOrderIds) 
-            });
+            var existingWorkOrderQuery = queryList.FirstOrDefault(q => q.QueryField == "WorkOrderId");
+            
+            if (existingWorkOrderQuery != null)
+            {
+                // 前端已提供 WorkOrderId 条件,需要与用户权限取交集
+                var requestedWorkOrderIds = existingWorkOrderQuery.QueryStr
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(id => id.Trim())
+                    .ToList();
+                
+                // 取交集:只返回用户有权限且前端请求的工单
+                var allowedWorkOrderIds = requestedWorkOrderIds
+                    .Where(id => workOrderIds.Contains(id))
+                    .ToList();
+                
+                if (allowedWorkOrderIds.Any())
+                {
+                    existingWorkOrderQuery.QueryStr = string.Join(",", allowedWorkOrderIds);
+                }
+                else
+                {
+                    // 没有交集,返回空结果
+                    existingWorkOrderQuery.QueryStr = "__NO_MATCH__";
+                }
+            }
+            else
+            {
+                // 前端未提供 WorkOrderId 条件,添加用户权限过滤
+                queryList.Add(new QueryFieldModel 
+                { 
+                    QueryField = "WorkOrderId", 
+                    QueryStr = string.Join(",", workOrderIds) 
+                });
+            }
+            
             queryPageModel.Query = queryList.ToArray();
             
             return Ok(await _workRecordServices.QueryPages(queryPageModel));
