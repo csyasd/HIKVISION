@@ -8,9 +8,22 @@
     <div class="video-area" v-if="currentCamera">
       <div class="camera-name">{{ currentCamera.Name || '未命名摄像头' }}</div>
       <div class="video-box">
-        <video :id="`m_video_${currentCamera.Id}`" muted playsinline style="width:100%;height:100%;object-fit:contain;background:#000"></video>
-        <div v-if="loading" class="loading-state"><i class="el-icon-loading"></i> 连接中...</div>
-        <div v-if="error" class="error-state" @click="retryPlay">
+        <video :id="`m_video_${currentCamera.Id}`" muted playsinline webkit-playsinline x5-playsinline style="width:100%;height:100%;object-fit:contain;background:#000"></video>
+        <div v-if="flvUnsupported" class="error-state unsupported-tip">
+          <i class="el-icon-warning-outline"></i>
+          <span>您的设备不支持视频播放</span>
+          <span class="tip-sub">请使用电脑或 Android Chrome 访问</span>
+        </div>
+        <div v-else-if="!isDeviceOnline" class="error-state offline-tip">
+          <i class="el-icon-video-pause"></i>
+          <span>视频不在线</span>
+        </div>
+        <div v-else-if="loading" class="loading-state"><i class="el-icon-loading"></i> 连接中...</div>
+        <div v-else-if="needUserPlay" class="play-tap-state" @click="userPlay">
+          <i class="el-icon-video-play"></i>
+          <span>点击播放</span>
+        </div>
+        <div v-else-if="error" class="error-state" @click="retryPlay">
           <i class="el-icon-warning"></i>
           <span>点击重试</span>
         </div>
@@ -62,12 +75,13 @@
 </template>
 
 <script>
-import { SelectALLCamera, GetRealtimeGasData, GetRealtimeBraceletInfo, GetRealtimeWorkOrders, PTZControl, BaseUrl } from '@/api/api.js'
+import { SelectALLCamera, SelectALLDevice, GetRealtimeGasData, GetRealtimeBraceletInfo, GetRealtimeWorkOrders, PTZControl, BaseUrl } from '@/api/api.js'
 
 export default {
   data() {
     return {
       cameras: [],
+      devices: [],
       selectedCameraId: null,
       gasMonitoringData: [],
       braceletInfoData: [],
@@ -76,12 +90,20 @@ export default {
       error: false,
       player: null,
       ptzSpeed: 4,
+      flvUnsupported: false,
+      needUserPlay: false,
       API_BASE: BaseUrl.replace(/\/$/, '')
     }
   },
   computed: {
     currentCamera() {
       return this.cameras.find(c => c.Id === this.selectedCameraId) || null
+    },
+    isDeviceOnline() {
+      if (!this.currentCamera?.DeviceId) return true
+      if (!this.devices.length) return true
+      const device = this.devices.find(d => d.Id === this.currentCamera.DeviceId)
+      return device ? (device.OnlineStatus === '在线') : true
     },
     currentGas() {
       if (!this.currentCamera?.DeviceId) return []
@@ -115,11 +137,13 @@ export default {
     },
     async fetchData() {
       try {
-        const [gasRes, braceletRes, workRes] = await Promise.all([
+        const [devicesRes, gasRes, braceletRes, workRes] = await Promise.all([
+          SelectALLDevice(),
           GetRealtimeGasData(),
           GetRealtimeBraceletInfo(),
           GetRealtimeWorkOrders()
         ])
+        this.devices = devicesRes || []
         this.gasMonitoringData = Array.isArray(gasRes) ? gasRes : []
         this.braceletInfoData = Array.isArray(braceletRes) ? braceletRes : []
         this.workOrders = workRes || []
@@ -130,7 +154,16 @@ export default {
       this.$nextTick(() => this.initPlayer())
     },
     initPlayer() {
-      if (!this.currentCamera || !window.flvjs?.isSupported()) return
+      if (!this.currentCamera) return
+      if (!this.isDeviceOnline) return
+      this.flvUnsupported = false
+      this.needUserPlay = false
+      if (!window.flvjs?.isSupported()) {
+        this.flvUnsupported = true
+        this.loading = false
+        this.error = false
+        return
+      }
       this.destroyPlayer()
       const el = document.getElementById(`m_video_${this.currentCamera.Id}`)
       if (!el) return
@@ -140,10 +173,28 @@ export default {
       const p = window.flvjs.createPlayer({ type: 'flv', url, isLive: true }, { enableStashBuffer: false })
       p.attachMediaElement(el)
       p.load()
-      p.play()
+      const playPromise = p.play()
       this.player = p
-      p.on(window.flvjs.Events.ERROR, () => { this.error = true; this.loading = false })
-      p.on(window.flvjs.Events.LOADING_COMPLETE, () => { this.loading = false })
+      if (playPromise && typeof playPromise.then === 'function') {
+        playPromise.then(() => {
+          this.needUserPlay = false
+          this.loading = false
+        }).catch((e) => {
+          if (e && e.name === 'NotAllowedError') {
+            this.needUserPlay = true
+            this.loading = false
+          } else {
+            this.error = true
+            this.loading = false
+          }
+        })
+      } else {
+        this.loading = false
+      }
+      p.on(window.flvjs.Events.ERROR, () => { this.error = true; this.loading = false; this.needUserPlay = false })
+      p.on(window.flvjs.Events.LOADING_COMPLETE, () => {
+        if (!this.needUserPlay && !this.error) this.loading = false
+      })
     },
     destroyPlayer() {
       if (this.player) {
@@ -152,7 +203,16 @@ export default {
       }
     },
     retryPlay() {
+      this.needUserPlay = false
       this.initPlayer()
+    },
+    userPlay() {
+      if (!this.player || !this.currentCamera) return
+      const el = document.getElementById(`m_video_${this.currentCamera.Id}`)
+      if (!el) return
+      el.play().then(() => {
+        this.needUserPlay = false
+      }).catch(() => {})
     },
     async ptzStart(camera, command) {
       if (!camera?.IP) return
@@ -206,11 +266,17 @@ export default {
 }
 .video-box video { display: block; }
 .video-box video { width: 100%; height: 100%; object-fit: contain; }
-.loading-state, .error-state {
+.loading-state, .error-state, .play-tap-state, .unsupported-tip {
   position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
   background: rgba(0,0,0,0.8); color: #fff; gap: 8px; font-size: 14px;
 }
 .error-state { cursor: pointer; color: #f56c6c; }
+.play-tap-state { cursor: pointer; color: #409eff; }
+.play-tap-state i { font-size: 48px; }
+.unsupported-tip { color: rgba(255,255,255,0.9); }
+.unsupported-tip .tip-sub { font-size: 12px; color: rgba(255,255,255,0.6); }
+.offline-tip { color: #e6a23c; }
+.offline-tip i { font-size: 36px; }
 .data-panel { display: flex; gap: 12px; padding: 12px; background: rgba(255,255,255,0.03); }
 .data-section { flex: 1; }
 .data-title { font-size: 12px; color: #409eff; margin-bottom: 8px; font-weight: 600; }
